@@ -7,7 +7,11 @@ from engine.scene.box import Box
 from engine.scene.level import Level
 
 
-def load_tiled_level(path: Path, eye_height: float) -> Level:
+def load_tiled_level(
+    path: Path,
+    eye_height: float,
+    floor_colors: tuple[tuple[int, int, int], tuple[int, int, int]],
+) -> Level:
     """Загружает конечную ортогональную TMX-карту: стены и точку старта."""
     tiled = pytmx.TiledMap(str(path))
     if tiled.orientation != "orthogonal" or int(getattr(tiled, "infinite", 0)):
@@ -67,4 +71,5 @@ def load_tiled_level(path: Path, eye_height: float) -> Level:
         boxes=tuple(boxes),
         spawn_position=(x, eye_height, z),
         spawn_target=(x + math.cos(yaw), eye_height, z + math.sin(yaw)),
+        floor_colors=floor_colors,
     )

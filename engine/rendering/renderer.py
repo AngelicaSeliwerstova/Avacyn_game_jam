@@ -45,6 +45,7 @@ class Renderer:
             self._cube = CubeMesh(self.context, self._program)
             self._floor = FloorMesh(
                 self.context, self._program, level.floor_size, level.floor_tile_size,
+                colors=level.floor_colors,
             )
             self._render_target = RenderTarget(self.context, render_size)
             self._presenter = PixelPresenter(self.context)

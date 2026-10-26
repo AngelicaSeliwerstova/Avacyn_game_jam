@@ -92,4 +92,4 @@ class CorridorTests(unittest.TestCase):
             path = Path(directory) / "invalid.tmx"
             tree.write(path, encoding="utf-8", xml_declaration=True)
             with self.assertRaisesRegex(ValueError, "wall tile"):
-                load_tiled_level(path, eye_height=1.6)
+                load_tiled_level(path, eye_height=1.6, floor_colors=settings.FLOOR_COLORS)
