@@ -71,5 +71,11 @@ class KeyboardMouse:
         self._jump_queued = False
         return state
 
+    @property
+    def status_text(self) -> str:
+        if not self._focused:
+            return "UNFOCUSED"
+        return "CAPTURED" if self._captured else "CURSOR FREE"
+
     def release(self):
         self._set_capture(False)

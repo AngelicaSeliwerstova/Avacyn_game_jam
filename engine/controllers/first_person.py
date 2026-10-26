@@ -65,6 +65,10 @@ class FirstPersonController:
         """Направление тела в XZ: 0 градусов соответствует +X."""
         return math.degrees(self._yaw)
 
+    @property
+    def pitch_degrees(self) -> float:
+        return math.degrees(self._pitch)
+
     def update(
         self,
         delta_time: float,

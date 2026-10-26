@@ -13,4 +13,5 @@ INPUT_BINDINGS = InputBindings(
     toggle_fullscreen=pygame.K_F11,
     sprint_keys=(pygame.K_LSHIFT, pygame.K_RSHIFT),
     jump=pygame.K_SPACE,
+    toggle_debug=pygame.K_F3,
 )

@@ -22,6 +22,7 @@ class CubeMesh:
             for index in (0, 1, 2, 0, 2, 3):
                 vertices.extend((*corners[index], *color, *normal))
         # Данные передаются на видеокарту один раз при создании объекта.
+        self.triangle_count = len(vertices) // 27
         self._vertex_buffer = context.buffer(vertices.tobytes())
         try:
             self._vertex_array = context.vertex_array(

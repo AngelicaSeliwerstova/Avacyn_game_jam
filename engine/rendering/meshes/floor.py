@@ -30,6 +30,7 @@ class FloorMesh:
                 color = normalized_colors[(ix + iz) % 2]
                 for index in (0, 1, 2, 0, 2, 3):
                     vertices.extend((*corners[index], *color, 0.0, 1.0, 0.0))
+        self.triangle_count = len(vertices) // 27
         self._vertex_buffer = context.buffer(vertices.tobytes())
         try:
             self._vertex_array = context.vertex_array(

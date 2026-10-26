@@ -31,6 +31,7 @@ class Renderer:
         textures: TextureSettings | None = None,
         hud_style: HudStyle | None = None,
         postprocess: PostProcessSettings | None = None,
+        debug_style: HudStyle | None = None,
     ):
         major, minor = opengl_version
         self.context = moderngl.create_context(require=major * 100 + minor * 10)
@@ -41,6 +42,7 @@ class Renderer:
         self._presenter = None
         self._snow = None
         self._hud = None
+        self._debug_hud = None
         self._postprocess = None
         self._lighting = None
         self._floor_texture = None
@@ -86,13 +88,14 @@ class Renderer:
                 self._postprocess = PostProcessor(self.context, render_size, postprocess)
             self._presenter = PixelPresenter(self.context)
             self._hud = TextOverlay(self.context, hud_style or HudStyle())
+            self._debug_hud = TextOverlay(self.context, debug_style or HudStyle(font_size=16))
             if snow is not None and snow.settings.count > 0:
                 self._snow = SnowRenderer(self.context, snow, camera, render_size)
         except Exception:
             self.release()
             raise
 
-    def render(self, window_size: tuple[int, int], hud_text: str = ""):
+    def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = ""):
         self._render_target.framebuffer.use()
         self.context.viewport = (0, 0, *self._render_target.size)
         self.context.enable(moderngl.DEPTH_TEST)
@@ -116,12 +119,22 @@ class Renderer:
             self._postprocess.apply(self._render_target.color)
         target = self.output_target
         self._hud.draw(hud_text, target.size)
+        self._debug_hud.draw(debug_text, target.size, anchor="bottom_right")
         self._presenter.present(target.color, self.context.screen, window_size)
 
     @property
     def output_target(self) -> RenderTarget:
         """Готовый кадр после эффектов и HUD, до масштабирования в окно."""
         return self._postprocess.output if self._postprocess is not None else self._render_target
+
+    @property
+    def debug_lines(self) -> tuple[str, ...]:
+        objects = len(self._level.boxes) + len(self._level.decorations)
+        triangles = self._floor.triangle_count + self._cube.triangle_count * objects
+        lights = len(self._level.lighting.lights) if self._level.lighting is not None else 0
+        particles = self._snow.particle_count if self._snow is not None else 0
+        return (f"SCENE: {triangles} tris | {objects + 1} draws",
+                f"LIGHTS: {lights} | SNOW: {particles}")
 
     def _load_texture(self, path: Path) -> Texture2D:
         key = Path(path).resolve()
@@ -142,6 +155,9 @@ class Renderer:
             texture.use(location=0)
 
     def release(self):
+        if self._debug_hud is not None:
+            self._debug_hud.release()
+            self._debug_hud = None
         if self._lighting is not None:
             self._lighting.release()
             self._lighting = None

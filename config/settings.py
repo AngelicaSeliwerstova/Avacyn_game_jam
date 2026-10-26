@@ -11,6 +11,12 @@ RENDER_SIZE = (640, 480)
 # Максимальная частота кадров.
 FPS_LIMIT = 60
 
+# F3 показывает диагностику. Частота обновления текста указана в секундах.
+DEBUG_ENABLED = False
+DEBUG_REFRESH_INTERVAL = 0.25
+DEBUG_FONT_SIZE = 16
+DEBUG_MARGIN = 8
+
 # Версия OpenGL и синхронизация показа кадров с монитором.
 OPENGL_VERSION = (3, 3)
 VSYNC = True

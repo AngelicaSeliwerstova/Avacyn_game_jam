@@ -1,6 +1,8 @@
 import pygame
+from time import perf_counter
 
 from engine.core.window import Window
+from engine.debug.panel import DebugSettings, DeveloperPanel
 from engine.input.bindings import InputBindings
 from engine.input.keyboard_mouse import KeyboardMouse
 from engine.particles.snow import Snowfall
@@ -31,6 +33,7 @@ class Application:
         textures: TextureSettings | None = None,
         hud_style: HudStyle | None = None,
         postprocess: PostProcessSettings | None = None,
+        debug: DebugSettings | None = None,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -46,6 +49,8 @@ class Application:
         self._textures = textures
         self._hud_style = hud_style
         self._postprocess = postprocess
+        self._debug_settings = debug or DebugSettings()
+        self._debug = DeveloperPanel(self._debug_settings)
         self._running = False
 
     def run(self):
@@ -71,6 +76,7 @@ class Application:
                 textures=self._textures,
                 hud_style=self._hud_style,
                 postprocess=self._postprocess,
+                debug_style=HudStyle(self._debug_settings.font_size, self._debug_settings.margin),
             )
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)
@@ -84,11 +90,18 @@ class Application:
                     break
 
                 inputs = input_device.read()
+                profiling = self._debug.enabled
+                started = perf_counter() if profiling else 0.0
                 self._controlled_entity.update(delta_time, inputs)
                 if self._snow is not None:
                     self._snow.update(delta_time)
-                renderer.render(window.size, hud_text=self._controlled_entity.status_text)
+                updated = perf_counter() if profiling else 0.0
+                renderer.render(window.size, hud_text=self._controlled_entity.status_text,
+                                debug_text=self._debug.text)
+                rendered = perf_counter() if profiling else 0.0
                 window.present()
+                self._debug.update(delta_time, updated - started, rendered - updated,
+                                   lambda: self._debug_lines(renderer, input_device, window))
         finally:
             self._running = False
             # GPU-ресурсы освобождаем, пока OpenGL-окно ещё существует.
@@ -106,8 +119,22 @@ class Application:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self._running = False
+            elif (event.type == pygame.KEYDOWN and event.key == self._input_bindings.toggle_debug
+                  and not getattr(event, "repeat", False)):
+                self._debug.toggle()
             elif event.type == pygame.KEYDOWN and event.key == self._input_bindings.toggle_fullscreen:
                 input_device.release()
                 window.toggle_fullscreen()
             window.handle_event(event)
             input_device.handle_event(event)
+
+    def _debug_lines(self, renderer: Renderer, input_device: KeyboardMouse, window: Window) -> tuple[str, ...]:
+        rw, rh = self._render_size
+        ww, wh = window.size
+        return (
+            f"SIM: RUNNING | INPUT: {input_device.status_text}",
+            *self._controlled_entity.debug_lines,
+            *renderer.debug_lines,
+            f"VIEW: {rw}x{rh} -> {ww}x{wh}",
+            f"VSYNC: {'ON' if self._vsync else 'OFF'} | CAP: {self._fps_limit or 'OFF'}",
+        )

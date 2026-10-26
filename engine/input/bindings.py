@@ -14,3 +14,4 @@ class InputBindings:
     toggle_fullscreen: int | None = None
     sprint_keys: tuple[int, ...] = ()
     jump: int | None = None
+    toggle_debug: int | None = None

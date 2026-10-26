@@ -39,6 +39,10 @@ class SnowRenderer:
             self.release()
             raise
 
+    @property
+    def particle_count(self) -> int:
+        return self._snow.settings.count
+
     def render(self, camera: Camera):
         positions = array("f", (value for position in self._snow.positions for value in position))
         self._buffer.write(positions.tobytes())

@@ -34,7 +34,7 @@ class TextOverlay:
             self.release()
             raise
 
-    def draw(self, text: str, render_size: tuple[int, int]):
+    def draw(self, text: str, render_size: tuple[int, int], *, anchor: str = "top_left"):
         if not text:
             return
         if text != self._text:
@@ -55,7 +55,13 @@ class TextOverlay:
             self._text = text
         width, height = self._texture.size
         margin = self._style.margin
-        self._context.viewport = (margin, render_size[1] - height - margin, width, height)
+        if anchor == "top_left":
+            position = (margin, render_size[1] - height - margin)
+        elif anchor == "bottom_right":
+            position = (render_size[0] - width - margin, margin)
+        else:
+            raise ValueError(f"Unknown text anchor: {anchor}")
+        self._context.viewport = (*position, width, height)
         self._context.disable(moderngl.DEPTH_TEST)
         self._context.enable(moderngl.BLEND)
         self._context.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA

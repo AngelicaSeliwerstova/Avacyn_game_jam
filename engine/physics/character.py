@@ -32,6 +32,7 @@ class CharacterBody:
         self._accumulator = 0.0
         self._camera_offset = 0.0
         self.vertical_speed = 0.0
+        self.horizontal_speed = 0.0
         support = world.support_height(self._position, radius, self._position.y)
         self.grounded = abs(self._position.y - support) <= world.EPSILON
 
@@ -67,11 +68,13 @@ class CharacterBody:
                 self.vertical_speed = self._jump_speed
                 self.grounded = False
         old_y = self._position.y
+        old_x, old_z = self._position.x, self._position.z
         self._position = self.world.move_horizontal(
             self._position, velocity * delta_time, self.radius, self.height,
             self._collision_max_step, self.step_height, self.grounded,
         )
         self._camera_offset -= self._position.y - old_y
+        self.horizontal_speed = math.hypot(self._position.x - old_x, self._position.z - old_z) / delta_time
         support = self.world.support_height(self._position, self.radius, self._position.y)
         self.grounded = self.grounded and abs(self._position.y - support) <= self.world.EPSILON
         if self.grounded:

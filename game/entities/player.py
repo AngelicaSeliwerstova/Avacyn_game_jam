@@ -11,6 +11,7 @@ from engine.scene.entity import Entity
 from engine.scene.level import Level
 from engine.scene.model import ModelComponent
 from engine.scene.transform import Transform
+from game.entities.player_state import MovementState
 
 
 class Player(Entity):
@@ -24,6 +25,7 @@ class Player(Entity):
         self.controller = controller
         self._level = level
         self._exit_found = False
+        self._sprinting = False
         self._sync_transform()
 
     @property
@@ -42,6 +44,7 @@ class Player(Entity):
         return title + "\n" + hint
 
     def update(self, delta_time: float, inputs: InputState) -> None:
+        self._sprinting = inputs.sprint
         self.controller.update(
             delta_time, inputs.forward, inputs.right, inputs.mouse_delta,
             sprint=inputs.sprint, jump=inputs.jump,
@@ -51,6 +54,36 @@ class Player(Entity):
             self._exit_found = self._exit_found or math.dist(
                 tuple(self.body.position), self._level.goal_position,
             ) <= self._level.goal_radius
+
+    @property
+    def movement_state(self) -> MovementState:
+        if not self.body.grounded:
+            return MovementState.RISING if self.body.vertical_speed > 0 else MovementState.FALLING
+        if self.body.horizontal_speed < 0.01:
+            return MovementState.IDLE
+        return MovementState.RUNNING if self._sprinting else MovementState.WALKING
+
+    @property
+    def debug_lines(self) -> tuple[str, ...]:
+        x, y, z = self.body.position
+        cx, cy, cz = self.camera.position
+        area = "AREA: -"
+        if self._level is not None:
+            heights = self._level.floor_heights
+            floor = min(range(len(heights)), key=lambda index: abs(heights[index] - y))
+            stairs = self.body.grounded and abs(heights[floor] - y) > self.body.step_height
+            area = f"FLOOR: {floor + 1}/{len(heights)}" + (" (STAIRS)" if stairs else "")
+        goal = "-" if self._level is None or self._level.goal_position is None else (
+            "FOUND" if self._exit_found else "SEARCHING"
+        )
+        return (
+            f"FEET XYZ: {x:+.2f} {y:+.2f} {z:+.2f}",
+            f"CAM XYZ: {cx:+.2f} {cy:+.2f} {cz:+.2f}",
+            f"LOOK: Y {self.controller.yaw_degrees:.1f} P {self.controller.pitch_degrees:+.1f}",
+            f"MOVE: {self.movement_state.value} | {self.body.horizontal_speed:.2f} m/s",
+            f"GROUND: {'YES' if self.body.grounded else 'NO'} | VY: {self.body.vertical_speed:+.2f}",
+            f"{area} | EXIT: {goal}",
+        )
 
     def _sync_transform(self):
         # Локальное направление вперёд у сущности -Z; наклон взгляда не наклоняет тело.
