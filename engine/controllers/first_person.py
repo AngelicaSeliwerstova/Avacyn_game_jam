@@ -60,6 +60,11 @@ class FirstPersonController:
         self._pitch = max(-self._pitch_limit, min(self._pitch_limit, self._pitch))
         self._update_target()
 
+    @property
+    def yaw_degrees(self) -> float:
+        """Направление тела в XZ: 0 градусов соответствует +X."""
+        return math.degrees(self._yaw)
+
     def update(
         self,
         delta_time: float,

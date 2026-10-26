@@ -1,12 +1,11 @@
 import pygame
 
-from engine.controllers.first_person import FirstPersonController
 from engine.core.window import Window
 from engine.input.bindings import InputBindings
 from engine.input.keyboard_mouse import KeyboardMouse
 from engine.particles.snow import Snowfall
 from engine.rendering.renderer import Renderer
-from engine.scene.camera import Camera
+from engine.scene.entity import ControlledEntity
 from engine.scene.level import Level
 
 
@@ -22,8 +21,7 @@ class Application:
         background_color: tuple[int, int, int],
         opengl_version: tuple[int, int],
         vsync: bool,
-        camera: Camera,
-        controller: FirstPersonController,
+        controlled_entity: ControlledEntity,
         input_bindings: InputBindings,
         level: Level,
         snow: Snowfall | None = None,
@@ -35,8 +33,7 @@ class Application:
         self._background_color = background_color
         self._opengl_version = opengl_version
         self._vsync = vsync
-        self._camera = camera
-        self._controller = controller
+        self._controlled_entity = controlled_entity
         self._input_bindings = input_bindings
         self._level = level
         self._snow = snow
@@ -59,7 +56,7 @@ class Application:
                 render_size=self._render_size,
                 background_color=self._background_color,
                 opengl_version=self._opengl_version,
-                camera=self._camera,
+                camera=self._controlled_entity.camera,
                 level=self._level,
                 snow=self._snow,
             )
@@ -75,10 +72,7 @@ class Application:
                     break
 
                 inputs = input_device.read()
-                self._controller.update(
-                    delta_time, inputs.forward, inputs.right, inputs.mouse_delta,
-                    sprint=inputs.sprint, jump=inputs.jump,
-                )
+                self._controlled_entity.update(delta_time, inputs)
                 if self._snow is not None:
                     self._snow.update(delta_time)
                 renderer.render(window.size)

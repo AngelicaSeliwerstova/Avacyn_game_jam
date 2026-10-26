@@ -42,6 +42,14 @@ GRAVITY = 18.0
 JUMP_HEIGHT = 0.9              # Высота прыжка над текущей опорой.
 PHYSICS_STEP = 1 / 120          # Фиксированный шаг физики в секундах.
 STAIR_CAMERA_SMOOTHING = 12.0   # Больше значение - быстрее камера догоняет тело.
+
+# Заготовка модели персонажа. Путь относительно resources/models, например "player/player.glb".
+# Пока это описание ресурса; чтение GLB и отрисовка модели ещё не подключены.
+PLAYER_MODEL = None
+PLAYER_MODEL_OFFSET = (0.0, 0.0, 0.0)
+PLAYER_MODEL_ROTATION = (0.0, 0.0, 0.0)
+PLAYER_MODEL_SCALE = 1.0
+
 # Старт кубовой сцены. Старт коридора хранится в TMX-карте.
 CAMERA_POSITION = (3.0, PLAYER_EYE_HEIGHT, 4.0)
 CAMERA_TARGET = (0.0, 1.0, 0.0)
