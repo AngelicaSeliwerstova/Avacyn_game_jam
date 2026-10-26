@@ -2,6 +2,7 @@ import pygame
 
 from engine.core.window import Window
 from engine.rendering.renderer import Renderer
+from engine.scene.camera import Camera
 
 
 class Application:
@@ -15,6 +16,7 @@ class Application:
         background_color: tuple[int, int, int],
         opengl_version: tuple[int, int],
         vsync: bool,
+        camera: Camera,
     ):
         self._window_size = window_size
         self._window_title = window_title
@@ -22,6 +24,7 @@ class Application:
         self._background_color = background_color
         self._opengl_version = opengl_version
         self._vsync = vsync
+        self._camera = camera
         self._running = False
 
     def run(self):
@@ -39,6 +42,7 @@ class Application:
                 viewport_size=window.size,
                 background_color=self._background_color,
                 opengl_version=self._opengl_version,
+                camera=self._camera,
             )
             clock = pygame.time.Clock()
             self._running = True

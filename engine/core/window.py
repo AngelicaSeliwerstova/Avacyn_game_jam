@@ -20,6 +20,7 @@ class Window:
         # Сглаживание MSAA отключено для будущего PSX-профиля.
         pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLEBUFFERS, 0)
         pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLESAMPLES, 0)
+        pygame.display.gl_set_attribute(pygame.GL_DEPTH_SIZE, 24)
         pygame.display.set_mode(
             size,
             flags=pygame.OPENGL | pygame.DOUBLEBUF,
