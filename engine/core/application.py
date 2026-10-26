@@ -6,6 +6,7 @@ from engine.input.bindings import InputBindings
 from engine.input.keyboard_mouse import KeyboardMouse
 from engine.rendering.renderer import Renderer
 from engine.scene.camera import Camera
+from engine.scene.level import Level
 
 
 class Application:
@@ -22,6 +23,7 @@ class Application:
         camera: Camera,
         controller: FirstPersonController,
         input_bindings: InputBindings,
+        level: Level,
     ):
         self._window_size = window_size
         self._window_title = window_title
@@ -32,6 +34,7 @@ class Application:
         self._camera = camera
         self._controller = controller
         self._input_bindings = input_bindings
+        self._level = level
         self._running = False
 
     def run(self):
@@ -51,6 +54,7 @@ class Application:
                 background_color=self._background_color,
                 opengl_version=self._opengl_version,
                 camera=self._camera,
+                level=self._level,
             )
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)

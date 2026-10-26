@@ -15,8 +15,9 @@ VSYNC = False
 BACKGROUND_COLOR = (18, 18, 24)
 
 # Камера: положение и точка, в которую она смотрит, в мировых координатах.
-CAMERA_POSITION = (3.0, 2.0, 4.0)
-CAMERA_TARGET = (0.0, 0.0, 0.0)
+PLAYER_EYE_HEIGHT = 1.6
+CAMERA_POSITION = (3.0, PLAYER_EYE_HEIGHT, 4.0)
+CAMERA_TARGET = (0.0, 1.0, 0.0)
 CAMERA_FOV_DEGREES = 60.0  # Вертикальный угол обзора.
 CAMERA_NEAR = 0.1         # Ближняя граница видимости.
 CAMERA_FAR = 100.0        # Дальняя граница видимости.
@@ -26,3 +27,11 @@ MOVE_SPEED = 2.5                  # Мировых единиц в секунд�
 MOUSE_SENSITIVITY = 0.12          # Градусов на пиксель движения мыши.
 PITCH_LIMIT_DEGREES = 80.0        # Предел обзора вверх и вниз.
 MAX_DELTA_TIME = 0.1              # Ограничение шага после длительной задержки.
+PLAYER_RADIUS = 0.25
+COLLISION_MAX_STEP = 0.1          # Максимальная длина подшага в мировых единицах.
+
+# Тестовый уровень. Координата модели задаёт её центр.
+FLOOR_SIZE = (20.0, 20.0)
+FLOOR_TILE_SIZE = 1.0
+CUBE_SIZE = (2.0, 2.0, 2.0)
+CUBE_POSITION = (0.0, CUBE_SIZE[1] / 2, 0.0)

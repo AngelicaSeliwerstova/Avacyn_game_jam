@@ -2,6 +2,7 @@ import math
 
 import glm
 
+from engine.collision.world import CollisionWorld
 from engine.scene.camera import Camera
 
 
@@ -15,6 +16,9 @@ class FirstPersonController:
         mouse_sensitivity: float,
         pitch_limit_degrees: float,
         max_delta_time: float,
+        player_radius: float,
+        collision_max_step: float,
+        collision_world: CollisionWorld | None = None,
     ):
         if move_speed < 0 or mouse_sensitivity < 0:
             raise ValueError("Movement speed and mouse sensitivity must be nonnegative")
@@ -22,6 +26,10 @@ class FirstPersonController:
             raise ValueError("Pitch limit must be between 0 and 90 degrees")
         if max_delta_time <= 0:
             raise ValueError("Maximum delta time must be positive")
+        if player_radius <= 0 or collision_max_step <= 0:
+            raise ValueError("Player radius and collision step must be positive")
+        if collision_world is not None and collision_world.is_blocked(camera.position, player_radius):
+            raise ValueError("Player spawn overlaps an obstacle or lies outside the floor")
 
         direction = camera.target - camera.position
         if glm.length(direction) == 0:
@@ -31,6 +39,9 @@ class FirstPersonController:
         self._sensitivity = math.radians(mouse_sensitivity)
         self._pitch_limit = math.radians(pitch_limit_degrees)
         self._max_delta_time = max_delta_time
+        self._player_radius = player_radius
+        self._collision_max_step = collision_max_step
+        self._collision_world = collision_world
         self._yaw = math.atan2(direction.z, direction.x)
         self._pitch = math.atan2(direction.y, math.hypot(direction.x, direction.z))
         self._pitch = max(-self._pitch_limit, min(self._pitch_limit, self._pitch))
@@ -61,7 +72,14 @@ class FirstPersonController:
         movement = forward * forward_axis + right * right_axis
         if glm.length(movement) > 0:
             movement = glm.normalize(movement)
-            self._camera.position += movement * self._move_speed * delta_time
+            displacement = movement * self._move_speed * delta_time
+            if self._collision_world is None:
+                self._camera.position += displacement
+            else:
+                self._camera.position = self._collision_world.move(
+                    self._camera.position, displacement,
+                    self._player_radius, self._collision_max_step,
+                )
         self._update_target()
 
     def _update_target(self):

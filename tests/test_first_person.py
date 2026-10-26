@@ -12,6 +12,7 @@ def make_controller():
     controller = FirstPersonController(
         camera, move_speed=2.5, mouse_sensitivity=1.0,
         pitch_limit_degrees=80.0, max_delta_time=0.1,
+        player_radius=0.25, collision_max_step=0.1,
     )
     return camera, controller
 
