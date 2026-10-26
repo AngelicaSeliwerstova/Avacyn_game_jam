@@ -15,6 +15,7 @@ class Application:
     def __init__(
         self,
         window_size: tuple[int, int],
+        render_size: tuple[int, int],
         window_title: str,
         fps_limit: int,
         background_color: tuple[int, int, int],
@@ -26,6 +27,7 @@ class Application:
         level: Level,
     ):
         self._window_size = window_size
+        self._render_size = render_size
         self._window_title = window_title
         self._fps_limit = fps_limit
         self._background_color = background_color
@@ -48,9 +50,10 @@ class Application:
                 title=self._window_title,
                 opengl_version=self._opengl_version,
                 vsync=self._vsync,
+                minimum_size=self._render_size,
             )
             renderer = Renderer(
-                viewport_size=window.size,
+                render_size=self._render_size,
                 background_color=self._background_color,
                 opengl_version=self._opengl_version,
                 camera=self._camera,
@@ -63,13 +66,13 @@ class Application:
             while self._running:
                 # Clock возвращает миллисекунды, контроллер работает с секундами.
                 delta_time = clock.tick(self._fps_limit) / 1000.0
-                self._handle_events(input_device)
+                self._handle_events(input_device, window)
                 if not self._running:
                     break
 
                 forward, right, mouse_delta = input_device.read()
                 self._controller.update(delta_time, forward, right, mouse_delta)
-                renderer.render()
+                renderer.render(window.size)
                 window.present()
         finally:
             self._running = False
@@ -84,8 +87,12 @@ class Application:
             finally:
                 pygame.quit()
 
-    def _handle_events(self, input_device: KeyboardMouse):
+    def _handle_events(self, input_device: KeyboardMouse, window: Window):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self._running = False
+            elif event.type == pygame.KEYDOWN and event.key == self._input_bindings.toggle_fullscreen:
+                input_device.release()
+                window.toggle_fullscreen()
+            window.handle_event(event)
             input_device.handle_event(event)

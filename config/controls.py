@@ -10,4 +10,5 @@ INPUT_BINDINGS = InputBindings(
     right=pygame.K_d,
     release_mouse=pygame.K_ESCAPE,
     capture_mouse_button=1,  # Левая кнопка мыши.
+    toggle_fullscreen=pygame.K_F11,
 )

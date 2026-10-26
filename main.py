@@ -21,6 +21,7 @@ def main():
     )
     app = Application(
         window_size=settings.WINDOW_SIZE,
+        render_size=settings.RENDER_SIZE,
         window_title=settings.WINDOW_TITLE,
         fps_limit=settings.FPS_LIMIT,
         background_color=settings.BACKGROUND_COLOR,

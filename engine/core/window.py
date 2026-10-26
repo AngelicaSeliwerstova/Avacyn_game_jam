@@ -1,4 +1,5 @@
 import pygame
+from pygame._sdl2.video import Window as SDLWindow
 
 
 class Window:
@@ -10,7 +11,13 @@ class Window:
         title: str,
         opengl_version: tuple[int, int],
         vsync: bool,
+        minimum_size: tuple[int, int],
     ):
+        if min(minimum_size) <= 0:
+            raise ValueError("Minimum window dimensions must be positive")
+        self._minimum_size = minimum_size
+        self._fullscreen = False
+        self._windowed_size = self._clamp_size(size)
         major, minor = opengl_version
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, major)
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, minor)
@@ -22,11 +29,32 @@ class Window:
         pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLESAMPLES, 0)
         pygame.display.gl_set_attribute(pygame.GL_DEPTH_SIZE, 24)
         pygame.display.set_mode(
-            size,
-            flags=pygame.OPENGL | pygame.DOUBLEBUF,
+            self._windowed_size,
+            flags=pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE,
             vsync=int(vsync),
         )
         pygame.display.set_caption(title)
+        # Меняем размер существующего SDL-окна, сохраняя OpenGL-контекст.
+        self._native_window = SDLWindow.from_display_module()
+
+    def _clamp_size(self, size: tuple[int, int]) -> tuple[int, int]:
+        return tuple(max(actual, minimum) for actual, minimum in zip(size, self._minimum_size))
+
+    def handle_event(self, event: pygame.event.Event):
+        if event.type in (pygame.WINDOWRESIZED, pygame.WINDOWSIZECHANGED) and not self._fullscreen:
+            size = self._clamp_size(self.size)
+            if size != self.size:
+                self._native_window.size = size
+
+    def toggle_fullscreen(self):
+        if self._fullscreen:
+            self._native_window.set_windowed()
+            self._native_window.size = self._windowed_size
+            self._fullscreen = False
+        else:
+            self._windowed_size = self._clamp_size(self.size)
+            self._native_window.set_fullscreen(desktop=True)
+            self._fullscreen = True
 
     @property
     def size(self) -> tuple[int, int]:

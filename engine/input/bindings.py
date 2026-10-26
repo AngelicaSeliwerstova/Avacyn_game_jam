@@ -11,3 +11,4 @@ class InputBindings:
     right: int
     release_mouse: int
     capture_mouse_button: int
+    toggle_fullscreen: int | None = None
