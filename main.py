@@ -25,6 +25,7 @@ def main():
         collision_max_step=settings.COLLISION_MAX_STEP,
         physics_step=settings.PHYSICS_STEP,
         camera_smoothing=settings.STAIR_CAMERA_SMOOTHING,
+        jump_height=settings.JUMP_HEIGHT,
     )
     camera = Camera(
         position=level.spawn_position,
@@ -61,6 +62,7 @@ def main():
         controller=FirstPersonController(
             camera=camera,
             move_speed=settings.MOVE_SPEED,
+            sprint_speed=settings.SPRINT_SPEED,
             mouse_sensitivity=settings.MOUSE_SENSITIVITY,
             pitch_limit_degrees=settings.PITCH_LIMIT_DEGREES,
             max_delta_time=settings.MAX_DELTA_TIME,

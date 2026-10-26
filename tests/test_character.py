@@ -14,7 +14,7 @@ from game.levels import create_level
 def make_body(world, position=(0, 0, 3), step_height=0.3):
     return CharacterBody(position, world, radius=0.25, height=1.8,
                          step_height=step_height, gravity=18, collision_max_step=0.1,
-                         physics_step=1 / 120, camera_smoothing=12)
+                         physics_step=1 / 120, camera_smoothing=12, jump_height=0.9)
 
 
 def advance(body, seconds, fps=60, velocity=(0, 0, 0)):
@@ -147,6 +147,90 @@ class CharacterTests(unittest.TestCase):
             self.assertLess(glm.length(body.position - glm.vec3(expected)), 0.002)
             self.assertTrue(body.grounded)
             self.assertFalse(world.is_blocked(body.position, body.radius - 1e-5, body.height))
+
+    def test_jump_height_and_flight_are_independent_of_fps(self):
+        middle = []
+        for fps in (30, 60, 120):
+            body = make_body(CollisionWorld3D(()), (0, 0, 0))
+            peak = 0
+            for frame in range(fps):
+                body.update(1 / fps, glm.vec3(0), jump=frame == 0)
+                peak = max(peak, body.position.y)
+                if frame == fps // 2 - 1:
+                    middle.append(body.position.y)
+            self.assertAlmostEqual(peak, 0.9, delta=0.005)
+            self.assertAlmostEqual(body.position.y, 0, places=5)
+            self.assertTrue(body.grounded)
+            self.assertEqual(body.vertical_speed, 0)
+        for height in middle[1:]:
+            self.assertAlmostEqual(height, middle[0], places=5)
+
+    def test_pressing_jump_in_air_does_not_restart_or_queue_it(self):
+        world = CollisionWorld3D(())
+        actual, reference = make_body(world), make_body(world)
+        for frame in range(120):
+            actual.update(1 / 120, glm.vec3(0), jump=frame in (0, 20, 70))
+            reference.update(1 / 120, glm.vec3(0), jump=frame == 0)
+            self.assertLess(glm.length(actual.position - reference.position), 1e-6)
+        self.assertTrue(actual.grounded)
+        actual.update(1 / 120, glm.vec3(0), jump=True)
+        self.assertGreater(actual.position.y, 0)
+
+    def test_jump_press_survives_a_frame_shorter_than_physics_step(self):
+        body = make_body(CollisionWorld3D(()))
+        body.update(1 / 240, glm.vec3(0), jump=True)
+        self.assertAlmostEqual(body.position.y, 0)
+        body.update(1 / 240, glm.vec3(0))
+        self.assertGreater(body.position.y, 0)
+        self.assertFalse(body.grounded)
+
+    def test_jump_hits_ceiling_and_falls_back_to_floor(self):
+        roof = AABB3D(AABB(-2, -2, 2, 4), 2, 2.01)
+        world = CollisionWorld3D((roof,))
+        for fps in (30, 60, 120):
+            body = make_body(world)
+            peak = 0
+            for frame in range(fps):
+                body.update(1 / fps, glm.vec3(0), jump=frame == 0)
+                peak = max(peak, body.position.y)
+                self.assertFalse(world.is_blocked(body.position, body.radius, body.height))
+            # При 30 FPS удар и начало падения могут попасть между двумя кадрами.
+            self.assertAlmostEqual(peak, 0.2, delta=0.01)
+            self.assertTrue(body.grounded)
+            self.assertAlmostEqual(body.position.y, 0, places=5)
+
+    def test_running_jump_lands_on_platform(self):
+        platform = AABB3D(AABB(-2, -4, 2, 1), 0, 0.5)
+        world = CollisionWorld3D((platform,))
+        for fps in (30, 60, 120):
+            body = make_body(world)
+            camera = Camera((0, 1.6, 3), (0, 1.6, 2), 60, 0.1, 100)
+            controller = FirstPersonController(camera, 2.5, 0.12, 80, 0.1, 0.25, 0.1,
+                                              body=body, sprint_speed=5)
+            for frame in range(fps):
+                controller.update(1 / fps, forward_axis=1, sprint=True, jump=frame == 0)
+                self.assertFalse(world.is_blocked(body.position, body.radius - 1e-5, body.height))
+            self.assertAlmostEqual(body.position.y, 0.5, places=5)
+            self.assertTrue(body.grounded)
+
+    def test_sprint_speed_normalizes_diagonal_and_stops_at_wall(self):
+        for fps in (30, 60, 120):
+            for diagonal in (0, 1):
+                body = make_body(CollisionWorld3D(()), (0, 0, 0))
+                camera = Camera((0, 1.6, 0), (0, 1.6, -1), 60, 0.1, 100)
+                controller = FirstPersonController(camera, 2.5, 0.12, 80, 0.1, 0.25, 0.1,
+                                                  body=body, sprint_speed=5)
+                for _ in range(fps):
+                    controller.update(1 / fps, forward_axis=1, right_axis=diagonal, sprint=True)
+                self.assertAlmostEqual(glm.length(body.position), 5, places=4)
+                before = body.position
+                for _ in range(fps):
+                    controller.update(1 / fps, forward_axis=-1)
+                self.assertAlmostEqual(glm.length(body.position - before), 2.5, places=4)
+            wall = AABB3D(AABB(-5, -0.001, 5, 0), 0, 5)
+            body = make_body(CollisionWorld3D((wall,)))
+            advance(body, 2, fps, (0, 0, -5))
+            self.assertAlmostEqual(body.position.z, 0.25, places=5)
 
 
 if __name__ == "__main__":

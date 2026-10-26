@@ -74,8 +74,11 @@ class Application:
                 if not self._running:
                     break
 
-                forward, right, mouse_delta = input_device.read()
-                self._controller.update(delta_time, forward, right, mouse_delta)
+                inputs = input_device.read()
+                self._controller.update(
+                    delta_time, inputs.forward, inputs.right, inputs.mouse_delta,
+                    sprint=inputs.sprint, jump=inputs.jump,
+                )
                 if self._snow is not None:
                     self._snow.update(delta_time)
                 renderer.render(window.size)

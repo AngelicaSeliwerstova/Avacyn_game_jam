@@ -12,3 +12,5 @@ class InputBindings:
     release_mouse: int
     capture_mouse_button: int
     toggle_fullscreen: int | None = None
+    sprint_keys: tuple[int, ...] = ()
+    jump: int | None = None

@@ -22,9 +22,12 @@ class FirstPersonController:
         collision_world: CollisionWorld | None = None,
         body: CharacterBody | None = None,
         eye_height: float = 1.6,
+        sprint_speed: float | None = None,
     ):
         if move_speed < 0 or mouse_sensitivity < 0:
             raise ValueError("Movement speed and mouse sensitivity must be nonnegative")
+        if sprint_speed is not None and (not math.isfinite(sprint_speed) or sprint_speed < move_speed):
+            raise ValueError("Sprint speed must be finite and at least the walking speed")
         if not 0 < pitch_limit_degrees < 90:
             raise ValueError("Pitch limit must be between 0 and 90 degrees")
         if max_delta_time <= 0:
@@ -43,6 +46,7 @@ class FirstPersonController:
             raise ValueError("Camera target must differ from its position")
         self._camera = camera
         self._move_speed = move_speed
+        self._sprint_speed = move_speed if sprint_speed is None else sprint_speed
         self._sensitivity = math.radians(mouse_sensitivity)
         self._pitch_limit = math.radians(pitch_limit_degrees)
         self._max_delta_time = max_delta_time
@@ -62,6 +66,8 @@ class FirstPersonController:
         forward_axis: float = 0.0,
         right_axis: float = 0.0,
         mouse_delta: tuple[int, int] = (0, 0),
+        sprint: bool = False,
+        jump: bool = False,
     ):
         if delta_time < 0:
             raise ValueError("Delta time must be nonnegative")
@@ -81,11 +87,12 @@ class FirstPersonController:
         movement = forward * forward_axis + right * right_axis
         if glm.length(movement) > 0:
             movement = glm.normalize(movement)
+        speed = self._sprint_speed if sprint else self._move_speed
         if self._body is not None:
-            self._body.update(delta_time, movement * self._move_speed)
+            self._body.update(delta_time, movement * speed, jump=jump)
             self._camera.position = self._body.eye_position(self._eye_height)
         elif glm.length(movement) > 0:
-            displacement = movement * self._move_speed * delta_time
+            displacement = movement * speed * delta_time
             if self._collision_world is None:
                 self._camera.position += displacement
             else:

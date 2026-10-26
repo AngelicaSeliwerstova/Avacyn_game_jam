@@ -1,6 +1,7 @@
 import pygame
 
 from engine.input.bindings import InputBindings
+from engine.input.state import InputState
 
 
 class KeyboardMouse:
@@ -11,6 +12,8 @@ class KeyboardMouse:
         self._focused = bool(pygame.key.get_focused())
         self._captured = False
         self._discard_mouse_delta = True
+        self._jump_queued = False
+        self._jump_held = False
         self._set_capture(self._focused)
 
     def _set_capture(self, captured: bool):
@@ -18,6 +21,11 @@ class KeyboardMouse:
         pygame.mouse.set_visible(not captured)
         pygame.mouse.get_rel()
         self._captured = captured
+        self._jump_queued = False
+        self._jump_held = bool(
+            captured and self._bindings.jump is not None
+            and pygame.key.get_pressed()[self._bindings.jump]
+        )
         # Первый отсчёт после захвата может содержать смещение курсора ОС.
         self._discard_mouse_delta = True
 
@@ -29,6 +37,13 @@ class KeyboardMouse:
             self._focused = True
         elif event.type == pygame.KEYDOWN and event.key == self._bindings.release_mouse:
             self._set_capture(False)
+        elif event.type == pygame.KEYUP and event.key == self._bindings.jump:
+            self._jump_held = False
+        elif event.type == pygame.KEYDOWN and event.key == self._bindings.jump:
+            if (self._focused and self._captured and not self._jump_held
+                    and not getattr(event, "repeat", False)):
+                self._jump_queued = True
+            self._jump_held = True
         elif (
             event.type == pygame.MOUSEBUTTONDOWN
             and event.button == self._bindings.capture_mouse_button
@@ -37,10 +52,10 @@ class KeyboardMouse:
         ):
             self._set_capture(True)
 
-    def read(self) -> tuple[float, float, tuple[int, int]]:
+    def read(self) -> InputState:
         mouse_delta = pygame.mouse.get_rel()
         if not self._focused or not self._captured:
-            return 0.0, 0.0, (0, 0)
+            return InputState()
         if self._discard_mouse_delta:
             mouse_delta = (0, 0)
             self._discard_mouse_delta = False
@@ -48,7 +63,13 @@ class KeyboardMouse:
         keys = pygame.key.get_pressed()
         forward = int(keys[self._bindings.forward]) - int(keys[self._bindings.backward])
         right = int(keys[self._bindings.right]) - int(keys[self._bindings.left])
-        return float(forward), float(right), mouse_delta
+        state = InputState(
+            forward=float(forward), right=float(right), mouse_delta=mouse_delta,
+            sprint=any(keys[key] for key in self._bindings.sprint_keys),
+            jump=self._jump_queued,
+        )
+        self._jump_queued = False
+        return state
 
     def release(self):
         self._set_capture(False)
