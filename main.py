@@ -1,17 +1,30 @@
 from config import controls, settings
-from engine.collision.world import CollisionWorld
+from engine.collision.world3d import CollisionWorld3D
 from engine.controllers.first_person import FirstPersonController
 from engine.core.application import Application
 from engine.particles.snow import Snowfall, SnowSettings
+from engine.physics.character import CharacterBody
 from engine.scene.camera import Camera
 from game.levels import create_level
 
 
 def main():
     level = create_level(settings.LEVEL_NAME)
-    collision_world = CollisionWorld(
-        colliders=(box.footprint for box in level.boxes),
+    collision_world = CollisionWorld3D(
+        colliders=(box.collider for box in level.boxes),
         bounds=level.floor_bounds,
+    )
+    x, y, z = level.spawn_position
+    body = CharacterBody(
+        position=(x, y - settings.PLAYER_EYE_HEIGHT, z),
+        world=collision_world,
+        radius=settings.PLAYER_RADIUS,
+        height=settings.PLAYER_HEIGHT,
+        step_height=settings.PLAYER_STEP_HEIGHT,
+        gravity=settings.GRAVITY,
+        collision_max_step=settings.COLLISION_MAX_STEP,
+        physics_step=settings.PHYSICS_STEP,
+        camera_smoothing=settings.STAIR_CAMERA_SMOOTHING,
     )
     camera = Camera(
         position=level.spawn_position,
@@ -53,7 +66,8 @@ def main():
             max_delta_time=settings.MAX_DELTA_TIME,
             player_radius=settings.PLAYER_RADIUS,
             collision_max_step=settings.COLLISION_MAX_STEP,
-            collision_world=collision_world,
+            body=body,
+            eye_height=settings.PLAYER_EYE_HEIGHT,
         ),
         input_bindings=controls.INPUT_BINDINGS,
     )

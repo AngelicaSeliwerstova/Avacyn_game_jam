@@ -4,10 +4,11 @@ import glm
 
 from engine.collision.world import CollisionWorld
 from engine.scene.camera import Camera
+from engine.physics.character import CharacterBody
 
 
 class FirstPersonController:
-    """Горизонтальное движение и обзор камеры; получает уже прочитанный ввод."""
+    """Обзор и направление ходьбы; вертикальное движение считает тело игрока."""
 
     def __init__(
         self,
@@ -19,6 +20,8 @@ class FirstPersonController:
         player_radius: float,
         collision_max_step: float,
         collision_world: CollisionWorld | None = None,
+        body: CharacterBody | None = None,
+        eye_height: float = 1.6,
     ):
         if move_speed < 0 or mouse_sensitivity < 0:
             raise ValueError("Movement speed and mouse sensitivity must be nonnegative")
@@ -28,6 +31,10 @@ class FirstPersonController:
             raise ValueError("Maximum delta time must be positive")
         if player_radius <= 0 or collision_max_step <= 0:
             raise ValueError("Player radius and collision step must be positive")
+        if body is not None and collision_world is not None:
+            raise ValueError("Choose either a character body or planar collisions")
+        if body is not None:
+            body.eye_position(eye_height)
         if collision_world is not None and collision_world.is_blocked(camera.position, player_radius):
             raise ValueError("Player spawn overlaps an obstacle or lies outside the floor")
 
@@ -42,6 +49,8 @@ class FirstPersonController:
         self._player_radius = player_radius
         self._collision_max_step = collision_max_step
         self._collision_world = collision_world
+        self._body = body
+        self._eye_height = eye_height
         self._yaw = math.atan2(direction.z, direction.x)
         self._pitch = math.atan2(direction.y, math.hypot(direction.x, direction.z))
         self._pitch = max(-self._pitch_limit, min(self._pitch_limit, self._pitch))
@@ -72,6 +81,10 @@ class FirstPersonController:
         movement = forward * forward_axis + right * right_axis
         if glm.length(movement) > 0:
             movement = glm.normalize(movement)
+        if self._body is not None:
+            self._body.update(delta_time, movement * self._move_speed)
+            self._camera.position = self._body.eye_position(self._eye_height)
+        elif glm.length(movement) > 0:
             displacement = movement * self._move_speed * delta_time
             if self._collision_world is None:
                 self._camera.position += displacement

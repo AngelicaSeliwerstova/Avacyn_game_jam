@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import glm
 
 from engine.collision.aabb import AABB
+from engine.collision.aabb3d import AABB3D
 
 
 @dataclass(frozen=True)
@@ -27,3 +28,8 @@ class Box:
         x, _, z = self.position
         width, _, depth = self.size
         return AABB(x - width / 2, z - depth / 2, x + width / 2, z + depth / 2)
+
+    @property
+    def collider(self) -> AABB3D:
+        return AABB3D(self.footprint, self.position[1] - self.size[1] / 2,
+                      self.position[1] + self.size[1] / 2)

@@ -31,11 +31,16 @@ SNOW_FLAKE_SIZE = 0.05
 SNOW_COLOR = (210, 220, 235)
 SNOW_SEED = 7                  # Одинаковое начальное расположение при запуске.
 
-# Выбор тестовой сцены: "corridor" или "demo" (площадка с кубом).
-LEVEL_NAME = "corridor"
+# Выбор тестовой сцены: "stairs", "corridor" или "demo".
+LEVEL_NAME = "stairs"
 
 # Высота игрока и параметры камеры.
 PLAYER_EYE_HEIGHT = 1.6
+PLAYER_HEIGHT = 1.8
+PLAYER_STEP_HEIGHT = 0.3         # Максимальная высота автоматического подъёма.
+GRAVITY = 18.0
+PHYSICS_STEP = 1 / 120          # Фиксированный шаг физики в секундах.
+STAIR_CAMERA_SMOOTHING = 12.0   # Больше значение - быстрее камера догоняет тело.
 # Старт кубовой сцены. Старт коридора хранится в TMX-карте.
 CAMERA_POSITION = (3.0, PLAYER_EYE_HEIGHT, 4.0)
 CAMERA_TARGET = (0.0, 1.0, 0.0)
@@ -56,3 +61,13 @@ FLOOR_SIZE = (20.0, 20.0)
 FLOOR_TILE_SIZE = 1.0
 CUBE_SIZE = (2.0, 2.0, 2.0)
 CUBE_POSITION = (0.0, CUBE_SIZE[1] / 2, 0.0)
+
+# Тестовая лестница и верхняя площадка.
+STAIRS_COUNT = 6
+STAIRS_RISE = 0.25
+STAIRS_RUN = 0.8
+STAIRS_WIDTH = 3.0
+STAIRS_START_Z = 2.0
+STAIRS_LANDING_DEPTH = 3.0
+STAIRS_LANDING_WIDTH = 5.0
+STAIRS_SPAWN = (0.0, PLAYER_EYE_HEIGHT, 6.0)

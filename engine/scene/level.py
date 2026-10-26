@@ -6,7 +6,7 @@ from engine.scene.box import Box
 
 @dataclass(frozen=True)
 class Level:
-    """Данные статичного одноэтажного уровня без привязки к GPU."""
+    """Данные статичного уровня с объёмными блоками без привязки к GPU."""
 
     floor_size: tuple[float, float]
     floor_tile_size: float
