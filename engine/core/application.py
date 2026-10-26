@@ -10,6 +10,7 @@ from engine.rendering.renderer import Renderer
 from engine.rendering.hud import HudStyle
 from engine.rendering.texture import TextureSettings
 from engine.rendering.postprocess import PostProcessSettings
+from engine.rendering.options import RenderOptions
 from engine.scene.entity import ControlledEntity
 from engine.scene.level import Level
 
@@ -34,6 +35,7 @@ class Application:
         hud_style: HudStyle | None = None,
         postprocess: PostProcessSettings | None = None,
         debug: DebugSettings | None = None,
+        render_options: RenderOptions | None = None,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -51,6 +53,7 @@ class Application:
         self._postprocess = postprocess
         self._debug_settings = debug or DebugSettings()
         self._debug = DeveloperPanel(self._debug_settings)
+        self._render_options = render_options
         self._running = False
 
     def run(self):
@@ -77,6 +80,7 @@ class Application:
                 hud_style=self._hud_style,
                 postprocess=self._postprocess,
                 debug_style=HudStyle(self._debug_settings.font_size, self._debug_settings.margin),
+                options=self._render_options,
             )
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)

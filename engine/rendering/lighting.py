@@ -6,6 +6,7 @@ import glm
 import moderngl
 
 from engine.rendering.meshes.cube import CubeMesh
+from engine.rendering.light_grid import build_light_grid
 from engine.scene.level import Level
 from engine.scene.lighting import MAX_POINT_LIGHTS
 
@@ -22,8 +23,11 @@ FACE_VIEWS = (
 class LevelLighting:
     """Статические карты теней ламп. Запекаются один раз при загрузке уровня."""
 
-    def __init__(self, context: moderngl.Context, program: moderngl.Program, level: Level):
+    def __init__(self, context: moderngl.Context, program: moderngl.Program, level: Level, cell_size: float = 4.0):
         self._context = context
+        self._scene_program = program
+        self._grid_texture = None
+        self.grid = None
         self._texture = None
         self._framebuffer = None
         self._program = None
@@ -31,6 +35,8 @@ class LevelLighting:
         lighting = level.lighting
         program["lighting_enabled"].value = lighting is not None
         program["shadow_atlas"].value = 2
+        program["local_light_grid"].value = 3
+        program["use_light_grid"].value = False
         if lighting is None:
             return
         try:
@@ -69,6 +75,13 @@ class LevelLighting:
             self._program = None
             self._framebuffer.release()
             self._framebuffer = None
+            self.grid = build_light_grid(level, cell_size, context.info["GL_MAX_TEXTURE_SIZE"])
+            if self.grid is not None:
+                self._grid_texture = context.texture(self.grid.texture_size, 1, self.grid.indices, dtype="i4")
+                self._grid_texture.filter = moderngl.NEAREST, moderngl.NEAREST
+                program["light_grid_origin"].value = self.grid.origin
+                program["light_grid_shape"].value = self.grid.shape
+                program["light_grid_cell_size"].value = self.grid.cell_size
         except Exception:
             self.release()
             raise
@@ -98,12 +111,15 @@ class LevelLighting:
                     self._cube.render()
         self._context.scissor = None
 
-    def bind(self):
+    def bind(self, local_lights=True):
         if self._texture is not None:
             self._texture.use(location=2)
+        self._scene_program["use_light_grid"].value = local_lights and self.grid is not None
+        if self._grid_texture is not None:
+            self._grid_texture.use(location=3)
 
     def release(self):
-        for name in ("_cube", "_program", "_framebuffer", "_texture"):
+        for name in ("_cube", "_program", "_framebuffer", "_texture", "_grid_texture"):
             resource = getattr(self, name)
             if resource is not None:
                 resource.release()

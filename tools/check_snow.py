@@ -72,22 +72,24 @@ def main():
         camera.target = glm.vec3(wall_level.spawn_target)
         hidden_snow = Snowfall(replace(snow_settings, count=100, height=3),
                                AABB(-1, -8, 1, -6), ())
-        renderer._level = wall_level
-        baseline_snow = renderer._snow
-        renderer._snow = None
+        # Статичная геометрия теперь кэшируется при загрузке: создаём отдельную сцену проверки.
+        renderer.release()
+        renderer = None
+        renderer = Renderer(settings.RENDER_SIZE, settings.BACKGROUND_COLOR,
+                            settings.OPENGL_VERSION, camera, wall_level)
         without_snow = capture()
-        renderer._snow = baseline_snow
         # Отдельный GPU-эффект, тот же контекст и глубина.
         hidden_renderer = SnowRenderer(renderer.context, hidden_snow, camera, settings.RENDER_SIZE)
         try:
             renderer._snow = hidden_renderer
             assert capture() == without_snow, "Wall must hide snow behind it"
-            renderer._level = replace(wall_level, boxes=())
+            # Удаляем стену из подготовленного списка отрисовки, оставляя тот же пол и камеру.
+            renderer._objects = ()
             visible = capture()
             renderer._snow = None
             assert visible != capture(), "The same particles must be visible without the wall"
         finally:
-            renderer._snow = baseline_snow
+            renderer._snow = None
             hidden_renderer.release()
 
         report = {"frames": 120, "particles": snow_settings.count, "motion": True,

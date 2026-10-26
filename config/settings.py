@@ -17,6 +17,12 @@ DEBUG_REFRESH_INTERVAL = 0.25
 DEBUG_FONT_SIZE = 16
 DEBUG_MARGIN = 8
 
+# Отсечение за пределами камеры, проход глубины и локальные списки ламп.
+FRUSTUM_CULLING = True
+DEPTH_PREPASS = True
+LOCAL_LIGHTS = True
+LIGHT_GRID_CELL_SIZE = 4.0
+
 # Версия OpenGL и синхронизация показа кадров с монитором.
 OPENGL_VERSION = (3, 3)
 VSYNC = True

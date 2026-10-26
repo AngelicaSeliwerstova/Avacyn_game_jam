@@ -17,6 +17,12 @@ uniform vec4 light_position_radius[128];
 uniform vec4 light_color_intensity[128];
 uniform sampler2D shadow_atlas;
 uniform vec2 shadow_grid;
+uniform bool use_light_grid;
+uniform isampler2D local_light_grid;
+uniform vec3 light_grid_origin;
+uniform ivec3 light_grid_shape;
+uniform float light_grid_cell_size;
+uniform bool depth_only;
 
 out vec4 fragment_color;
 
@@ -77,6 +83,10 @@ float visibility(int index, vec3 delta, float radius, vec3 normal) {
 }
 
 void main() {
+    if (depth_only) {
+        fragment_color = vec4(0.0);
+        return;
+    }
     vec3 color = vertex_color;
     if (textured) {
         color = texture(surface_texture, texture_uv / texture_world_size).rgb;
@@ -85,7 +95,17 @@ void main() {
     if (lighting_enabled) {
         vec3 illumination = ambient_light;
         vec3 normal = normalize(world_normal);
-        for (int i = 0; i < light_count; ++i) {
+        int cell = 0;
+        int count = light_count;
+        if (use_light_grid) {
+            ivec3 location = clamp(ivec3(floor((world_point - light_grid_origin) / light_grid_cell_size)),
+                                   ivec3(0), light_grid_shape - ivec3(1));
+            cell = location.x + light_grid_shape.x * (location.y + light_grid_shape.y * location.z);
+            count = texelFetch(local_light_grid, ivec2(0, cell), 0).r;
+        }
+        for (int candidate = 0; candidate < count; ++candidate) {
+            int i = use_light_grid ? texelFetch(local_light_grid, ivec2(candidate + 1, cell), 0).r : candidate;
+            if (i >= light_count) continue;
             vec3 delta = world_point - light_position_radius[i].xyz;
             float radius = light_position_radius[i].w;
             float distance_squared = dot(delta, delta);
