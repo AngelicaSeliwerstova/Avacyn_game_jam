@@ -1,4 +1,5 @@
-from config import settings
+from config import controls, settings
+from engine.controllers.first_person import FirstPersonController
 from engine.core.application import Application
 from engine.scene.camera import Camera
 
@@ -19,6 +20,14 @@ def main():
         opengl_version=settings.OPENGL_VERSION,
         vsync=settings.VSYNC,
         camera=camera,
+        controller=FirstPersonController(
+            camera=camera,
+            move_speed=settings.MOVE_SPEED,
+            mouse_sensitivity=settings.MOUSE_SENSITIVITY,
+            pitch_limit_degrees=settings.PITCH_LIMIT_DEGREES,
+            max_delta_time=settings.MAX_DELTA_TIME,
+        ),
+        input_bindings=controls.INPUT_BINDINGS,
     )
     app.run()
 

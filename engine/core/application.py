@@ -1,6 +1,9 @@
 import pygame
 
+from engine.controllers.first_person import FirstPersonController
 from engine.core.window import Window
+from engine.input.bindings import InputBindings
+from engine.input.keyboard_mouse import KeyboardMouse
 from engine.rendering.renderer import Renderer
 from engine.scene.camera import Camera
 
@@ -17,6 +20,8 @@ class Application:
         opengl_version: tuple[int, int],
         vsync: bool,
         camera: Camera,
+        controller: FirstPersonController,
+        input_bindings: InputBindings,
     ):
         self._window_size = window_size
         self._window_title = window_title
@@ -25,11 +30,14 @@ class Application:
         self._opengl_version = opengl_version
         self._vsync = vsync
         self._camera = camera
+        self._controller = controller
+        self._input_bindings = input_bindings
         self._running = False
 
     def run(self):
         pygame.init()
         renderer = None
+        input_device = None
 
         try:
             window = Window(
@@ -45,29 +53,35 @@ class Application:
                 camera=self._camera,
             )
             clock = pygame.time.Clock()
+            input_device = KeyboardMouse(self._input_bindings)
             self._running = True
 
             while self._running:
-                self._handle_events()
+                # Clock возвращает миллисекунды, контроллер работает с секундами.
+                delta_time = clock.tick(self._fps_limit) / 1000.0
+                self._handle_events(input_device)
                 if not self._running:
                     break
 
-                # Здесь позже появится обновление игровой сцены.
+                forward, right, mouse_delta = input_device.read()
+                self._controller.update(delta_time, forward, right, mouse_delta)
                 renderer.render()
                 window.present()
-                clock.tick(self._fps_limit)
         finally:
             self._running = False
             # GPU-ресурсы освобождаем, пока OpenGL-окно ещё существует.
             try:
-                if renderer is not None:
-                    renderer.release()
+                try:
+                    if input_device is not None:
+                        input_device.release()
+                finally:
+                    if renderer is not None:
+                        renderer.release()
             finally:
                 pygame.quit()
 
-    def _handle_events(self):
+    def _handle_events(self, input_device: KeyboardMouse):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self._running = False
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                self._running = False
+            input_device.handle_event(event)
