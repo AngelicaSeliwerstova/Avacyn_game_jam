@@ -31,7 +31,10 @@
 
 ```powershell
 .\.venv\Scripts\python.exe tools\check_lighting.py
+.\.venv\Scripts\python.exe tools\check_shadow_acne.py
 .\.venv\Scripts\python.exe tools\check_maze.py
 ```
 
 Сравнение - `artifacts/lighting-before.png` и `artifacts/lighting-after.png`. Отчёт - `artifacts/lighting-check.json`. Кадры лестницы и выхода - `artifacts/maze-stairs.png` и `artifacts/maze-exit.png`.
+
+`check_shadow_acne.py` проверяет ровные стены под скользящим светом: четыре ориентации стены, две высоты лампы, три разрешения теней и движение камеры. Внутренняя часть стены сравнивается с эталоном без препятствий. Сглаживание теней учитывает глубину плоскости в каждой соседней точке, чтобы стена не затеняла сама себя полосами. Кадр проверки - `artifacts/shadow-wall-actual.png`, отчёт - `artifacts/shadow-acne-check.json`.

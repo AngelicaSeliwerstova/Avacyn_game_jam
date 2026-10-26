@@ -20,7 +20,17 @@ uniform vec2 shadow_grid;
 
 out vec4 fragment_color;
 
-float visibility(int index, vec3 delta, float radius, float incidence) {
+vec3 shadow_ray(int face, vec2 local) {
+    vec2 p = local * 2.0 - 1.0;
+    if (face == 0) return vec3(1.0, -p.y, -p.x);
+    if (face == 1) return vec3(-1.0, -p.y, p.x);
+    if (face == 2) return vec3(p.x, 1.0, p.y);
+    if (face == 3) return vec3(p.x, -1.0, -p.y);
+    if (face == 4) return vec3(p.x, -p.y, 1.0);
+    return vec3(-p.x, -p.y, -1.0);
+}
+
+float visibility(int index, vec3 delta, float radius, vec3 normal) {
     vec3 a = abs(delta);
     vec2 uv;
     int face;
@@ -39,16 +49,26 @@ float visibility(int index, vec3 delta, float radius, float incidence) {
         distance = a.z;
     }
     uv = uv / max(distance, 0.0001) * 0.5 + 0.5;
-    // Смещение в мировых единицах подавляет самозатенение плоских граней.
-    float receiver = max(0.05, distance - (0.025 + 0.035 * (1.0 - incidence)));
-    float depth = radius / (radius - 0.05) - radius * 0.05 / ((radius - 0.05) * receiver);
     vec2 tile = vec2((index % 8) * 3 + face % 3, (index / 8) * 2 + face / 3);
     vec2 face_size = vec2(textureSize(shadow_atlas, 0)) / shadow_grid;
+    float plane = dot(normal, delta);
     float visible = 0.0;
-    // Небольшой PCF даёт спокойные мягкие края статичных теней.
+    // Каждый отсчёт сравнивается с глубиной той же плоскости в центре его texel.
+    // Одна глубина на весь PCF ошибочно затеняла наклонные к лампе стены.
     for (int y = -1; y <= 1; ++y) {
         for (int x = -1; x <= 1; ++x) {
             vec2 local = clamp(uv + vec2(x, y) / face_size, 0.5 / face_size, 1.0 - 0.5 / face_size);
+            local = (floor(local * face_size) + 0.5) / face_size;
+            float denominator = dot(normal, shadow_ray(face, local));
+            if (denominator >= -0.000001) {
+                visible += 1.0;
+                continue;
+            }
+            float receiver = plane / denominator;
+            // Малый запас только для точности буфера глубины, без отрыва теней от стен.
+            receiver = max(0.05, receiver - (0.003 + 0.0005 * receiver));
+            float depth = radius / (radius - 0.05) - radius * 0.05 / ((radius - 0.05) * receiver);
+            depth = clamp(depth, 0.0, 1.0);
             float stored = texture(shadow_atlas, (tile + local) / shadow_grid).r;
             visible += depth <= stored ? 1.0 : 0.0;
         }
@@ -76,7 +96,7 @@ void main() {
             float falloff = 1.0 - distance_squared / (radius * radius);
             falloff = falloff * falloff / (1.0 + 0.12 * distance_squared);
             illumination += light_color_intensity[i].rgb * light_color_intensity[i].w
-                          * incidence * falloff * visibility(i, delta, radius, incidence);
+                          * incidence * falloff * visibility(i, delta, radius, normal);
         }
         color *= illumination;
     }
