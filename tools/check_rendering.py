@@ -16,6 +16,7 @@ from engine.rendering.presentation import integer_viewport
 from engine.rendering.renderer import Renderer
 from engine.scene.camera import Camera
 from game.levels import create_level
+from game.materials import create_texture_settings
 
 
 def read_window(renderer, size):
@@ -73,6 +74,7 @@ def main():
         renderer = Renderer(
             render_size=settings.RENDER_SIZE, background_color=settings.BACKGROUND_COLOR,
             opengl_version=settings.OPENGL_VERSION, camera=camera, level=level,
+            textures=create_texture_settings(),
         )
         framebuffer_id = renderer._render_target.framebuffer.glo
         baseline = None

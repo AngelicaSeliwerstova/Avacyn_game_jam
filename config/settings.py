@@ -22,6 +22,15 @@ BACKGROUND_COLOR = (18, 18, 24)
 # Для тестовой клетки можно задать разные цвета, например (43, 51, 59) и (59, 66, 74).
 FLOOR_COLORS = ((48, 55, 62), (48, 55, 62))
 
+# Текстуры относительно resources/textures. None оставляет цветную поверхность.
+TEXTURES_ENABLED = True
+FLOOR_TEXTURE = "floors/concrete.png"
+WALL_TEXTURE = "walls/plaster.png"
+FLOOR_TEXTURE_WORLD_SIZE = 2.0  # Мировых единиц на одно повторение картинки.
+WALL_TEXTURE_WORLD_SIZE = 2.0
+TEXTURE_MIPMAPS = True         # Уменьшенные версии текстур для дальних поверхностей.
+TEXTURE_ANISOTROPY = 4.0       # Для наклонных поверхностей; 1 отключает эффект.
+
 # Спокойный снег в открытых проходах. Размер и высота — в мировых единицах.
 SNOW_ENABLED = True
 SNOW_COUNT = 600

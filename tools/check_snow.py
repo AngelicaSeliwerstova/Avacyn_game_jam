@@ -21,6 +21,7 @@ from engine.scene.box import Box
 from engine.scene.camera import Camera
 from engine.scene.level import Level
 from game.levels import create_level
+from game.materials import create_texture_settings
 from tools.check_rendering import expected_window, read_window, save_image
 
 
@@ -41,7 +42,8 @@ def main():
         camera = Camera(level.spawn_position, level.spawn_target, settings.CAMERA_FOV_DEGREES,
                         settings.CAMERA_NEAR, settings.CAMERA_FAR)
         renderer = Renderer(settings.RENDER_SIZE, settings.BACKGROUND_COLOR,
-                            settings.OPENGL_VERSION, camera, level, snow)
+                            settings.OPENGL_VERSION, camera, level, snow,
+                            textures=create_texture_settings())
 
         def capture():
             renderer.render(window.size)

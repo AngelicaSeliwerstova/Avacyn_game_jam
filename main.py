@@ -3,6 +3,7 @@ from engine.collision.world3d import CollisionWorld3D
 from engine.core.application import Application
 from engine.particles.snow import Snowfall, SnowSettings
 from game.entities.player import create_player
+from game.materials import create_texture_settings
 from game.levels import create_level
 
 
@@ -39,6 +40,7 @@ def main():
         level=level,
         snow=snow,
         input_bindings=controls.INPUT_BINDINGS,
+        textures=create_texture_settings(),
     )
     app.run()
 

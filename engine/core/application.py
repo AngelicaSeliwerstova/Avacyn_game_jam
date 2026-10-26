@@ -5,6 +5,7 @@ from engine.input.bindings import InputBindings
 from engine.input.keyboard_mouse import KeyboardMouse
 from engine.particles.snow import Snowfall
 from engine.rendering.renderer import Renderer
+from engine.rendering.texture import TextureSettings
 from engine.scene.entity import ControlledEntity
 from engine.scene.level import Level
 
@@ -25,6 +26,7 @@ class Application:
         input_bindings: InputBindings,
         level: Level,
         snow: Snowfall | None = None,
+        textures: TextureSettings | None = None,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -37,6 +39,7 @@ class Application:
         self._input_bindings = input_bindings
         self._level = level
         self._snow = snow
+        self._textures = textures
         self._running = False
 
     def run(self):
@@ -59,6 +62,7 @@ class Application:
                 camera=self._controlled_entity.camera,
                 level=self._level,
                 snow=self._snow,
+                textures=self._textures,
             )
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)

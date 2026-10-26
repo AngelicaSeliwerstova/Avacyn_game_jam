@@ -9,6 +9,7 @@ from engine.rendering.meshes.floor import FloorMesh
 from engine.rendering.presentation import PixelPresenter
 from engine.rendering.render_target import RenderTarget
 from engine.rendering.snow import SnowRenderer
+from engine.rendering.texture import Texture2D, TextureSettings
 from engine.scene.camera import Camera
 from engine.scene.level import Level
 
@@ -24,6 +25,7 @@ class Renderer:
         camera: Camera,
         level: Level,
         snow: Snowfall | None = None,
+        textures: TextureSettings | None = None,
     ):
         major, minor = opengl_version
         self.context = moderngl.create_context(require=major * 100 + minor * 10)
@@ -33,6 +35,10 @@ class Renderer:
         self._render_target = None
         self._presenter = None
         self._snow = None
+        self._floor_texture = None
+        self._wall_texture = None
+        self._fallback_texture = None
+        self._textures = textures
         self._camera = camera
         self._level = level
 
@@ -46,6 +52,13 @@ class Renderer:
             )
             width, height = render_size
             self._program["m_projection"].write(camera.projection_matrix(width / height))
+            self._program["surface_texture"].value = 0
+            self._fallback_texture = self.context.texture((1, 1), 3, b"\xff\xff\xff")
+            if textures is not None:
+                if textures.floor is not None:
+                    self._floor_texture = Texture2D(self.context, textures.floor, textures.mipmaps, textures.anisotropy)
+                if textures.wall is not None:
+                    self._wall_texture = Texture2D(self.context, textures.wall, textures.mipmaps, textures.anisotropy)
             self._cube = CubeMesh(self.context, self._program)
             self._floor = FloorMesh(
                 self.context, self._program, level.floor_size, level.floor_tile_size,
@@ -66,7 +79,9 @@ class Renderer:
         self.context.clear(*self._background_color, alpha=1.0, depth=1.0)
         self._program["m_view"].write(self._camera.view_matrix)
         self._program["m_model"].write(glm.mat4(1.0))
+        self._use_texture(self._floor_texture, self._textures.floor_world_size if self._textures else 1.0)
         self._floor.render()
+        self._use_texture(self._wall_texture, self._textures.wall_world_size if self._textures else 1.0)
         for box in self._level.boxes:
             self._program["m_model"].write(box.model_matrix)
             self._cube.render()
@@ -74,7 +89,20 @@ class Renderer:
             self._snow.render(self._camera)
         self._presenter.present(self._render_target.color, self.context.screen, window_size)
 
+    def _use_texture(self, texture: Texture2D | None, world_size: float):
+        self._program["textured"].value = texture is not None
+        self._program["texture_world_size"].value = world_size
+        if texture is None:
+            self._fallback_texture.use(location=0)
+        else:
+            texture.use(location=0)
+
     def release(self):
+        for name in ("_floor_texture", "_wall_texture", "_fallback_texture"):
+            resource = getattr(self, name)
+            if resource is not None:
+                resource.release()
+                setattr(self, name, None)
         if self._snow is not None:
             self._snow.release()
             self._snow = None

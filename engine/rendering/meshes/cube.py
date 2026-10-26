@@ -17,15 +17,16 @@ class CubeMesh:
             (((-1, -1, -1), (1, -1, -1), (1, -1, 1), (-1, -1, 1)), (0.20, 0.25, 0.35)),
         )
         vertices = array("f")
-        for corners, color in faces:
+        normals = ((0, 0, 1), (0, 0, -1), (1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0))
+        for (corners, color), normal in zip(faces, normals):
             for index in (0, 1, 2, 0, 2, 3):
-                vertices.extend((*corners[index], *color))
+                vertices.extend((*corners[index], *color, *normal))
         # Данные передаются на видеокарту один раз при создании объекта.
         self._vertex_buffer = context.buffer(vertices.tobytes())
         try:
             self._vertex_array = context.vertex_array(
                 program,
-                [(self._vertex_buffer, "3f 3f", "in_position", "in_color")],
+                [(self._vertex_buffer, "3f 3f 3f", "in_position", "in_color", "in_normal")],
             )
         except Exception:
             self._vertex_buffer.release()

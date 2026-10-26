@@ -29,12 +29,12 @@ class FloorMesh:
                 corners = ((x0, 0, z0), (x0, 0, z1), (x1, 0, z1), (x1, 0, z0))
                 color = normalized_colors[(ix + iz) % 2]
                 for index in (0, 1, 2, 0, 2, 3):
-                    vertices.extend((*corners[index], *color))
+                    vertices.extend((*corners[index], *color, 0.0, 1.0, 0.0))
         self._vertex_buffer = context.buffer(vertices.tobytes())
         try:
             self._vertex_array = context.vertex_array(
                 program,
-                [(self._vertex_buffer, "3f 3f", "in_position", "in_color")],
+                [(self._vertex_buffer, "3f 3f 3f", "in_position", "in_color", "in_normal")],
             )
         except Exception:
             self._vertex_buffer.release()
