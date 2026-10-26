@@ -3,10 +3,12 @@ from pathlib import Path
 import moderngl
 import glm
 
+from engine.particles.snow import Snowfall
 from engine.rendering.meshes.cube import CubeMesh
 from engine.rendering.meshes.floor import FloorMesh
 from engine.rendering.presentation import PixelPresenter
 from engine.rendering.render_target import RenderTarget
+from engine.rendering.snow import SnowRenderer
 from engine.scene.camera import Camera
 from engine.scene.level import Level
 
@@ -21,6 +23,7 @@ class Renderer:
         opengl_version: tuple[int, int],
         camera: Camera,
         level: Level,
+        snow: Snowfall | None = None,
     ):
         major, minor = opengl_version
         self.context = moderngl.create_context(require=major * 100 + minor * 10)
@@ -29,6 +32,7 @@ class Renderer:
         self._floor = None
         self._render_target = None
         self._presenter = None
+        self._snow = None
         self._camera = camera
         self._level = level
 
@@ -49,6 +53,8 @@ class Renderer:
             )
             self._render_target = RenderTarget(self.context, render_size)
             self._presenter = PixelPresenter(self.context)
+            if snow is not None and snow.settings.count > 0:
+                self._snow = SnowRenderer(self.context, snow, camera, render_size)
         except Exception:
             self.release()
             raise
@@ -64,9 +70,14 @@ class Renderer:
         for box in self._level.boxes:
             self._program["m_model"].write(box.model_matrix)
             self._cube.render()
+        if self._snow is not None:
+            self._snow.render(self._camera)
         self._presenter.present(self._render_target.color, self.context.screen, window_size)
 
     def release(self):
+        if self._snow is not None:
+            self._snow.release()
+            self._snow = None
         if self._presenter is not None:
             self._presenter.release()
             self._presenter = None

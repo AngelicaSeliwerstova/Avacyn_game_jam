@@ -4,6 +4,7 @@ from engine.controllers.first_person import FirstPersonController
 from engine.core.window import Window
 from engine.input.bindings import InputBindings
 from engine.input.keyboard_mouse import KeyboardMouse
+from engine.particles.snow import Snowfall
 from engine.rendering.renderer import Renderer
 from engine.scene.camera import Camera
 from engine.scene.level import Level
@@ -25,6 +26,7 @@ class Application:
         controller: FirstPersonController,
         input_bindings: InputBindings,
         level: Level,
+        snow: Snowfall | None = None,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -37,6 +39,7 @@ class Application:
         self._controller = controller
         self._input_bindings = input_bindings
         self._level = level
+        self._snow = snow
         self._running = False
 
     def run(self):
@@ -58,6 +61,7 @@ class Application:
                 opengl_version=self._opengl_version,
                 camera=self._camera,
                 level=self._level,
+                snow=self._snow,
             )
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)
@@ -72,6 +76,8 @@ class Application:
 
                 forward, right, mouse_delta = input_device.read()
                 self._controller.update(delta_time, forward, right, mouse_delta)
+                if self._snow is not None:
+                    self._snow.update(delta_time)
                 renderer.render(window.size)
                 window.present()
         finally:
