@@ -21,4 +21,7 @@ class ControlledEntity(Protocol):
 
     camera: Camera
 
+    @property
+    def status_text(self) -> str: ...
+
     def update(self, delta_time: float, inputs: InputState) -> None: ...

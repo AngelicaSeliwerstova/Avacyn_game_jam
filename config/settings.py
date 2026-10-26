@@ -60,8 +60,11 @@ SNOW_FLAKE_SIZE = 0.05
 SNOW_COLOR = (210, 220, 235)
 SNOW_SEED = 7                  # Одинаковое начальное расположение при запуске.
 
-# Выбор тестовой сцены: "stairs", "corridor" или "demo".
-LEVEL_NAME = "stairs"
+# Выбор сцены: "maze", "stairs", "corridor" или "demo".
+LEVEL_NAME = "maze"
+MAZE_LAYOUT = "maze.json"       # Разметка двух этажей и размеры лестничных клеток.
+HUD_FONT_SIZE = 18
+HUD_MARGIN = 8
 
 # Высота игрока и параметры камеры.
 PLAYER_EYE_HEIGHT = 1.6

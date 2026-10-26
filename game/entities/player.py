@@ -1,4 +1,5 @@
 from pathlib import Path
+import math
 
 from config import settings
 from engine.collision.world3d import CollisionWorld3D
@@ -16,12 +17,29 @@ class Player(Entity):
     """Персонаж объединяет тело, управление, камеру и место для своей модели."""
 
     def __init__(self, body: CharacterBody, camera: Camera,
-                 controller: FirstPersonController, model: ModelComponent):
+                 controller: FirstPersonController, model: ModelComponent, level: Level | None = None):
         super().__init__(name="player", model=model)
         self.body = body
         self.camera = camera
         self.controller = controller
+        self._level = level
+        self._exit_found = False
         self._sync_transform()
+
+    @property
+    def status_text(self) -> str:
+        if self._level is None or len(self._level.floor_heights) < 2:
+            return ""
+        if self._exit_found:
+            return "EXIT FOUND\nYou can keep exploring."
+        y = self.body.position.y
+        heights = self._level.floor_heights
+        floor = min(range(len(heights)), key=lambda index: abs(heights[index] - y))
+        title = f"FLOOR {floor + 1} / {len(heights)}"
+        if self.body.grounded and abs(heights[floor] - y) > self.body.step_height:
+            title = "STAIRS - FLOOR 1 / 2"
+        hint = "Find stairs. Exit is upstairs." if floor == 0 else "Find the rusted exit frame."
+        return title + "\n" + hint
 
     def update(self, delta_time: float, inputs: InputState) -> None:
         self.controller.update(
@@ -29,6 +47,10 @@ class Player(Entity):
             sprint=inputs.sprint, jump=inputs.jump,
         )
         self._sync_transform()
+        if self._level is not None and self._level.goal_position is not None:
+            self._exit_found = self._exit_found or math.dist(
+                tuple(self.body.position), self._level.goal_position,
+            ) <= self._level.goal_radius
 
     def _sync_transform(self):
         # Локальное направление вперёд у сущности -Z; наклон взгляда не наклоняет тело.
@@ -67,4 +89,4 @@ def create_player(level: Level, world: CollisionWorld3D) -> Player:
             scale=(settings.PLAYER_MODEL_SCALE,) * 3,
         ),
     )
-    return Player(body, camera, controller, model)
+    return Player(body, camera, controller, model, level=level)

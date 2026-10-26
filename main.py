@@ -2,6 +2,7 @@ from config import controls, settings
 from engine.collision.world3d import CollisionWorld3D
 from engine.core.application import Application
 from engine.particles.snow import Snowfall, SnowSettings
+from engine.rendering.hud import HudStyle
 from game.entities.player import create_player
 from game.materials import create_texture_settings
 from game.levels import create_level
@@ -15,7 +16,7 @@ def main():
     )
     player = create_player(level, collision_world)
     snow = None
-    if settings.SNOW_ENABLED:
+    if settings.SNOW_ENABLED and level.snow_enabled:
         snow = Snowfall(
             settings=SnowSettings(
                 count=settings.SNOW_COUNT,
@@ -41,6 +42,7 @@ def main():
         snow=snow,
         input_bindings=controls.INPUT_BINDINGS,
         textures=create_texture_settings(),
+        hud_style=HudStyle(font_size=settings.HUD_FONT_SIZE, margin=settings.HUD_MARGIN),
     )
     app.run()
 

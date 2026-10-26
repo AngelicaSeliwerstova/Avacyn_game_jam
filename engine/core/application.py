@@ -5,6 +5,7 @@ from engine.input.bindings import InputBindings
 from engine.input.keyboard_mouse import KeyboardMouse
 from engine.particles.snow import Snowfall
 from engine.rendering.renderer import Renderer
+from engine.rendering.hud import HudStyle
 from engine.rendering.texture import TextureSettings
 from engine.scene.entity import ControlledEntity
 from engine.scene.level import Level
@@ -27,6 +28,7 @@ class Application:
         level: Level,
         snow: Snowfall | None = None,
         textures: TextureSettings | None = None,
+        hud_style: HudStyle | None = None,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -40,6 +42,7 @@ class Application:
         self._level = level
         self._snow = snow
         self._textures = textures
+        self._hud_style = hud_style
         self._running = False
 
     def run(self):
@@ -63,6 +66,7 @@ class Application:
                 level=self._level,
                 snow=self._snow,
                 textures=self._textures,
+                hud_style=self._hud_style,
             )
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)
@@ -79,7 +83,7 @@ class Application:
                 self._controlled_entity.update(delta_time, inputs)
                 if self._snow is not None:
                     self._snow.update(delta_time)
-                renderer.render(window.size)
+                renderer.render(window.size, hud_text=self._controlled_entity.status_text)
                 window.present()
         finally:
             self._running = False

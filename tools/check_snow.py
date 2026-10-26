@@ -33,7 +33,7 @@ def main():
     try:
         window = Window(settings.WINDOW_SIZE, "Snow check", settings.OPENGL_VERSION,
                         settings.VSYNC, settings.RENDER_SIZE)
-        level = create_level(settings.LEVEL_NAME)
+        level = create_level("corridor")
         snow_settings = SnowSettings(
             settings.SNOW_COUNT, settings.SNOW_HEIGHT, settings.SNOW_FALL_SPEED,
             settings.SNOW_FLAKE_SIZE, settings.SNOW_COLOR, settings.SNOW_SEED,
