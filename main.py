@@ -3,18 +3,18 @@ from engine.collision.world import CollisionWorld
 from engine.controllers.first_person import FirstPersonController
 from engine.core.application import Application
 from engine.scene.camera import Camera
-from game.levels.demo import create_demo_level
+from game.levels import create_level
 
 
 def main():
-    level = create_demo_level()
+    level = create_level(settings.LEVEL_NAME)
     collision_world = CollisionWorld(
         colliders=(box.footprint for box in level.boxes),
         bounds=level.floor_bounds,
     )
     camera = Camera(
-        position=settings.CAMERA_POSITION,
-        target=settings.CAMERA_TARGET,
+        position=level.spawn_position,
+        target=level.spawn_target,
         fov_degrees=settings.CAMERA_FOV_DEGREES,
         near=settings.CAMERA_NEAR,
         far=settings.CAMERA_FAR,

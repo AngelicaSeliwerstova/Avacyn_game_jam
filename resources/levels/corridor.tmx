@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="2">
+ <properties>
+  <property name="cell_size" type="float" value="2"/>
+  <property name="wall_height" type="float" value="2.8"/>
+  <property name="floor_tile_size" type="float" value="1"/>
+ </properties>
+ <tileset firstgid="1" name="Walls" tilewidth="32" tileheight="32" tilecount="1" columns="1">
+  <image source="../tilesets/wall.png" width="32" height="32"/>
+ </tileset>
+ <layer id="1" name="walls" width="10" height="10">
+  <data encoding="csv">
+1,1,1,1,1,1,1,1,1,1,
+1,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,1,
+1,0,0,1,1,1,1,1,1,1,
+1,0,0,1,1,1,1,1,1,1,
+1,0,0,1,1,1,1,1,1,1,
+1,0,0,1,1,1,1,1,1,1,
+1,0,0,1,1,1,1,1,1,1,
+1,0,0,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1
+  </data>
+ </layer>
+ <objectgroup id="2" name="spawn">
+  <object id="1" name="player" x="64" y="272">
+   <properties>
+    <property name="yaw_degrees" type="float" value="-90"/>
+   </properties>
+   <point/>
+  </object>
+ </objectgroup>
+</map>

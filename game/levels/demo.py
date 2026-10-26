@@ -8,4 +8,6 @@ def create_demo_level() -> Level:
         floor_size=settings.FLOOR_SIZE,
         floor_tile_size=settings.FLOOR_TILE_SIZE,
         boxes=(Box(position=settings.CUBE_POSITION, size=settings.CUBE_SIZE),),
+        spawn_position=settings.CAMERA_POSITION,
+        spawn_target=settings.CAMERA_TARGET,
     )
