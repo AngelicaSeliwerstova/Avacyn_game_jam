@@ -4,6 +4,7 @@ import glm
 
 from engine.collision.aabb import AABB
 from engine.collision.aabb3d import AABB3D
+from engine.scene.lighting import validate_rgb
 
 
 @dataclass(frozen=True)
@@ -13,8 +14,10 @@ class Box:
     position: tuple[float, float, float]
     size: tuple[float, float, float]
     material: str | None = None
+    emission: tuple[float, float, float] = (0.0, 0.0, 0.0)
 
     def __post_init__(self):
+        validate_rgb(self.emission)
         if any(length <= 0 for length in self.size):
             raise ValueError("Box dimensions must be positive")
         if self.material is not None and not self.material:

@@ -6,7 +6,7 @@ import moderngl
 class CubeMesh:
     """Куб со стороной 2: шесть цветных граней, по два треугольника на грань."""
 
-    def __init__(self, context: moderngl.Context, program: moderngl.Program):
+    def __init__(self, context: moderngl.Context, program: moderngl.Program, *, position_only=False):
         # Четыре угла каждой грани перечислены против часовой стрелки снаружи.
         faces = (
             (((-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1)), (0.85, 0.35, 0.18)),
@@ -26,6 +26,7 @@ class CubeMesh:
         try:
             self._vertex_array = context.vertex_array(
                 program,
+                [(self._vertex_buffer, "3f 24x", "in_position")] if position_only else
                 [(self._vertex_buffer, "3f 3f 3f", "in_position", "in_color", "in_normal")],
             )
         except Exception:

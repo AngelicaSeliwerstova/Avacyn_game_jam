@@ -1,8 +1,10 @@
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 import math
 from pathlib import Path
+
+from engine.scene.lighting import Lighting, PointLight
 
 
 Node = tuple[int, int, int]  # Этаж, строка, столбец.
@@ -37,6 +39,7 @@ class MazeLayout:
     stairs: tuple[StairLink, ...]
     spawn: Node
     exit: Node
+    lighting: Lighting | None = None
 
     def __post_init__(self):
         if len(self.floors) != 2 or len(self.floor_materials) != 2 or len(self.wall_materials) != 2:
@@ -154,10 +157,27 @@ class MazeLayout:
 
 def load_maze_layout(path: Path) -> MazeLayout:
     data = json.loads(path.read_text(encoding="utf-8"))
+    lighting = data.pop("lighting", None)
     data["floors"] = tuple(tuple(rows) for rows in data["floors"])
     data["stairs"] = tuple(StairLink(**link) for link in data["stairs"])
     data["spawn"] = tuple(data["spawn"])
     data["exit"] = tuple(data["exit"])
     data["floor_materials"] = tuple(data["floor_materials"])
     data["wall_materials"] = tuple(tuple(names) for names in data["wall_materials"])
-    return MazeLayout(**data)
+    layout = MazeLayout(**data)
+    if lighting is not None:
+        lamps = []
+        for lamp in lighting["lamps"]:
+            style = lighting["presets"][lamp["style"]]
+            if "node" in lamp:
+                node = tuple(lamp["node"])
+                if not layout.is_open(node):
+                    raise ValueError(f"Lamp must be in an open maze cell: {node}")
+                x, y, z = layout.position(node)
+                position = (x, y + layout.wall_height - 0.24, z)
+            else:
+                position = tuple(lamp["position"])
+            lamps.append(PointLight(position, tuple(style["color"]), style["intensity"], style["radius"]))
+        layout = replace(layout, lighting=Lighting(tuple(lighting["ambient"]), tuple(lamps),
+                                                  lighting["shadow_resolution"]))
+    return layout

@@ -12,6 +12,7 @@ from engine.rendering.snow import SnowRenderer
 from engine.rendering.texture import Texture2D, TextureSettings
 from engine.rendering.hud import HudStyle, TextOverlay
 from engine.rendering.postprocess import PostProcessor, PostProcessSettings
+from engine.rendering.lighting import LevelLighting
 from engine.scene.camera import Camera
 from engine.scene.level import Level
 
@@ -41,6 +42,7 @@ class Renderer:
         self._snow = None
         self._hud = None
         self._postprocess = None
+        self._lighting = None
         self._floor_texture = None
         self._wall_texture = None
         self._fallback_texture = None
@@ -69,7 +71,7 @@ class Renderer:
                     self._wall_texture = self._load_texture(textures.wall)
                 for material in textures.materials:
                     self._materials[material.name] = self._load_texture(material.path), material.world_size
-                used_materials = {box.material for box in level.boxes} | {level.floor_material}
+                used_materials = {box.material for box in level.boxes + level.decorations} | {level.floor_material}
                 unknown = used_materials - {None} - self._materials.keys()
                 if unknown:
                     raise ValueError(f"Unknown materials in level: {sorted(unknown)}")
@@ -78,6 +80,7 @@ class Renderer:
                 self.context, self._program, level.floor_size, level.floor_tile_size,
                 colors=level.floor_colors,
             )
+            self._lighting = LevelLighting(self.context, self._program, level)
             self._render_target = RenderTarget(self.context, render_size)
             if postprocess is not None:
                 self._postprocess = PostProcessor(self.context, render_size, postprocess)
@@ -95,11 +98,14 @@ class Renderer:
         self.context.enable(moderngl.DEPTH_TEST)
         self.context.clear(*self._background_color, alpha=1.0, depth=1.0)
         self._program["m_view"].write(self._camera.view_matrix)
+        self._lighting.bind()
         self._program["m_model"].write(glm.mat4(1.0))
+        self._program["emission"].value = (0, 0, 0)
         self._use_material(self._level.floor_material, self._floor_texture,
                            self._textures.floor_world_size if self._textures else 1.0)
         self._floor.render()
-        for box in self._level.boxes:
+        for box in self._level.boxes + self._level.decorations:
+            self._program["emission"].value = box.emission
             self._use_material(box.material, self._wall_texture,
                                self._textures.wall_world_size if self._textures else 1.0)
             self._program["m_model"].write(box.model_matrix)
@@ -136,6 +142,9 @@ class Renderer:
             texture.use(location=0)
 
     def release(self):
+        if self._lighting is not None:
+            self._lighting.release()
+            self._lighting = None
         if self._postprocess is not None:
             self._postprocess.release()
             self._postprocess = None

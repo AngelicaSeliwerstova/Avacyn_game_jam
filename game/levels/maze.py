@@ -65,6 +65,13 @@ def create_maze_level() -> Level:
     boxes.append(Box((goal_x, goal_y + 2.6, frame_z), (cell * 0.8, rail, rail * 2), material="rust"))
 
     x, y, z = layout.position(layout.spawn)
+    decorations = []
+    if layout.lighting is not None:
+        for light in layout.lighting.lights:
+            ceiling = roof_y if abs(light.position[0]) > layout.width / 2 else (
+                layout.wall_height + (layout.floor_height if light.position[1] > layout.floor_height else 0)
+            )
+            _build_lamp(light, ceiling, decorations)
     return Level(
         floor_size=(layout.width + 2 * layout.wing_width, layout.depth + 2 * layout.balcony_depth),
         floor_tile_size=settings.FLOOR_TILE_SIZE,
@@ -72,7 +79,19 @@ def create_maze_level() -> Level:
         spawn_target=(x, y + settings.PLAYER_EYE_HEIGHT, z - 1), floor_colors=settings.FLOOR_COLORS,
         floor_material=layout.floor_materials[0], floor_heights=(0.0, layout.floor_height),
         goal_position=layout.goal_position, snow_enabled=False,
+        lighting=layout.lighting,
+        decorations=tuple(decorations),
     )
+
+
+def _build_lamp(light, ceiling, boxes):
+    x, y, z = light.position
+    boxes.append(Box((x, y + 0.17, z), (1.12, 0.12, 0.52), material="rust"))
+    boxes.append(Box((x, y + 0.10, z), (0.92, 0.04, 0.32),
+                     emission=tuple(channel * 1.8 for channel in light.color)))
+    suspension = ceiling - (y + 0.23)
+    if suspension > 0.05:
+        boxes.append(Box((x, ceiling - suspension / 2, z), (0.04, suspension, 0.04), material="rust"))
 
 
 def _build_stair_wing(layout: MazeLayout, link: StairLink, boxes: list[Box]):

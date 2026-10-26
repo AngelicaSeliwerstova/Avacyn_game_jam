@@ -11,12 +11,16 @@ uniform mat4 m_projection;
 out vec3 vertex_color;
 out vec2 texture_uv;
 out float surface_shade;
+out vec3 world_point;
+out vec3 world_normal;
 
 void main() {
     vec4 world_position = m_model * vec4(in_position, 1.0);
     gl_Position = m_projection * m_view * world_position;
     vertex_color = in_color;
     vec3 normal = normalize(transpose(inverse(mat3(m_model))) * in_normal);
+    world_point = world_position.xyz;
+    world_normal = normal;
     vec3 axis = abs(normal);
     // Проекция на плоскость грани: повторение зависит от мировых размеров блока.
     if (axis.y >= axis.x && axis.y >= axis.z) {

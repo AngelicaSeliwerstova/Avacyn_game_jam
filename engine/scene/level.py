@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from engine.collision.aabb import AABB
 from engine.scene.box import Box
+from engine.scene.lighting import Lighting
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,8 @@ class Level:
     goal_position: tuple[float, float, float] | None = None
     goal_radius: float = 1.0
     snow_enabled: bool = True
+    lighting: Lighting | None = None
+    decorations: tuple[Box, ...] = ()
 
     def __post_init__(self):
         if any(length <= 0 for length in self.floor_size) or self.floor_tile_size <= 0:
