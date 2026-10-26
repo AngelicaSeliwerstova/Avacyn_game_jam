@@ -13,21 +13,32 @@ class Application:
         window_title: str,
         fps_limit: int,
         background_color: tuple[int, int, int],
+        opengl_version: tuple[int, int],
+        vsync: bool,
     ):
         self._window_size = window_size
         self._window_title = window_title
         self._fps_limit = fps_limit
         self._background_color = background_color
+        self._opengl_version = opengl_version
+        self._vsync = vsync
         self._running = False
 
     def run(self):
         pygame.init()
+        renderer = None
 
         try:
-            window = Window(size=self._window_size, title=self._window_title)
+            window = Window(
+                size=self._window_size,
+                title=self._window_title,
+                opengl_version=self._opengl_version,
+                vsync=self._vsync,
+            )
             renderer = Renderer(
-                surface=window.surface,
+                viewport_size=window.size,
                 background_color=self._background_color,
+                opengl_version=self._opengl_version,
             )
             clock = pygame.time.Clock()
             self._running = True
@@ -43,7 +54,12 @@ class Application:
                 clock.tick(self._fps_limit)
         finally:
             self._running = False
-            pygame.quit()
+            # GPU-ресурсы освобождаем, пока OpenGL-окно ещё существует.
+            try:
+                if renderer is not None:
+                    renderer.release()
+            finally:
+                pygame.quit()
 
     def _handle_events(self):
         for event in pygame.event.get():
