@@ -13,8 +13,8 @@ SIZE = 128
 
 def main():
     for name, base, seed in (
-        ("floors/concrete.png", (73, 76, 72), 13),
-        ("walls/plaster.png", (120, 116, 105), 29),
+        ("samples/concrete.png", (73, 76, 72), 13),
+        ("samples/plaster.png", (120, 116, 105), 29),
     ):
         path = ROOT / name
         if path.exists():

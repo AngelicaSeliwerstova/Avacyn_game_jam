@@ -7,6 +7,17 @@ import pygame
 
 
 @dataclass(frozen=True)
+class TextureMaterial:
+    name: str
+    path: Path
+    world_size: float
+
+    def __post_init__(self):
+        if not self.name or not math.isfinite(self.world_size) or self.world_size <= 0:
+            raise ValueError("Material needs a name and a positive finite world size")
+
+
+@dataclass(frozen=True)
 class TextureSettings:
     floor: Path | None
     wall: Path | None
@@ -14,6 +25,7 @@ class TextureSettings:
     wall_world_size: float
     mipmaps: bool
     anisotropy: float
+    materials: tuple[TextureMaterial, ...] = ()
 
     def __post_init__(self):
         if any(not math.isfinite(value) or value <= 0
@@ -21,6 +33,9 @@ class TextureSettings:
             raise ValueError("Texture world sizes must be finite and positive")
         if not math.isfinite(self.anisotropy) or self.anisotropy < 1:
             raise ValueError("Texture anisotropy must be finite and at least 1")
+        names = [material.name for material in self.materials]
+        if len(set(names)) != len(names):
+            raise ValueError("Material names must be unique")
 
 
 class Texture2D:

@@ -39,6 +39,8 @@ class Renderer:
         self._wall_texture = None
         self._fallback_texture = None
         self._textures = textures
+        self._texture_cache = {}
+        self._materials = {}
         self._camera = camera
         self._level = level
 
@@ -56,9 +58,15 @@ class Renderer:
             self._fallback_texture = self.context.texture((1, 1), 3, b"\xff\xff\xff")
             if textures is not None:
                 if textures.floor is not None:
-                    self._floor_texture = Texture2D(self.context, textures.floor, textures.mipmaps, textures.anisotropy)
+                    self._floor_texture = self._load_texture(textures.floor)
                 if textures.wall is not None:
-                    self._wall_texture = Texture2D(self.context, textures.wall, textures.mipmaps, textures.anisotropy)
+                    self._wall_texture = self._load_texture(textures.wall)
+                for material in textures.materials:
+                    self._materials[material.name] = self._load_texture(material.path), material.world_size
+                used_materials = {box.material for box in level.boxes} | {level.floor_material}
+                unknown = used_materials - {None} - self._materials.keys()
+                if unknown:
+                    raise ValueError(f"Unknown materials in level: {sorted(unknown)}")
             self._cube = CubeMesh(self.context, self._program)
             self._floor = FloorMesh(
                 self.context, self._program, level.floor_size, level.floor_tile_size,
@@ -79,17 +87,29 @@ class Renderer:
         self.context.clear(*self._background_color, alpha=1.0, depth=1.0)
         self._program["m_view"].write(self._camera.view_matrix)
         self._program["m_model"].write(glm.mat4(1.0))
-        self._use_texture(self._floor_texture, self._textures.floor_world_size if self._textures else 1.0)
+        self._use_material(self._level.floor_material, self._floor_texture,
+                           self._textures.floor_world_size if self._textures else 1.0)
         self._floor.render()
-        self._use_texture(self._wall_texture, self._textures.wall_world_size if self._textures else 1.0)
         for box in self._level.boxes:
+            self._use_material(box.material, self._wall_texture,
+                               self._textures.wall_world_size if self._textures else 1.0)
             self._program["m_model"].write(box.model_matrix)
             self._cube.render()
         if self._snow is not None:
             self._snow.render(self._camera)
         self._presenter.present(self._render_target.color, self.context.screen, window_size)
 
-    def _use_texture(self, texture: Texture2D | None, world_size: float):
+    def _load_texture(self, path: Path) -> Texture2D:
+        key = Path(path).resolve()
+        if key not in self._texture_cache:
+            self._texture_cache[key] = Texture2D(
+                self.context, key, self._textures.mipmaps, self._textures.anisotropy,
+            )
+        return self._texture_cache[key]
+
+    def _use_material(self, name: str | None, texture: Texture2D | None, world_size: float):
+        if texture is not None and name is not None:
+            texture, world_size = self._materials[name]
         self._program["textured"].value = texture is not None
         self._program["texture_world_size"].value = world_size
         if texture is None:
@@ -98,11 +118,15 @@ class Renderer:
             texture.use(location=0)
 
     def release(self):
-        for name in ("_floor_texture", "_wall_texture", "_fallback_texture"):
-            resource = getattr(self, name)
-            if resource is not None:
-                resource.release()
-                setattr(self, name, None)
+        for texture in self._texture_cache.values():
+            texture.release()
+        self._texture_cache.clear()
+        self._materials.clear()
+        self._floor_texture = None
+        self._wall_texture = None
+        if self._fallback_texture is not None:
+            self._fallback_texture.release()
+            self._fallback_texture = None
         if self._snow is not None:
             self._snow.release()
             self._snow = None

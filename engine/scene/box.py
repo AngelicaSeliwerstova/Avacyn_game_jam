@@ -12,10 +12,13 @@ class Box:
 
     position: tuple[float, float, float]
     size: tuple[float, float, float]
+    material: str | None = None
 
     def __post_init__(self):
         if any(length <= 0 for length in self.size):
             raise ValueError("Box dimensions must be positive")
+        if self.material is not None and not self.material:
+            raise ValueError("Material name must not be empty")
 
     @property
     def model_matrix(self) -> glm.mat4:

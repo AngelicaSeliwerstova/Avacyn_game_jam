@@ -24,12 +24,32 @@ FLOOR_COLORS = ((48, 55, 62), (48, 55, 62))
 
 # Текстуры относительно resources/textures. None оставляет цветную поверхность.
 TEXTURES_ENABLED = True
-FLOOR_TEXTURE = "floors/concrete.png"
-WALL_TEXTURE = "walls/plaster.png"
+FLOOR_TEXTURE = "floors/asphalt_{size}.png"
+WALL_TEXTURE = "walls/dirty_plaster_128.png"
 FLOOR_TEXTURE_WORLD_SIZE = 2.0  # Мировых единиц на одно повторение картинки.
 WALL_TEXTURE_WORLD_SIZE = 2.0
 TEXTURE_MIPMAPS = True         # Уменьшенные версии текстур для дальних поверхностей.
 TEXTURE_ANISOTROPY = 4.0       # Для наклонных поверхностей; 1 отключает эффект.
+TEXTURE_RESOLUTION = 128       # 128 или 256; материалы без второй версии остаются 128.
+
+# Имя материала: (путь, размер повторения в мире). {size} заменяется разрешением выше.
+MATERIAL_TEXTURES = {
+    "asphalt": ("floors/asphalt_{size}.png", 2.0),
+    "dirty_tiles": ("floors/dirty_tiles_{size}.png", 2.0),
+    "wood": ("floors/rotten_wood_{size}.png", 2.0),
+    "concrete": ("walls/cracked_concrete_{size}.png", 2.0),
+    "plaster": ("walls/dirty_plaster_128.png", 2.0),
+    "hospital_tiles": ("walls/hospital_tiles_128.png", 2.0),
+    "brick": ("walls/red_brick_128.png", 2.0),
+    "rust": ("metals/rust_{size}.png", 2.0),
+}
+STAIRS_FLOOR_MATERIAL = "asphalt"
+STAIRS_STEP_MATERIAL = "concrete"
+STAIRS_LANDING_MATERIAL = "wood"
+CORRIDOR_FLOOR_MATERIAL = "dirty_tiles"
+CORRIDOR_WALL_MATERIALS = ("hospital_tiles", "plaster", "brick")  # От старта к повороту.
+DEMO_FLOOR_MATERIAL = "wood"
+DEMO_CUBE_MATERIAL = "rust"
 
 # Спокойный снег в открытых проходах. Размер и высота — в мировых единицах.
 SNOW_ENABLED = True
