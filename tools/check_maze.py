@@ -18,6 +18,7 @@ from engine.core.window import Window
 from engine.input.state import InputState
 from engine.rendering.renderer import Renderer
 from game.entities.player import create_player
+from game.effects import create_postprocess_settings
 from game.levels import create_level
 from game.levels.maze import maze_layout_path
 from game.levels.maze_layout import load_maze_layout
@@ -89,7 +90,8 @@ def main():
         window = Window(settings.WINDOW_SIZE, "Maze check", settings.OPENGL_VERSION,
                         settings.VSYNC, settings.RENDER_SIZE)
         renderer = Renderer(settings.RENDER_SIZE, settings.BACKGROUND_COLOR, settings.OPENGL_VERSION,
-                            player.camera, level, textures=create_texture_settings())
+                            player.camera, level, textures=create_texture_settings(),
+                            postprocess=create_postprocess_settings())
         snapshots = set()
         timings = []
 
@@ -100,7 +102,7 @@ def main():
             timings.append((perf_counter() - start) * 1000)
             assert renderer.context.error == "GL_NO_ERROR"
             if name is not None:
-                target = renderer._render_target
+                target = renderer.output_target
                 save_image(output / f"maze-{name}.png", target.framebuffer.read(components=3, alignment=1), target.size)
                 snapshots.add(name)
 

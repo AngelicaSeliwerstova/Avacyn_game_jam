@@ -4,6 +4,7 @@ from engine.core.application import Application
 from engine.particles.snow import Snowfall, SnowSettings
 from engine.rendering.hud import HudStyle
 from game.entities.player import create_player
+from game.effects import create_postprocess_settings
 from game.materials import create_texture_settings
 from game.levels import create_level
 
@@ -43,6 +44,7 @@ def main():
         input_bindings=controls.INPUT_BINDINGS,
         textures=create_texture_settings(),
         hud_style=HudStyle(font_size=settings.HUD_FONT_SIZE, margin=settings.HUD_MARGIN),
+        postprocess=create_postprocess_settings(),
     )
     app.run()
 

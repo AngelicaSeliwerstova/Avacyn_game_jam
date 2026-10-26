@@ -7,6 +7,7 @@ from engine.particles.snow import Snowfall
 from engine.rendering.renderer import Renderer
 from engine.rendering.hud import HudStyle
 from engine.rendering.texture import TextureSettings
+from engine.rendering.postprocess import PostProcessSettings
 from engine.scene.entity import ControlledEntity
 from engine.scene.level import Level
 
@@ -29,6 +30,7 @@ class Application:
         snow: Snowfall | None = None,
         textures: TextureSettings | None = None,
         hud_style: HudStyle | None = None,
+        postprocess: PostProcessSettings | None = None,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -43,6 +45,7 @@ class Application:
         self._snow = snow
         self._textures = textures
         self._hud_style = hud_style
+        self._postprocess = postprocess
         self._running = False
 
     def run(self):
@@ -67,6 +70,7 @@ class Application:
                 snow=self._snow,
                 textures=self._textures,
                 hud_style=self._hud_style,
+                postprocess=self._postprocess,
             )
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)

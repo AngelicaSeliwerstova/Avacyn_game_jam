@@ -17,6 +17,7 @@ from engine.rendering.renderer import Renderer
 from engine.scene.camera import Camera
 from game.levels import create_level
 from game.materials import create_texture_settings
+from game.effects import create_postprocess_settings
 
 
 def read_window(renderer, size):
@@ -75,8 +76,9 @@ def main():
             render_size=settings.RENDER_SIZE, background_color=settings.BACKGROUND_COLOR,
             opengl_version=settings.OPENGL_VERSION, camera=camera, level=level,
             textures=create_texture_settings(),
+            postprocess=create_postprocess_settings(),
         )
-        framebuffer_id = renderer._render_target.framebuffer.glo
+        framebuffer_id = renderer.output_target.framebuffer.glo
         baseline = None
         cases = []
 
@@ -87,7 +89,7 @@ def main():
                     window.handle_event(event)
             size = window.size
             renderer.render(size)
-            target = renderer._render_target
+            target = renderer.output_target
             assert target.size == settings.RENDER_SIZE
             assert target.framebuffer.glo == framebuffer_id
             low_pixels = target.framebuffer.read(components=3, alignment=1)

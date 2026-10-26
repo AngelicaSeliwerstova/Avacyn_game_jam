@@ -11,6 +11,7 @@ from engine.rendering.render_target import RenderTarget
 from engine.rendering.snow import SnowRenderer
 from engine.rendering.texture import Texture2D, TextureSettings
 from engine.rendering.hud import HudStyle, TextOverlay
+from engine.rendering.postprocess import PostProcessor, PostProcessSettings
 from engine.scene.camera import Camera
 from engine.scene.level import Level
 
@@ -28,6 +29,7 @@ class Renderer:
         snow: Snowfall | None = None,
         textures: TextureSettings | None = None,
         hud_style: HudStyle | None = None,
+        postprocess: PostProcessSettings | None = None,
     ):
         major, minor = opengl_version
         self.context = moderngl.create_context(require=major * 100 + minor * 10)
@@ -38,6 +40,7 @@ class Renderer:
         self._presenter = None
         self._snow = None
         self._hud = None
+        self._postprocess = None
         self._floor_texture = None
         self._wall_texture = None
         self._fallback_texture = None
@@ -76,6 +79,8 @@ class Renderer:
                 colors=level.floor_colors,
             )
             self._render_target = RenderTarget(self.context, render_size)
+            if postprocess is not None:
+                self._postprocess = PostProcessor(self.context, render_size, postprocess)
             self._presenter = PixelPresenter(self.context)
             self._hud = TextOverlay(self.context, hud_style or HudStyle())
             if snow is not None and snow.settings.count > 0:
@@ -101,8 +106,16 @@ class Renderer:
             self._cube.render()
         if self._snow is not None:
             self._snow.render(self._camera)
-        self._hud.draw(hud_text, self._render_target.size)
-        self._presenter.present(self._render_target.color, self.context.screen, window_size)
+        if self._postprocess is not None:
+            self._postprocess.apply(self._render_target.color)
+        target = self.output_target
+        self._hud.draw(hud_text, target.size)
+        self._presenter.present(target.color, self.context.screen, window_size)
+
+    @property
+    def output_target(self) -> RenderTarget:
+        """Готовый кадр после эффектов и HUD, до масштабирования в окно."""
+        return self._postprocess.output if self._postprocess is not None else self._render_target
 
     def _load_texture(self, path: Path) -> Texture2D:
         key = Path(path).resolve()
@@ -123,6 +136,9 @@ class Renderer:
             texture.use(location=0)
 
     def release(self):
+        if self._postprocess is not None:
+            self._postprocess.release()
+            self._postprocess = None
         if self._hud is not None:
             self._hud.release()
             self._hud = None
