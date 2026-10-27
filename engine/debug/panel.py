@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable
 
 from engine.debug.profiler import FrameProfiler
@@ -10,6 +11,8 @@ class DebugSettings:
     refresh_interval: float = 0.25
     font_size: int = 16
     margin: int = 8
+    font_path: Path | None = None
+    antialias: bool = True
 
     def __post_init__(self):
         if self.font_size <= 0 or self.margin < 0:

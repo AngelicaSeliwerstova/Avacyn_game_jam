@@ -79,7 +79,9 @@ class Application:
                 textures=self._textures,
                 hud_style=self._hud_style,
                 postprocess=self._postprocess,
-                debug_style=HudStyle(self._debug_settings.font_size, self._debug_settings.margin),
+                debug_style=HudStyle(self._debug_settings.font_size, self._debug_settings.margin,
+                                     font_path=self._debug_settings.font_path,
+                                     antialias=self._debug_settings.antialias),
                 options=self._render_options,
             )
             clock = pygame.time.Clock()

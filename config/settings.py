@@ -14,7 +14,8 @@ FPS_LIMIT = 60
 # F3 показывает диагностику. Частота обновления текста указана в секундах.
 DEBUG_ENABLED = False
 DEBUG_REFRESH_INTERVAL = 0.25
-DEBUG_FONT_SIZE = 16
+DEBUG_FONT_SIZE = 12
+DEBUG_FONT = "SourceSans3-Regular.ttf"
 DEBUG_MARGIN = 8
 
 # Отсечение за пределами камеры, проход глубины и локальные списки ламп.
@@ -90,6 +91,9 @@ LEVEL_NAME = "maze"
 MAZE_LAYOUT = "maze.json"       # Разметка двух этажей и размеры лестничных клеток.
 HUD_FONT_SIZE = 18
 HUD_MARGIN = 8
+HUD_FONT = "SourceSans3-Regular.ttf"  # Файлы относительно resources/fonts.
+HUD_HEADING_FONT = "SourceSans3-Semibold.ttf"
+HUD_FONT_ANTIALIAS = True
 
 # Высота игрока и параметры камеры.
 PLAYER_EYE_HEIGHT = 1.6

@@ -1,14 +1,13 @@
 from config import controls, settings
 from engine.collision.world3d import CollisionWorld3D
 from engine.core.application import Application
-from engine.debug.panel import DebugSettings
 from engine.rendering.options import RenderOptions
 from engine.particles.snow import Snowfall, SnowSettings
-from engine.rendering.hud import HudStyle
 from game.entities.player import create_player
 from game.effects import create_postprocess_settings
 from game.materials import create_texture_settings
 from game.levels import create_level
+from game.ui import create_debug_settings, create_hud_style
 
 
 def main():
@@ -46,10 +45,9 @@ def main():
         snow=snow,
         input_bindings=controls.INPUT_BINDINGS,
         textures=create_texture_settings(),
-        hud_style=HudStyle(font_size=settings.HUD_FONT_SIZE, margin=settings.HUD_MARGIN),
+        hud_style=create_hud_style(),
         postprocess=create_postprocess_settings(),
-        debug=DebugSettings(settings.DEBUG_ENABLED, settings.DEBUG_REFRESH_INTERVAL,
-                            settings.DEBUG_FONT_SIZE, settings.DEBUG_MARGIN),
+        debug=create_debug_settings(),
         render_options=RenderOptions(settings.FRUSTUM_CULLING, settings.DEPTH_PREPASS,
                                      settings.LOCAL_LIGHTS, settings.LIGHT_GRID_CELL_SIZE),
     )

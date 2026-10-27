@@ -9,6 +9,10 @@ import pygame
 class HudStyle:
     font_size: int = 18
     margin: int = 8
+    font_path: Path | None = None
+    heading_font_path: Path | None = None
+    antialias: bool = True
+    line_gap: int = 2
 
 
 class TextOverlay:
@@ -17,7 +21,10 @@ class TextOverlay:
     def __init__(self, context: moderngl.Context, style: HudStyle):
         self._context = context
         self._style = style
-        self._font = pygame.font.Font(None, style.font_size)
+        self._font = pygame.font.Font(str(style.font_path) if style.font_path is not None else None,
+                                      style.font_size)
+        self._heading_font = (pygame.font.Font(str(style.heading_font_path), style.font_size)
+                              if style.heading_font_path is not None else self._font)
         self._text = None
         self._wrap_width = None
         self._texture = None
@@ -40,18 +47,26 @@ class TextOverlay:
         if not text:
             return
         if text != self._text or max_width != self._wrap_width:
-            strings = text.splitlines()
-            if max_width is not None:
-                available = max(1, max_width - 2 * self._style.margin)
-                strings = [line for string in strings for line in self._wrap_line(string, available)]
-            lines = [self._font.render(line, False, (230, 228, 212)) for line in strings]
+            lines = []
+            for index, string in enumerate(text.splitlines()):
+                font = self._heading_font if index == 0 else self._font
+                strings = (self._wrap_line(string, max(1, max_width - 2 * self._style.margin), font)
+                           if max_width is not None else [string])
+                lines.extend(font.render(line, self._style.antialias, (230, 228, 212)) for line in strings)
             padding = self._style.margin
             width = max(line.get_width() for line in lines) + 2 * padding
-            height = len(lines) * self._font.get_linesize() + 2 * padding
+            # Общий диапазон видимых глифов сохраняет базовую линию и убирает
+            # лишние вертикальные поля TTF; хвосты букв и диакритика остаются целыми.
+            bounds = [line.get_bounding_rect() for line in lines]
+            ink = [rect for rect in bounds if rect.height]
+            top = min((rect.top for rect in ink), default=0)
+            bottom = max((rect.bottom for rect in ink), default=self._font.get_height())
+            line_height = bottom - top + self._style.line_gap
+            height = len(lines) * line_height - self._style.line_gap + 2 * padding
             surface = pygame.Surface((width, height), pygame.SRCALPHA)
             surface.fill((10, 10, 14, 205))
             for index, line in enumerate(lines):
-                surface.blit(line, (padding, padding + index * self._font.get_linesize()))
+                surface.blit(line, (padding, padding + index * line_height - top))
             if self._texture is not None:
                 self._texture.release()
             self._texture = self._context.texture(
@@ -80,16 +95,16 @@ class TextOverlay:
         finally:
             self._context.disable(moderngl.BLEND)
 
-    def _wrap_line(self, text: str, width: int) -> list[str]:
+    def _wrap_line(self, text: str, width: int, font: pygame.font.Font) -> list[str]:
         lines, current = [], ""
         for word in text.split():
             candidate = f"{current} {word}" if current else word
-            if current and self._font.size(candidate)[0] > width:
+            if current and font.size(candidate)[0] > width:
                 lines.append(current)
                 current = ""
             # Длинное слово тоже не должно выходить за границы кадра.
             for character in (" " if current else "") + word:
-                if current and self._font.size(current + character)[0] > width:
+                if current and font.size(current + character)[0] > width:
                     lines.append(current)
                     current = ""
                 current += character
