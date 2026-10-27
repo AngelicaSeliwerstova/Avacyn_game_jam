@@ -6,6 +6,7 @@ import glm
 from engine.collision.aabb import AABB
 from engine.collision.aabb3d import AABB3D
 from engine.collision.world import CollisionWorld
+from engine.scene.object import SceneObject
 
 
 class CollisionWorld3D:
@@ -13,12 +14,25 @@ class CollisionWorld3D:
 
     EPSILON = 1e-5
 
-    def __init__(self, colliders: Iterable[AABB3D], bounds: AABB | None = None, ground_height: float = 0.0):
+    def __init__(self, colliders: Iterable[AABB3D], bounds: AABB | None = None, ground_height: float = 0.0,
+                 objects: tuple[SceneObject, ...] = ()):
         if not math.isfinite(ground_height):
             raise ValueError("Ground height must be finite")
-        self.colliders = tuple(colliders)
+        self._static_colliders = tuple(colliders)
+        self._objects = objects
+        self._object_states = None
+        self._colliders = self._static_colliders
         self.bounds = bounds
         self.ground_height = ground_height
+
+    @property
+    def colliders(self) -> tuple[AABB3D, ...]:
+        states = tuple(obj.current_state for obj in self._objects)
+        if states != self._object_states:
+            self._colliders = self._static_colliders + tuple(
+                box.collider for state in states if state.collidable for box in state.boxes)
+            self._object_states = states
+        return self._colliders
 
     def _horizontal_world(self, feet: float, height: float) -> CollisionWorld:
         return CollisionWorld((

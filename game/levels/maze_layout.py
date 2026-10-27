@@ -7,7 +7,9 @@ from pathlib import Path
 from engine.scene.lighting import LightFlicker, Lighting, PointLight
 from engine.scene.box import Box
 from engine.scene.interaction import Interaction
+from engine.scene.object import SceneObject
 from game.levels.basement import BasementLayout
+from game.levels.objects import build_objects
 
 
 Node = tuple[int, int, int]  # Этаж, строка, столбец.
@@ -44,6 +46,7 @@ class MazeLayout:
     exit: Node
     lighting: Lighting | None = None
     basement: BasementLayout | None = None
+    objects: tuple[SceneObject, ...] = ()
 
     def __post_init__(self):
         if len(self.floors) != 2 or len(self.floor_materials) != 2 or len(self.wall_materials) != 2:
@@ -174,6 +177,7 @@ class MazeLayout:
 def load_maze_layout(path: Path) -> MazeLayout:
     data = json.loads(path.read_text(encoding="utf-8"))
     lighting = data.pop("lighting", None)
+    objects = data.pop("objects", ())
     basement = data.get("basement")
     if basement is not None:
         basement["entry"] = tuple(basement["entry"])
@@ -194,6 +198,7 @@ def load_maze_layout(path: Path) -> MazeLayout:
     data["floor_materials"] = tuple(data["floor_materials"])
     data["wall_materials"] = tuple(tuple(names) for names in data["wall_materials"])
     layout = MazeLayout(**data)
+    layout = replace(layout, objects=build_objects(objects, layout))
     if lighting is not None:
         lamps = []
         for lamp in lighting["lamps"]:

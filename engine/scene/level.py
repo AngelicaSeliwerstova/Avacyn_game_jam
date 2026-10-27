@@ -4,11 +4,12 @@ import math
 from engine.collision.aabb import AABB
 from engine.scene.box import Box
 from engine.scene.lighting import Lighting
+from engine.scene.object import SceneObject
 
 
 @dataclass(frozen=True)
 class Level:
-    """Данные статичного уровня с объёмными блоками без привязки к GPU."""
+    """Статичная геометрия и объекты с состояниями без привязки к GPU."""
 
     floor_size: tuple[float, float]
     floor_tile_size: float
@@ -26,8 +27,11 @@ class Level:
     base_height: float = 0.0
     floor_labels: tuple[str, ...] = ()
     floor_hints: tuple[str, ...] = ()
+    objects: tuple[SceneObject, ...] = ()
 
     def __post_init__(self):
+        if len({obj.name for obj in self.objects}) != len(self.objects):
+            raise ValueError("Scene object names must be unique within a level")
         if not math.isfinite(self.base_height):
             raise ValueError("Level base height must be finite")
         if not self.floor_heights or any(not math.isfinite(y) for y in self.floor_heights):
@@ -38,13 +42,22 @@ class Level:
             raise ValueError("Floor dimensions and tile size must be positive")
         light_count = len(self.lighting.lights) if self.lighting is not None else 0
         if any(box.emission_light is not None and box.emission_light >= light_count
-               for box in self.boxes + self.decorations):
+               for box in self.boxes + self.decorations + self.all_object_boxes):
             raise ValueError("Emissive panel must reference a light in this level")
         if len(self.floor_colors) != 2 or any(
             len(color) != 3 or any(not 0 <= channel <= 255 for channel in color)
             for color in self.floor_colors
         ):
             raise ValueError("Floor needs two RGB colors with channels from 0 to 255")
+
+    @property
+    def object_boxes(self) -> tuple[Box, ...]:
+        return tuple(box for obj in self.objects for box in obj.boxes)
+
+    @property
+    def all_object_boxes(self) -> tuple[Box, ...]:
+        """Все состояния нужны для проверки материалов и построения сетки света."""
+        return tuple(box for obj in self.objects for state in obj.states.values() for box in state.boxes)
 
     @property
     def floor_bounds(self) -> AABB:

@@ -104,9 +104,10 @@ def create_maze_level() -> Level:
         goal_position=layout.goal_position, snow_enabled=False,
         lighting=lighting,
         decorations=tuple(decorations),
+        objects=layout.objects,
         base_height=-layout.basement.depth if underground else 0.0,
         floor_labels=("B1", "1", "2") if underground else (),
-        floor_hints=("Lamp hall. Stairs lead back up.", "B1 stairs left of spawn. Exit upstairs.",
+        floor_hints=("Lamp hall. Stairs lead back up.", "B1 door left of spawn. Find its key nearby.",
                      "Find the rusted exit frame.") if underground else (),
     )
 

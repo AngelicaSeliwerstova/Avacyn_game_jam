@@ -66,8 +66,10 @@ class Renderer:
         self._level = level
         self._projection_settings = None
         self.options = options or RenderOptions()
-        self._objects = tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size))
-                              for box in level.boxes + level.decorations)
+        self._static_objects = tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size))
+                                     for box in level.boxes + level.decorations)
+        self._object_boxes = level.object_boxes
+        self._objects = self._static_objects + self._prepare_objects(self._object_boxes)
         self._submitted_objects = len(self._objects)
         self._submitted_triangles = 0
         self._draw_calls = 0
@@ -96,7 +98,7 @@ class Renderer:
                     self._wall_texture = self._load_texture(textures.wall)
                 for material in textures.materials:
                     self._materials[material.name] = self._load_texture(material.path), material.world_size
-                used_materials = {box.material for box in level.boxes + level.decorations} | {level.floor_material}
+                used_materials = {box.material for box in level.boxes + level.decorations + level.all_object_boxes} | {level.floor_material}
                 unknown = used_materials - {None} - self._materials.keys()
                 if unknown:
                     raise ValueError(f"Unknown materials in level: {sorted(unknown)}")
@@ -127,6 +129,11 @@ class Renderer:
 
     def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = "",
                *, aim_text: str | None = None):
+        boxes = self._level.object_boxes
+        if boxes != self._object_boxes:
+            self._lighting.sync_objects(boxes)
+            self._objects = self._static_objects + self._prepare_objects(boxes)
+            self._object_boxes = boxes
         self._dynamic_lighting.render_shadows(self._objects)
         self._render_target.framebuffer.use()
         self.context.viewport = (0, 0, *self._render_target.size)
@@ -186,6 +193,10 @@ class Renderer:
     def output_target(self) -> RenderTarget:
         """Готовый кадр после эффектов и HUD, до масштабирования в окно."""
         return self._postprocess.output if self._postprocess is not None else self._render_target
+
+    @staticmethod
+    def _prepare_objects(boxes):
+        return tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size)) for box in boxes)
 
     @property
     def debug_lines(self) -> tuple[str, ...]:

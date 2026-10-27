@@ -24,7 +24,7 @@ def build_light_grid(level: Level, cell_size: float, max_cells: int) -> LightGri
         return None
     width, depth = level.floor_size
     points = [(-width / 2, level.base_height, -depth / 2), (width / 2, level.base_height, depth / 2)]
-    for box in level.boxes + level.decorations:
+    for box in level.boxes + level.decorations + level.all_object_boxes:
         points.extend(tuple(p + sign * size / 2 for p, size in zip(box.position, box.size))
                       for sign in (-1, 1))
     origin = tuple(min(point[axis] for point in points) for axis in range(3))

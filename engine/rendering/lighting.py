@@ -7,6 +7,7 @@ import moderngl
 
 from engine.rendering.meshes.cube import CubeMesh
 from engine.rendering.light_grid import build_light_grid
+from engine.rendering.visibility import distance_to_box_squared
 from engine.scene.level import Level
 
 
@@ -20,7 +21,7 @@ FACE_VIEWS = (
 
 
 class LevelLighting:
-    """Карты теней запекаются при загрузке; яркость отдельных ламп меняется во времени."""
+    """Запекание теней, локальное обновление геометрии и мерцание ламп."""
 
     def __init__(self, context: moderngl.Context, program: moderngl.Program, level: Level, cell_size: float = 4.0):
         self._context = context
@@ -35,6 +36,8 @@ class LevelLighting:
         self._elapsed = 0.0
         self._animated = ()
         self._scales = []
+        self._level = level
+        self._object_boxes = level.object_boxes
         lighting = level.lighting
         program["lighting_enabled"].value = lighting is not None
         program["shadow_atlas"].value = 2
@@ -82,13 +85,14 @@ class LevelLighting:
             )
             self._cube = CubeMesh(context, self._program, position_only=True)
             self._bake(level, resolution)
-            # Геометрия и шейдер запекания больше не нужны, остаётся только атлас.
-            self._cube.release()
-            self._cube = None
-            self._program.release()
-            self._program = None
-            self._framebuffer.release()
-            self._framebuffer = None
+            # При наличии объектов сохраняем ресурсы для локального обновления теней.
+            if not level.objects:
+                self._cube.release()
+                self._cube = None
+                self._program.release()
+                self._program = None
+                self._framebuffer.release()
+                self._framebuffer = None
             self.grid = build_light_grid(level, cell_size, context.info["GL_MAX_TEXTURE_SIZE"])
             if self.grid is not None:
                 self._grid_texture = context.texture(self.grid.texture_size, 1, self.grid.indices, dtype="i4")
@@ -101,27 +105,48 @@ class LevelLighting:
             raise
 
     def _bake(self, level, resolution):
+        self._render_lights(range(len(level.lighting.lights)), resolution,
+                            level.boxes + level.decorations + self._object_boxes)
+
+    def sync_objects(self, boxes):
+        previous = self._object_boxes
+        self._object_boxes = boxes
+        if self._framebuffer is None or previous == boxes:
+            return
+        changed = tuple(box for box in previous if box not in boxes) + tuple(box for box in boxes if box not in previous)
+        affected = [index for index, light in enumerate(self._level.lighting.lights)
+                    if any(distance_to_box_squared(light.position, box.position, tuple(s / 2 for s in box.size))
+                           < light.radius ** 2 for box in changed)]
+        if affected:
+            self._render_lights(affected, self._level.lighting.shadow_resolution,
+                                self._level.boxes + self._level.decorations + boxes)
+
+    def _render_lights(self, indices, resolution, boxes):
         self._framebuffer.use()
         self._context.scissor = None
         self._context.enable_only(moderngl.DEPTH_TEST)
-        self._framebuffer.clear(depth=1.0)
-        for index, light in enumerate(level.lighting.lights):
+        self._context.depth_func = "<"
+        self._framebuffer.depth_mask = True
+        prepared = tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size)) for box in boxes)
+        for index in indices:
+            light = self._level.lighting.lights[index]
             origin = glm.vec3(light.position)
             projection = glm.perspective(glm.radians(90.0), 1.0, SHADOW_NEAR, light.radius)
             nearby = []
-            for box in level.boxes + level.decorations:
-                distance = sum(max(0, abs(p - c) - s / 2) ** 2
-                               for p, c, s in zip(light.position, box.position, box.size))
+            for box, model, half_size in prepared:
+                distance = distance_to_box_squared(light.position, box.position, half_size)
                 if distance < light.radius ** 2:
-                    nearby.append(box)
+                    nearby.append(model)
             for face, (direction, up) in enumerate(FACE_VIEWS):
                 x = ((index % self._atlas_columns) * 3 + face % 3) * resolution
                 y = ((index // self._atlas_columns) * 2 + face // 3) * resolution
                 self._context.viewport = (x, y, resolution, resolution)
+                # Очищаем только грань изменившейся лампы, остальные тени сохраняются.
+                self._framebuffer.clear(depth=1.0, viewport=(x, y, resolution, resolution))
                 matrix = projection * glm.lookAt(origin, origin + glm.vec3(direction), glm.vec3(up))
                 self._program["m_light"].write(matrix)
-                for box in nearby:
-                    self._program["m_model"].write(box.model_matrix)
+                for model in nearby:
+                    self._program["m_model"].write(model)
                     self._cube.render()
         self._context.scissor = None
 

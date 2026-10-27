@@ -16,6 +16,7 @@ from engine.scene.transform import Transform
 from game.entities.player_state import MovementState
 from game.entities.flashlight import Flashlight
 from game.interactions import InteractionController
+from game.inventory import Inventory
 
 
 class Player(Entity):
@@ -31,11 +32,13 @@ class Player(Entity):
         self._exit_found = False
         self._sprinting = False
         self.flashlight = Flashlight(camera)
+        self.inventory = Inventory()
         self._interactions = InteractionController(
             level.boxes + level.decorations if level is not None else (),
             settings.INTERACTION_REACH, settings.INTERACTION_MESSAGE_SECONDS,
             pygame.key.name(controls.INPUT_BINDINGS.interact).upper()
             if controls.INPUT_BINDINGS.interact is not None else "-",
+            objects=level.objects if level is not None else (), inventory=self.inventory,
         )
         self._sync_transform()
 
@@ -49,6 +52,12 @@ class Player(Entity):
 
     @property
     def status_text(self) -> str:
+        text = self._location_text()
+        if self.inventory.key_names:
+            text += ("\n" if text else "") + "KEYS: " + ", ".join(self.inventory.key_names)
+        return text
+
+    def _location_text(self) -> str:
         if self._level is None or len(self._level.floor_heights) < 2:
             return ""
         if self._exit_found:
