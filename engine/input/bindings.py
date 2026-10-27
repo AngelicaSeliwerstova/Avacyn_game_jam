@@ -16,3 +16,4 @@ class InputBindings:
     jump: int | None = None
     toggle_debug: int | None = None
     crouch_keys: tuple[int, ...] = ()
+    interact: int | None = None

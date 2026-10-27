@@ -21,6 +21,7 @@ class KeyboardMouseTests(unittest.TestCase):
             pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d, pygame.K_ESCAPE, 1,
             sprint_keys=(pygame.K_LSHIFT, pygame.K_RSHIFT), jump=pygame.K_SPACE,
             crouch_keys=(pygame.K_LCTRL, pygame.K_RCTRL),
+            interact=pygame.K_e,
         )
         self.input = KeyboardMouse(self.bindings)
 
@@ -115,6 +116,41 @@ class KeyboardMouseTests(unittest.TestCase):
         self.assertFalse(device.read().crouch)
         self.keys[pygame.K_c] = True
         self.assertTrue(device.read().crouch)
+
+    def test_interact_uses_single_press_and_ignores_repeat(self):
+        self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+        self.input.handle_event(pygame.event.Event(pygame.KEYUP, key=pygame.K_e))
+        self.assertTrue(self.input.read().interact)
+        self.assertFalse(self.input.read().interact)
+        self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+        self.assertTrue(self.input.read().interact)
+        for repeat in (False, True):
+            self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e, repeat=repeat))
+            self.assertFalse(self.input.read().interact)
+
+    def test_focus_loss_and_recapture_do_not_trigger_held_interaction(self):
+        self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+        self.input.handle_event(pygame.event.Event(pygame.WINDOWFOCUSLOST))
+        self.assertEqual(self.input.read(), InputState())
+        self.keys[pygame.K_e] = True
+        self.input.handle_event(pygame.event.Event(pygame.WINDOWFOCUSGAINED))
+        self.input.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1))
+        self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+        self.assertFalse(self.input.read().interact)
+        self.input.handle_event(pygame.event.Event(pygame.KEYUP, key=pygame.K_e))
+        self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+        self.assertTrue(self.input.read().interact)
+        self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        self.assertEqual(self.input.read(), InputState())
+
+    def test_interaction_uses_custom_binding(self):
+        bindings = InputBindings(pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d,
+                                 pygame.K_ESCAPE, 1, interact=pygame.K_f)
+        device = KeyboardMouse(bindings)
+        device.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+        self.assertFalse(device.read().interact)
+        device.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_f))
+        self.assertTrue(device.read().interact)
 
     def test_release_and_focus_loss_clear_jump_and_sprint(self):
         self.keys[pygame.K_LSHIFT] = True

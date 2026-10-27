@@ -14,6 +14,8 @@ class KeyboardMouse:
         self._discard_mouse_delta = True
         self._jump_queued = False
         self._jump_held = False
+        self._interact_queued = False
+        self._interact_held = False
         self._set_capture(self._focused)
 
     def _set_capture(self, captured: bool):
@@ -26,6 +28,11 @@ class KeyboardMouse:
             captured and self._bindings.jump is not None
             and pygame.key.get_pressed()[self._bindings.jump]
         )
+        self._interact_queued = False
+        self._interact_held = bool(
+            captured and self._bindings.interact is not None
+            and pygame.key.get_pressed()[self._bindings.interact]
+        )
         # Первый отсчёт после захвата может содержать смещение курсора ОС.
         self._discard_mouse_delta = True
 
@@ -37,6 +44,13 @@ class KeyboardMouse:
             self._focused = True
         elif event.type == pygame.KEYDOWN and event.key == self._bindings.release_mouse:
             self._set_capture(False)
+        elif event.type == pygame.KEYUP and event.key == self._bindings.interact:
+            self._interact_held = False
+        elif event.type == pygame.KEYDOWN and event.key == self._bindings.interact:
+            if (self._focused and self._captured and not self._interact_held
+                    and not getattr(event, "repeat", False)):
+                self._interact_queued = True
+            self._interact_held = True
         elif event.type == pygame.KEYUP and event.key == self._bindings.jump:
             self._jump_held = False
         elif event.type == pygame.KEYDOWN and event.key == self._bindings.jump:
@@ -68,8 +82,10 @@ class KeyboardMouse:
             sprint=any(keys[key] for key in self._bindings.sprint_keys),
             jump=self._jump_queued,
             crouch=any(keys[key] for key in self._bindings.crouch_keys),
+            interact=self._interact_queued,
         )
         self._jump_queued = False
+        self._interact_queued = False
         return state
 
     @property

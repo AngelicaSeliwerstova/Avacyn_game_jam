@@ -101,7 +101,7 @@ class Application:
                     self._snow.update(delta_time)
                 updated = perf_counter() if profiling else 0.0
                 renderer.render(window.size, hud_text=self._controlled_entity.status_text,
-                                debug_text=self._debug.text)
+                                debug_text=self._debug.text, aim_text=self._controlled_entity.aim_text)
                 rendered = perf_counter() if profiling else 0.0
                 window.present()
                 self._debug.update(delta_time, updated - started, rendered - updated,

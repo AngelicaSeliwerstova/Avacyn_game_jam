@@ -6,6 +6,7 @@ from pathlib import Path
 
 from engine.scene.lighting import Lighting, PointLight
 from engine.scene.box import Box
+from engine.scene.interaction import Interaction
 from game.levels.basement import BasementLayout
 
 
@@ -177,7 +178,9 @@ def load_maze_layout(path: Path) -> MazeLayout:
     if basement is not None:
         basement["entry"] = tuple(basement["entry"])
         basement["lamp_color"] = tuple(basement["lamp_color"])
-        basement["boxes"] = tuple(Box(tuple(box["position"]), tuple(box["size"]), box.get("material"))
+        basement["boxes"] = tuple(Box(tuple(box["position"]), tuple(box["size"]), box.get("material"),
+                                      interaction=Interaction(**box["interaction"])
+                                      if box.get("interaction") is not None else None)
                                    for box in basement.get("boxes", ()))
         data["basement"] = BasementLayout(**basement)
     data["floors"] = tuple(tuple(rows) for rows in data["floors"])

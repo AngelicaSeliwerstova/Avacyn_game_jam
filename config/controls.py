@@ -15,4 +15,5 @@ INPUT_BINDINGS = InputBindings(
     jump=pygame.K_SPACE,
     toggle_debug=pygame.K_F3,
     crouch_keys=(pygame.K_LCTRL, pygame.K_RCTRL),
+    interact=pygame.K_e,
 )

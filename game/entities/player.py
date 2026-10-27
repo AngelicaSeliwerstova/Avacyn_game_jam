@@ -1,7 +1,9 @@
 from pathlib import Path
 import math
 
-from config import settings
+import pygame
+
+from config import controls, settings
 from engine.collision.world3d import CollisionWorld3D
 from engine.controllers.first_person import FirstPersonController
 from engine.input.state import InputState
@@ -12,6 +14,7 @@ from engine.scene.level import Level
 from engine.scene.model import ModelComponent
 from engine.scene.transform import Transform
 from game.entities.player_state import MovementState
+from game.interactions import InteractionController
 
 
 class Player(Entity):
@@ -26,7 +29,17 @@ class Player(Entity):
         self._level = level
         self._exit_found = False
         self._sprinting = False
+        self._interactions = InteractionController(
+            level.boxes + level.decorations if level is not None else (),
+            settings.INTERACTION_REACH, settings.INTERACTION_MESSAGE_SECONDS,
+            pygame.key.name(controls.INPUT_BINDINGS.interact).upper()
+            if controls.INPUT_BINDINGS.interact is not None else "-",
+        )
         self._sync_transform()
+
+    @property
+    def aim_text(self) -> str:
+        return self._interactions.text
 
     @property
     def status_text(self) -> str:
@@ -54,6 +67,7 @@ class Player(Entity):
             crouch=inputs.crouch,
         )
         self._sync_transform()
+        self._interactions.update(delta_time, self.camera, inputs.interact)
         if self._level is not None and self._level.goal_position is not None:
             self._exit_found = self._exit_found or math.dist(
                 tuple(self.body.position), self._level.goal_position,

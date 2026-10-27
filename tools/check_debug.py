@@ -39,10 +39,10 @@ def check_application(render_size, initially_enabled, output):
         return application
 
     class CheckedRenderer(Renderer):
-        def render(self, window_size, hud_text="", debug_text=""):
+        def render(self, window_size, hud_text="", debug_text="", *, aim_text=None):
             nonlocal frames
             old_text, old_texture = self._debug_hud._text, self._debug_hud._texture
-            super().render(window_size, hud_text, debug_text)
+            super().render(window_size, hud_text, debug_text, aim_text=aim_text)
             frames += 1
             assert self.context.error == "GL_NO_ERROR"
             if debug_text and old_text == debug_text:
@@ -102,7 +102,7 @@ def check_application(render_size, initially_enabled, output):
                 with_debug = target.framebuffer.read(components=3, alignment=1)
                 assert read_window(self, window_size) == expected_window(with_debug, target.size, window_size)
                 save_image(output / f"debug-{render_size[0]}.png", with_debug, target.size)
-                super().render(window_size, hud_text, "")
+                super().render(window_size, hud_text, "", aim_text=aim_text)
                 without_debug = target.framebuffer.read(components=3, alignment=1)
                 assert with_debug != without_debug
                 # Вне прямоугольника панели изображение совпадает побайтно.

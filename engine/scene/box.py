@@ -5,6 +5,7 @@ import glm
 from engine.collision.aabb import AABB
 from engine.collision.aabb3d import AABB3D
 from engine.scene.lighting import validate_rgb
+from engine.scene.interaction import Interaction
 
 
 @dataclass(frozen=True)
@@ -15,6 +16,7 @@ class Box:
     size: tuple[float, float, float]
     material: str | None = None
     emission: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    interaction: Interaction | None = None
 
     def __post_init__(self):
         validate_rgb(self.emission)

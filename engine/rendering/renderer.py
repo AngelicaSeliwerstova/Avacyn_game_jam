@@ -10,7 +10,7 @@ from engine.rendering.presentation import PixelPresenter
 from engine.rendering.render_target import RenderTarget
 from engine.rendering.snow import SnowRenderer
 from engine.rendering.texture import Texture2D, TextureSettings
-from engine.rendering.hud import HudStyle, TextOverlay
+from engine.rendering.hud import AimOverlay, HudStyle, TextOverlay
 from engine.rendering.postprocess import PostProcessor, PostProcessSettings
 from engine.rendering.lighting import LevelLighting
 from engine.rendering.options import RenderOptions
@@ -46,6 +46,7 @@ class Renderer:
         self._snow = None
         self._hud = None
         self._debug_hud = None
+        self._aim_hud = None
         self._postprocess = None
         self._lighting = None
         self._floor_texture = None
@@ -100,13 +101,15 @@ class Renderer:
             self._presenter = PixelPresenter(self.context)
             self._hud = TextOverlay(self.context, hud_style or HudStyle())
             self._debug_hud = TextOverlay(self.context, debug_style or HudStyle(font_size=16))
+            self._aim_hud = AimOverlay(self.context, hud_style or HudStyle())
             if snow is not None and snow.settings.count > 0:
                 self._snow = SnowRenderer(self.context, snow, camera, render_size)
         except Exception:
             self.release()
             raise
 
-    def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = ""):
+    def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = "",
+               *, aim_text: str | None = None):
         self._render_target.framebuffer.use()
         self.context.viewport = (0, 0, *self._render_target.size)
         self.context.enable(moderngl.DEPTH_TEST)
@@ -153,6 +156,8 @@ class Renderer:
             self._postprocess.apply(self._render_target.color)
         target = self.output_target
         self._hud.draw(hud_text, target.size)
+        if aim_text is not None:
+            self._aim_hud.draw(aim_text, target.size)
         self._debug_hud.draw(debug_text, target.size, anchor="bottom_right")
         self._presenter.present(target.color, self.context.screen, window_size)
 
@@ -219,6 +224,9 @@ class Renderer:
             texture.use(location=0)
 
     def release(self):
+        if self._aim_hud is not None:
+            self._aim_hud.release()
+            self._aim_hud = None
         if self._debug_hud is not None:
             self._debug_hud.release()
             self._debug_hud = None
