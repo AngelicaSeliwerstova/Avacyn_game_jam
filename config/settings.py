@@ -44,11 +44,30 @@ BLOOM_STRENGTH = 0.45
 BLOOM_RADIUS = 1.0
 BLOOM_DOWNSAMPLE = 4
 
+# F5 перебирает цветовые пресеты. mist - начальный вид; cold использует COLD_* выше.
+COLOR_PRESET = "mist"
+POSTPROCESS_CONTRAST = 1.05
+POSTPROCESS_VIGNETTE = 0.20
+COLOR_PRESETS = {
+    "mist": {"tint": (0.94, 1.0, 0.96), "strength": 0.65, "saturation": 0.45,
+             "shadow_color": (0.018, 0.022, 0.020), "bloom_color": (0.80, 0.88, 0.85), "bloom_strength": 0.25},
+    "cold": {},
+    "rose": {"tint": (1.18, 0.72, 0.92), "strength": 0.80, "saturation": 0.55,
+             "shadow_color": (0.045, 0.015, 0.035), "bloom_color": (1.0, 0.50, 0.72), "bloom_strength": 0.32},
+    "red": {"tint": (1.30, 0.40, 0.30), "strength": 0.85, "saturation": 0.50,
+            "shadow_color": (0.035, 0.007, 0.005), "bloom_color": (1.0, 0.30, 0.16),
+            "bloom_strength": 0.28, "contrast": 1.10, "vignette": 0.28},
+    "sickly": {"tint": (0.82, 1.08, 0.65), "strength": 0.75, "saturation": 0.45,
+               "shadow_color": (0.018, 0.030, 0.010), "bloom_color": (0.70, 0.92, 0.45), "bloom_strength": 0.25},
+    "sepia": {"tint": (1.14, 0.92, 0.65), "strength": 0.75, "saturation": 0.40,
+              "shadow_color": (0.030, 0.020, 0.009), "bloom_color": (1.0, 0.76, 0.40), "bloom_strength": 0.25},
+}
+
 # Дальний туман: RGB от 0 до 1, расстояния в мировых единицах.
 FOG_ENABLED = True
-FOG_COLOR = (0.075, 0.10, 0.13)
-FOG_START = 6.0
-FOG_END = 30.0
+FOG_COLOR = (0.27, 0.28, 0.27)
+FOG_START = 1.8
+FOG_END = 14.0
 
 # Мерцают только лампы с описанием flicker в данных уровня.
 LIGHT_FLICKER_ENABLED = True

@@ -14,6 +14,7 @@ INPUT_BINDINGS = InputBindings(
     sprint_keys=(pygame.K_LSHIFT, pygame.K_RSHIFT),
     jump=pygame.K_SPACE,
     toggle_debug=pygame.K_F3,
+    cycle_postprocess=pygame.K_F5,
     crouch_keys=(pygame.K_LCTRL, pygame.K_RCTRL),
     interact=pygame.K_e,
     zoom_mouse_button=3,  # Удержание правой кнопки мыши.

@@ -5,7 +5,7 @@ from engine.rendering.options import RenderOptions
 from engine.particles.snow import Snowfall, SnowSettings
 from game.entities.player import create_player
 from game.enemies import EnemySystem
-from game.effects import create_fog_settings, create_postprocess_settings
+from game.effects import create_fog_settings, create_postprocess_settings, create_postprocess_presets
 from game.materials import create_texture_settings
 from game.levels import create_level
 from game.ui import create_debug_settings, create_hud_style
@@ -51,7 +51,8 @@ def run_session():
         input_bindings=controls.INPUT_BINDINGS,
         textures=create_texture_settings(),
         hud_style=create_hud_style(),
-        postprocess=create_postprocess_settings(),
+        postprocess=create_postprocess_settings(settings.COLOR_PRESET),
+        postprocess_presets=create_postprocess_presets(),
         fog=create_fog_settings(),
         dynamic_lights=player.dynamic_lights,
         dynamic_shadow_resolution=settings.DYNAMIC_SHADOW_RESOLUTION,

@@ -18,6 +18,8 @@ class PostProcessSettings:
     bloom_strength: float
     bloom_radius: float
     downsample: int
+    contrast: float = 1.0
+    vignette: float = 0.0
 
     def __post_init__(self):
         for color in (self.tint, self.shadow_color, self.bloom_color):
@@ -32,10 +34,14 @@ class PostProcessSettings:
             raise ValueError("Bloom radius must be finite and positive")
         if not isinstance(self.downsample, int) or self.downsample not in (1, 2, 4, 8):
             raise ValueError("Bloom downsample must be 1, 2, 4 or 8")
+        if not math.isfinite(self.contrast) or not 0 < self.contrast <= 2:
+            raise ValueError("Contrast must be finite and from 0 (exclusive) to 2")
+        if not math.isfinite(self.vignette) or not 0 <= self.vignette <= 1:
+            raise ValueError("Vignette must be finite and from 0 to 1")
 
 
 class PostProcessor:
-    """Холодная цветокоррекция и мягкий bloom перед показом готового кадра."""
+    """Цветокоррекция, контраст, виньетка и bloom перед показом готового кадра."""
 
     def __init__(self, context: moderngl.Context, size: tuple[int, int], settings: PostProcessSettings):
         self._context = context
@@ -54,26 +60,32 @@ class PostProcessor:
                 target.color.filter = moderngl.LINEAR, moderngl.LINEAR
             shaders = Path(__file__).resolve().parent / "shaders"
             vertex_shader = (shaders / "present.vert").read_text(encoding="utf-8")
-            for name in ("bloom_extract", "bloom_blur", "cold_grade"):
+            for name in ("bloom_extract", "bloom_blur", "color_grade"):
                 program = context.program(vertex_shader=vertex_shader,
                                           fragment_shader=(shaders / f"{name}.frag").read_text(encoding="utf-8"))
                 self._programs[name] = program
                 self._vertices[name] = context.vertex_array(program, [])
                 program["scene_texture"].value = 0
-            extract = self._programs["bloom_extract"]
-            extract["threshold"].value = settings.bloom_threshold
-            extract["sample_span"].value = 1 / small[0], 1 / small[1]
-            grade = self._programs["cold_grade"]
+            self._programs["bloom_extract"]["sample_span"].value = 1 / small[0], 1 / small[1]
+            grade = self._programs["color_grade"]
             grade["bloom_texture"].value = 1
-            grade["cold_tint"].value = settings.tint
-            grade["cold_strength"].value = settings.strength
-            grade["saturation"].value = settings.saturation
-            grade["shadow_color"].value = settings.shadow_color
-            grade["bloom_color"].value = settings.bloom_color
-            grade["bloom_strength"].value = settings.bloom_strength
+            self.set_settings(settings)
         except Exception:
             self.release()
             raise
+
+    def set_settings(self, settings: PostProcessSettings):
+        """Меняет пресет без пересоздания шейдеров и буферов кадра."""
+        if settings.downsample != self._settings.downsample:
+            raise ValueError("Changing bloom downsample requires recreating the postprocessor")
+        grade = self._programs["color_grade"]
+        for name, value in (("grade_tint", settings.tint), ("grade_strength", settings.strength),
+                            ("saturation", settings.saturation), ("shadow_color", settings.shadow_color),
+                            ("bloom_color", settings.bloom_color), ("bloom_strength", settings.bloom_strength),
+                            ("contrast", settings.contrast), ("vignette", settings.vignette)):
+            grade[name].value = value
+        self._programs["bloom_extract"]["threshold"].value = settings.bloom_threshold
+        self._settings = settings
 
     def _draw(self, name: str, target: RenderTarget):
         target.framebuffer.use()
@@ -95,7 +107,7 @@ class PostProcessor:
         self._draw("bloom_blur", self._bloom_a)
         source.use(location=0)
         self._bloom_a.color.use(location=1)
-        self._draw("cold_grade", self.output)
+        self._draw("color_grade", self.output)
         return self.output
 
     def release(self):

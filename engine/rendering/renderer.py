@@ -45,6 +45,7 @@ class Renderer:
         fog: FogSettings | None = None,
         dynamic_lights: tuple[SpotLight, ...] = (),
         dynamic_shadow_resolution: int = 512,
+        postprocess_presets: tuple[tuple[str, PostProcessSettings], ...] = (),
     ):
         major, minor = opengl_version
         self.context = moderngl.create_context(require=major * 100 + minor * 10)
@@ -60,6 +61,8 @@ class Renderer:
         self._dialog = None
         self._debug_lines = None
         self._postprocess = None
+        self._postprocess_presets = postprocess_presets
+        self._postprocess_index = next((i for i, (_, style) in enumerate(postprocess_presets) if style == postprocess), -1)
         self._lighting = None
         self._dynamic_lighting = None
         self._floor_texture = None
@@ -133,6 +136,13 @@ class Renderer:
     def update(self, delta_time: float):
         """Продвигает время визуальных эффектов отдельно от повторной отрисовки."""
         self._lighting.update(delta_time, enabled=self.options.light_flicker)
+
+    def cycle_postprocess(self):
+        if self._postprocess is None or not self._postprocess_presets:
+            return
+        index = (self._postprocess_index + 1) % len(self._postprocess_presets)
+        self._postprocess.set_settings(self._postprocess_presets[index][1])
+        self._postprocess_index = index
 
     def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = "",
                *, aim_text: str | None = None, dialog: Dialog | None = None,
@@ -223,9 +233,12 @@ class Renderer:
         local = f" (local <= {self._lighting.grid.max_lights})" if (
             self.options.local_lights and self._lighting.grid is not None
         ) else ""
+        look = (self._postprocess_presets[self._postprocess_index][0].upper()
+                if self._postprocess_index >= 0 else "CUSTOM") if self._postprocess is not None else "OFF"
         return (f"SCENE: {self._submitted_triangles} tris | {self._draw_calls}/{len(self._objects) + 1} draws",
                 f"ZPASS: {self._depth_draw_calls} | LIGHTS: {lights}{local}"
                 f" | SPOT: {self._dynamic_lighting.active_count}",
+                f"LOOK: {look} | F5: NEXT",
                 *((f"SNOW: {particles}",) if particles else ()))
 
     def _draw_floor(self):

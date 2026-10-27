@@ -48,6 +48,7 @@ class Application:
         systems: tuple[SimulationSystem, ...] = (),
         session: Session | None = None,
         debug_paths: Callable[[], tuple[DebugPath, ...]] | None = None,
+        postprocess_presets: tuple[tuple[str, PostProcessSettings], ...] = (),
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -63,6 +64,7 @@ class Application:
         self._textures = textures
         self._hud_style = hud_style
         self._postprocess = postprocess
+        self._postprocess_presets = postprocess_presets
         self._debug_settings = debug or DebugSettings()
         self._debug = DeveloperPanel(self._debug_settings)
         self._render_options = render_options
@@ -98,6 +100,7 @@ class Application:
                 textures=self._textures,
                 hud_style=self._hud_style,
                 postprocess=self._postprocess,
+                postprocess_presets=self._postprocess_presets,
                 debug_style=HudStyle(self._debug_settings.font_size, self._debug_settings.margin,
                                      font_path=self._debug_settings.font_path,
                                      antialias=self._debug_settings.antialias),
@@ -113,7 +116,7 @@ class Application:
             while self._running:
                 # Clock возвращает миллисекунды, контроллер работает с секундами.
                 delta_time = clock.tick(self._fps_limit) / 1000.0
-                self._handle_events(input_device, window)
+                self._handle_events(input_device, window, renderer)
                 if not self._running:
                     break
 
@@ -156,7 +159,7 @@ class Application:
                 pygame.quit()
         return self._result
 
-    def _handle_events(self, input_device: KeyboardMouse, window: Window):
+    def _handle_events(self, input_device: KeyboardMouse, window: Window, renderer: Renderer | None = None):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self._running = False
@@ -164,6 +167,9 @@ class Application:
             elif (event.type == pygame.KEYDOWN and event.key == self._input_bindings.toggle_debug
                   and not getattr(event, "repeat", False)):
                 self._debug.toggle()
+            elif (event.type == pygame.KEYDOWN and event.key == self._input_bindings.cycle_postprocess
+                  and renderer is not None and self._session.dialog is None and not getattr(event, "repeat", False)):
+                renderer.cycle_postprocess()
             elif event.type == pygame.KEYDOWN and event.key == self._input_bindings.toggle_fullscreen:
                 input_device.release()
                 window.toggle_fullscreen()
