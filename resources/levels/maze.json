@@ -66,7 +66,8 @@
       "axis": "z",
       "width": 1.8,
       "height": 2.35,
-      "thickness": 0.18
+      "thickness": 0.18,
+      "open_seconds": 0.9
     }
   ],
   "cell_size": 3.0,

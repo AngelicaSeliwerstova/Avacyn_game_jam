@@ -109,6 +109,8 @@ class Application:
                 inputs = input_device.read()
                 profiling = self._debug.enabled
                 started = perf_counter() if profiling else 0.0
+                for obj in self._level.objects:
+                    obj.update(delta_time)
                 self._controlled_entity.update(delta_time, inputs)
                 if self._snow is not None:
                     self._snow.update(delta_time)

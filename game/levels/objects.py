@@ -79,10 +79,12 @@ def _door(data, position, layout):
         return Box(point, size, material=material)
 
     side = (layout.cell_size - width) / 2
-    frame = tuple(box(sign * (width + side) / 2, layout.wall_height / 2, 0,
-                      side, layout.wall_height, thickness + 0.1, "concrete") for sign in (-1, 1))
-    frame += (box(0, (height + layout.wall_height) / 2, 0,
-                  width, layout.wall_height - height, thickness + 0.1, "concrete"),)
+    overlap = 0.02  # Торцы рамы уходят в стену, без совпадающих видимых плоскостей.
+    frame = tuple(box(sign * (width + side + overlap) / 2, layout.wall_height / 2, 0,
+                      side + overlap, layout.wall_height + 2 * overlap, thickness + 0.1, "concrete")
+                  for sign in (-1, 1))
+    frame += (box(0, (height + layout.wall_height + overlap) / 2, 0,
+                  width, layout.wall_height - height + overlap, thickness + 0.1, "concrete"),)
     panel = (box(0, height / 2, 0, width - 0.04, height - 0.04, thickness),)
     # Ручки с обеих сторон видны независимо от стороны подхода.
     panel += tuple(box(width * 0.3, 1.05, sign * (thickness / 2 + 0.04),
@@ -96,5 +98,6 @@ def _door(data, position, layout):
     return (
         SceneObject(data["id"] + "_frame", {"default": ObjectState(frame)}),
         SceneObject(data["id"], {"default": ObjectState(panel, interaction=action),
-                                 "open": ObjectState(opened, collidable=False)}),
+                                 "open": ObjectState(opened, collidable=False)},
+                    transition_seconds={"open": data.get("open_seconds", 0.9)}),
     )

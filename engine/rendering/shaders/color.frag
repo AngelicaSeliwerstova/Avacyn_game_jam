@@ -65,17 +65,25 @@ float visibility(int index, vec3 delta, float radius, vec3 normal) {
     vec2 tile = vec2((index % shadow_light_columns) * 3 + face % 3,
                      (index / shadow_light_columns) * 2 + face / 3);
     vec2 face_size = vec2(textureSize(shadow_atlas, 0)) / shadow_grid;
+    vec2 texel = uv * face_size;
+    ivec2 center = ivec2(floor(texel));
+    vec2 f = fract(texel);
+    vec3 wx = vec3(0.5 * (1.0 - f.x) * (1.0 - f.x),
+                   0.75 - (f.x - 0.5) * (f.x - 0.5), 0.5 * f.x * f.x);
+    vec3 wy = vec3(0.5 * (1.0 - f.y) * (1.0 - f.y),
+                   0.75 - (f.y - 0.5) * (f.y - 0.5), 0.5 * f.y * f.y);
     float plane = dot(normal, delta);
     float visible = 0.0;
     // Каждый отсчёт сравнивается с глубиной той же плоскости в центре его texel.
     // Одна глубина на весь PCF ошибочно затеняла наклонные к лампе стены.
     for (int y = -1; y <= 1; ++y) {
         for (int x = -1; x <= 1; ++x) {
-            vec2 local = clamp(uv + vec2(x, y) / face_size, 0.5 / face_size, 1.0 - 0.5 / face_size);
-            local = (floor(local * face_size) + 0.5) / face_size;
+            float weight = wx[x + 1] * wy[y + 1];
+            ivec2 pixel = clamp(center + ivec2(x, y), ivec2(0), ivec2(face_size) - 1);
+            vec2 local = (vec2(pixel) + 0.5) / face_size;
             float denominator = dot(normal, shadow_ray(face, local));
             if (denominator >= -0.000001) {
-                visible += 1.0;
+                visible += weight;
                 continue;
             }
             float receiver = plane / denominator;
@@ -83,11 +91,11 @@ float visibility(int index, vec3 delta, float radius, vec3 normal) {
             receiver = max(0.05, receiver - (0.003 + 0.0005 * receiver));
             float depth = radius / (radius - 0.05) - radius * 0.05 / ((radius - 0.05) * receiver);
             depth = clamp(depth, 0.0, 1.0);
-            float stored = texture(shadow_atlas, (tile + local) / shadow_grid).r;
-            visible += depth <= stored ? 1.0 : 0.0;
+            float stored = texelFetch(shadow_atlas, ivec2(tile * face_size) + pixel, 0).r;
+            visible += (depth <= stored ? 1.0 : 0.0) * weight;
         }
     }
-    return visible / 9.0;
+    return visible;
 }
 
 void main() {

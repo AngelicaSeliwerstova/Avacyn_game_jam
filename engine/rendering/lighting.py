@@ -38,6 +38,8 @@ class LevelLighting:
         self._scales = []
         self._level = level
         self._object_boxes = level.object_boxes
+        self._static_geometry = tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size))
+                                      for box in level.boxes + level.decorations)
         lighting = level.lighting
         program["lighting_enabled"].value = lighting is not None
         program["shadow_atlas"].value = 2
@@ -106,7 +108,7 @@ class LevelLighting:
 
     def _bake(self, level, resolution):
         self._render_lights(range(len(level.lighting.lights)), resolution,
-                            level.boxes + level.decorations + self._object_boxes)
+                            self._object_boxes)
 
     def sync_objects(self, boxes):
         previous = self._object_boxes
@@ -119,7 +121,7 @@ class LevelLighting:
                            < light.radius ** 2 for box in changed)]
         if affected:
             self._render_lights(affected, self._level.lighting.shadow_resolution,
-                                self._level.boxes + self._level.decorations + boxes)
+                                boxes)
 
     def _render_lights(self, indices, resolution, boxes):
         self._framebuffer.use()
@@ -127,7 +129,8 @@ class LevelLighting:
         self._context.enable_only(moderngl.DEPTH_TEST)
         self._context.depth_func = "<"
         self._framebuffer.depth_mask = True
-        prepared = tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size)) for box in boxes)
+        prepared = self._static_geometry + tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size))
+                                                 for box in boxes)
         for index in indices:
             light = self._level.lighting.lights[index]
             origin = glm.vec3(light.position)
