@@ -58,6 +58,7 @@ def run_session():
         systems=(enemies, session),
         session=session,
         debug=create_debug_settings(),
+        debug_paths=enemies.debug_paths,
         render_options=RenderOptions(settings.FRUSTUM_CULLING, settings.DEPTH_PREPASS,
                                      settings.LOCAL_LIGHTS, settings.LIGHT_GRID_CELL_SIZE,
                                      light_flicker=settings.LIGHT_FLICKER_ENABLED),

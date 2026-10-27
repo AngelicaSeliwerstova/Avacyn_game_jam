@@ -61,6 +61,10 @@ class Enemy(Entity):
     def path_length(self):
         return len(self._path)
 
+    @property
+    def remaining_path(self):
+        return tuple(self._path)
+
     def bind(self, world, level):
         self.body = CharacterBody(
             self.transform.position, world, radius=self.tuning.radius, height=self.tuning.height,

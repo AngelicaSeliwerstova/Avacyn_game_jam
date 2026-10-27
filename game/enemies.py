@@ -2,6 +2,7 @@ import math
 import glm
 
 from config import settings
+from engine.debug.geometry import DebugPath
 from engine.collision.world3d import CollisionWorld3D
 from engine.scene.box import Box
 from engine.scene.object import ObjectState, SceneObject
@@ -37,6 +38,11 @@ class EnemySystem:
         body = self.player.body
         x, y, z = body.position
         return Box((x, y + body.height / 2, z), (body.radius * 2, body.height, body.radius * 2))
+
+    def debug_paths(self) -> tuple[DebugPath, ...]:
+        return tuple(DebugPath(tuple((x, y + 0.08, z) for x, y, z in
+                                     (tuple(enemy.body.position), *enemy.remaining_path)))
+                     for enemy in self.enemies if enemy.remaining_path)
 
     def _clear_of_enemies(self, state):
         if not state.collidable:
@@ -79,7 +85,8 @@ class EnemySystem:
         if nearby:
             enemy = nearby[0]
             distance = math.dist(enemy.transform.position, tuple(position))
-            self.player.enemy_debug_lines = (f"ENEMY: {enemy.state.value} | {distance:.1f} m | PATH: {enemy.path_length}",)
+            route = "FULL" if enemy.path_complete else "PARTIAL"
+            self.player.enemy_debug_lines = (f"ENEMY: {enemy.state.value} | {distance:.1f} m | PATH: {enemy.path_length} {route}",)
             if distance < 2:
                 self.player.enemy_status = "Something is close."
             elif enemy.state is EnemyState.CHASE and distance < 5:

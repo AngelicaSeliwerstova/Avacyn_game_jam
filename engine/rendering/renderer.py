@@ -12,6 +12,8 @@ from engine.rendering.snow import SnowRenderer
 from engine.rendering.texture import Texture2D, TextureSettings
 from engine.rendering.hud import AimOverlay, HudStyle, TextOverlay
 from engine.rendering.dialog import DialogOverlay
+from engine.rendering.debug_lines import DebugLineRenderer
+from engine.debug.geometry import DebugPath
 from engine.rendering.postprocess import PostProcessor, PostProcessSettings
 from engine.rendering.lighting import LevelLighting
 from engine.rendering.dynamic_lighting import DynamicLighting
@@ -56,6 +58,7 @@ class Renderer:
         self._debug_hud = None
         self._aim_hud = None
         self._dialog = None
+        self._debug_lines = None
         self._postprocess = None
         self._lighting = None
         self._dynamic_lighting = None
@@ -132,7 +135,8 @@ class Renderer:
         self._lighting.update(delta_time, enabled=self.options.light_flicker)
 
     def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = "",
-               *, aim_text: str | None = None, dialog: Dialog | None = None):
+               *, aim_text: str | None = None, dialog: Dialog | None = None,
+               debug_paths: tuple[DebugPath, ...] = ()):
         boxes = self._level.object_boxes
         if boxes != self._object_boxes:
             self._lighting.sync_objects(self._level.static_shadow_boxes)
@@ -189,6 +193,12 @@ class Renderer:
             self._postprocess.apply(self._render_target.color)
         target = self.output_target
         if dialog is None:
+            if debug_paths:
+                if self._debug_lines is None:
+                    self._debug_lines = DebugLineRenderer(self.context)
+                target.framebuffer.use()
+                self.context.viewport = (0, 0, *target.size)
+                self._debug_lines.draw(debug_paths, self._projection * view)
             self._hud.draw(hud_text, target.size)
             if aim_text is not None:
                 self._aim_hud.draw(aim_text, target.size)
@@ -274,6 +284,9 @@ class Renderer:
             texture.use(location=0)
 
     def release(self):
+        if self._debug_lines is not None:
+            self._debug_lines.release()
+            self._debug_lines = None
         if self._dialog is not None:
             self._dialog.release()
             self._dialog = None

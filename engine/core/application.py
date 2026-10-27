@@ -1,8 +1,10 @@
 import pygame
 from time import perf_counter
+from collections.abc import Callable
 
 from engine.core.window import Window
 from engine.debug.panel import DebugSettings, DeveloperPanel
+from engine.debug.geometry import DebugPath
 from engine.input.bindings import InputBindings
 from engine.input.keyboard_mouse import KeyboardMouse
 from engine.particles.snow import Snowfall
@@ -45,6 +47,7 @@ class Application:
         dynamic_shadow_resolution: int = 512,
         systems: tuple[SimulationSystem, ...] = (),
         session: Session | None = None,
+        debug_paths: Callable[[], tuple[DebugPath, ...]] | None = None,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -68,6 +71,7 @@ class Application:
         self._dynamic_shadow_resolution = dynamic_shadow_resolution
         self._systems = systems
         self._session = session if session is not None else Session()
+        self._debug_paths = debug_paths
         self._result = "quit"
         self._running = False
 
@@ -132,7 +136,8 @@ class Application:
                 updated = perf_counter() if profiling else 0.0
                 renderer.render(window.size, hud_text=self._controlled_entity.status_text,
                                 debug_text=self._debug.text, aim_text=self._controlled_entity.aim_text,
-                                dialog=self._session.dialog)
+                                dialog=self._session.dialog,
+                                debug_paths=self._debug_paths() if self._debug.enabled and self._debug_paths else ())
                 rendered = perf_counter() if profiling else 0.0
                 window.present()
                 self._debug.update(delta_time, updated - started, rendered - updated,
