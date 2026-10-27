@@ -22,7 +22,7 @@ class _LightView:
 
 
 class DynamicLighting:
-    """До четырёх подвижных спотов с отдельным атласом обновляемых теней."""
+    """До 16 подвижных спотов с отдельным атласом обновляемых теней."""
 
     def __init__(self, context, program, lights: tuple[SpotLight, ...], resolution: int):
         if len(lights) > MAX_DYNAMIC_SPOT_LIGHTS:

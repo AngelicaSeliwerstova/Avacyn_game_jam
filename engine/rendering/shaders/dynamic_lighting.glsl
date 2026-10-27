@@ -1,4 +1,4 @@
-const int MAX_DYNAMIC_LIGHTS = 4;
+const int MAX_DYNAMIC_LIGHTS = 16;
 uniform int dynamic_light_count;
 uniform vec4 dynamic_positions[MAX_DYNAMIC_LIGHTS];
 uniform vec4 dynamic_colors[MAX_DYNAMIC_LIGHTS];

@@ -3,7 +3,7 @@ import math
 
 
 MAX_POINT_LIGHTS = 512
-MAX_DYNAMIC_SPOT_LIGHTS = 4
+MAX_DYNAMIC_SPOT_LIGHTS = 16
 
 
 def validate_rgb(color):
