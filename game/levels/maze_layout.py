@@ -178,7 +178,9 @@ def load_maze_layout(path: Path) -> MazeLayout:
     if basement is not None:
         basement["entry"] = tuple(basement["entry"])
         basement["lamp_color"] = tuple(basement["lamp_color"])
-        basement["flickering_lamps"] = tuple(basement.get("flickering_lamps", ()))
+        flickering = basement.get("flickering_lamps", ())
+        basement["flickering_lamps"] = (tuple(range(basement["lamp_columns"] * basement["lamp_rows"]))
+                                         if flickering == "all" else tuple(flickering))
         basement["flicker"] = LightFlicker(**basement.get("flicker", {}))
         basement["boxes"] = tuple(Box(tuple(box["position"]), tuple(box["size"]), box.get("material"),
                                       interaction=Interaction(**box["interaction"])

@@ -24,7 +24,7 @@
 - `basement.lamp_columns`, `basement.lamp_rows` - число ламп по двум направлениям. Сейчас 15x15.
 - `basement.lamp_margin` - отступ сетки от наружных стен.
 - `basement.lamp_color`, `basement.lamp_intensity`, `basement.lamp_radius` - цвет, яркость и радиус ламп подвала.
-- `basement.flickering_lamps` - номера мерцающих ламп сетки, начиная с нуля; `basement.flicker` - интервал, длительность, минимальная яркость и фаза. Настройка описана в `docs/LIGHTING.md`.
+- `basement.flickering_lamps` - `"all"` для всех ламп сетки или список номеров, начиная с нуля; `basement.flicker` - интервал, длительность, минимальная яркость и фаза. Настройка описана в `docs/LIGHTING.md`.
 - `basement.boxes` - коробки: `position` задаёт центр, `size` - размеры, `material` - материал. X и Z мировые, Y отсчитывается от пола подвала. Сейчас возле входа стоят три коробки общей высотой 2.1.
 - `basement.boxes[].interaction` - необязательный осмотр: `name` - название, `message` - ответ, `action` - подпись (по умолчанию `Inspect`). Наведитесь на коробку с расстояния до 2.5 метра и нажмите E. Подробности в `docs/INTERACTIONS.md`.
 

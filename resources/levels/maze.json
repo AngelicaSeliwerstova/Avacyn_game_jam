@@ -256,8 +256,8 @@
     ],
     "lamp_intensity": 2.8,
     "lamp_radius": 5.0,
-    "flickering_lamps": [39, 151, 217],
-    "flicker": {"interval": 9.0, "duration": 0.8, "minimum": 0.3, "seed": 19},
+    "flickering_lamps": "all",
+    "flicker": {"interval": 0.45, "duration": 0.4, "minimum": 0.12, "seed": 19},
     "boxes": [
       {"position": [-25.0, 0.35, 13.8], "size": [1.5, 0.7, 1.5], "material": "wood",
        "interaction": {"name": "Large wooden crate", "message": "The lid is nailed shut."}},
