@@ -1,3 +1,5 @@
+import math
+
 from engine.navigation.graph import NavigationGraph
 
 
@@ -38,6 +40,25 @@ def build_maze_navigation(layout):
     def stairs(path):
         entrance, bottom, top, exit = path
         connect(entrance, bottom)
+        # Пол вокруг марша тоже доступен: обход идёт по боковым проходам,
+        # даже если прямой путь к центру лестницы закрыт ступенями или оградой.
+        aisle_offset = (layout.stair_width + layout.wing_width) / 4
+        columns = (bottom[0] - aisle_offset, bottom[0], bottom[0] + aisle_offset)
+        rows = max(1, math.ceil(abs(top[2] - bottom[2]) / layout.cell_size))
+        previous_row = None
+        for row in range(rows + 1):
+            z = bottom[2] + (top[2] - bottom[2]) * row / rows
+            row_points = tuple((x, bottom[1], z) for x in columns)
+            for a, b in zip(row_points, row_points[1:]):
+                connect(a, b)
+            if previous_row is not None:
+                for a, b in zip(previous_row, row_points):
+                    connect(a, b)
+            previous_row = row_points
+        # Верхняя площадка шире самого марша.
+        upper = tuple((x, top[1], top[2]) for x in columns)
+        for a, b in zip(upper, upper[1:]):
+            connect(a, b)
         direction = 1 if top[2] > bottom[2] else -1
         run = layout.stair_steps * layout.stair_run
         margin = (abs(top[2] - bottom[2]) - run) / 2
