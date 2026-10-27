@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import math
 
 from engine.collision.aabb import AABB
 from engine.scene.box import Box
@@ -22,8 +23,17 @@ class Level:
     snow_enabled: bool = True
     lighting: Lighting | None = None
     decorations: tuple[Box, ...] = ()
+    base_height: float = 0.0
+    floor_labels: tuple[str, ...] = ()
+    floor_hints: tuple[str, ...] = ()
 
     def __post_init__(self):
+        if not math.isfinite(self.base_height):
+            raise ValueError("Level base height must be finite")
+        if not self.floor_heights or any(not math.isfinite(y) for y in self.floor_heights):
+            raise ValueError("Level floor heights must be finite and nonempty")
+        if any(items and len(items) != len(self.floor_heights) for items in (self.floor_labels, self.floor_hints)):
+            raise ValueError("Floor labels and hints must match floor heights")
         if any(length <= 0 for length in self.floor_size) or self.floor_tile_size <= 0:
             raise ValueError("Floor dimensions and tile size must be positive")
         if len(self.floor_colors) != 2 or any(

@@ -16,6 +16,7 @@ def main():
     collision_world = CollisionWorld3D(
         colliders=(box.collider for box in level.boxes),
         bounds=level.floor_bounds,
+        ground_height=level.base_height,
     )
     player = create_player(level, collision_world)
     snow = None

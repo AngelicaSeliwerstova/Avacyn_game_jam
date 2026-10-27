@@ -46,7 +46,7 @@ class MazeTests(unittest.TestCase):
     def setUpClass(cls):
         cls.layout = load_maze_layout(maze_layout_path())
         cls.level = create_level("maze")
-        cls.world = CollisionWorld3D((box.collider for box in cls.level.boxes), cls.level.floor_bounds)
+        cls.world = CollisionWorld3D((box.collider for box in cls.level.boxes), cls.level.floor_bounds, cls.level.base_height)
 
     def test_all_open_cells_on_both_floors_are_connected(self):
         layout = self.layout
@@ -107,6 +107,8 @@ class MazeTests(unittest.TestCase):
     def test_only_authored_stair_doors_and_exit_open_the_perimeter(self):
         allowed = {node for link in self.layout.stairs for node in self.layout.stair_nodes(link)}
         allowed.add(self.layout.exit)
+        if self.layout.basement is not None:
+            allowed.add(self.layout.basement.entry)
         for floor, rows in enumerate(self.layout.floors):
             for row, cells in enumerate(rows):
                 for column, cell in enumerate(cells):
@@ -139,7 +141,7 @@ class MazeTests(unittest.TestCase):
                 os.chdir(original)
         self.assertEqual(level, self.level)
         self.assertFalse(level.snow_enabled)
-        self.assertEqual(level.floor_heights, (0, 3.6))
+        self.assertEqual(level.floor_heights, (-3.6, 0, 3.6))
         self.assertEqual(level.floor_size, (81, 75))
 
 

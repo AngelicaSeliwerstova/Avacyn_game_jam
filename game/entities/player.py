@@ -37,10 +37,13 @@ class Player(Entity):
         y = self.body.position.y
         heights = self._level.floor_heights
         floor = min(range(len(heights)), key=lambda index: abs(heights[index] - y))
-        title = f"FLOOR {floor + 1} / {len(heights)}"
+        label = self._level.floor_labels[floor] if self._level.floor_labels else str(floor + 1)
+        title = f"FLOOR {label}" if self._level.floor_labels else f"FLOOR {floor + 1} / {len(heights)}"
         if self.body.grounded and abs(heights[floor] - y) > self.body.step_height:
-            title = "STAIRS - FLOOR 1 / 2"
-        hint = "Find stairs. Exit is upstairs." if floor == 0 else "Find the rusted exit frame."
+            title = f"STAIRS - NEAR FLOOR {label}"
+        hint = self._level.floor_hints[floor] if self._level.floor_hints else (
+            "Find stairs. Exit is upstairs." if floor == 0 else "Find the rusted exit frame."
+        )
         return title + "\n" + hint
 
     def update(self, delta_time: float, inputs: InputState) -> None:
@@ -72,7 +75,8 @@ class Player(Entity):
             heights = self._level.floor_heights
             floor = min(range(len(heights)), key=lambda index: abs(heights[index] - y))
             stairs = self.body.grounded and abs(heights[floor] - y) > self.body.step_height
-            area = f"FLOOR: {floor + 1}/{len(heights)}" + (" (STAIRS)" if stairs else "")
+            label = self._level.floor_labels[floor] if self._level.floor_labels else f"{floor + 1}/{len(heights)}"
+            area = f"FLOOR: {label}" + (" (STAIRS)" if stairs else "")
         goal = "-" if self._level is None or self._level.goal_position is None else (
             "FOUND" if self._exit_found else "SEARCHING"
         )

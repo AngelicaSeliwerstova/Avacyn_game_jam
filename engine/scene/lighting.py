@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import math
 
 
-MAX_POINT_LIGHTS = 128
+MAX_POINT_LIGHTS = 512
 
 
 def validate_rgb(color):

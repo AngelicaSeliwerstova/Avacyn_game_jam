@@ -5,7 +5,7 @@ import moderngl
 
 
 class FloorMesh:
-    """Пол на Y=0, собранный в один GPU-буфер. Цвета задаются уровнем."""
+    """Пол на заданной высоте, собранный в один GPU-буфер."""
 
     def __init__(
         self,
@@ -14,6 +14,7 @@ class FloorMesh:
         size: tuple[float, float],
         tile_size: float,
         colors: tuple[tuple[int, int, int], tuple[int, int, int]],
+        height: float = 0.0,
     ):
         width, depth = size
         if width <= 0 or depth <= 0 or tile_size <= 0:
@@ -26,7 +27,7 @@ class FloorMesh:
                 z0 = -depth / 2 + iz * tile_size
                 x1 = min(x0 + tile_size, width / 2)
                 z1 = min(z0 + tile_size, depth / 2)
-                corners = ((x0, 0, z0), (x0, 0, z1), (x1, 0, z1), (x1, 0, z0))
+                corners = ((x0, height, z0), (x0, height, z1), (x1, height, z1), (x1, height, z0))
                 color = normalized_colors[(ix + iz) % 2]
                 for index in (0, 1, 2, 0, 2, 3):
                     vertices.extend((*corners[index], *color, 0.0, 1.0, 0.0))

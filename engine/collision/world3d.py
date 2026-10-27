@@ -9,13 +9,16 @@ from engine.collision.world import CollisionWorld
 
 
 class CollisionWorld3D:
-    """Движение вертикального цилиндра среди блоков, пол на высоте 0."""
+    """Движение вертикального цилиндра среди блоков с заданной высотой нижнего пола."""
 
     EPSILON = 1e-5
 
-    def __init__(self, colliders: Iterable[AABB3D], bounds: AABB | None = None):
+    def __init__(self, colliders: Iterable[AABB3D], bounds: AABB | None = None, ground_height: float = 0.0):
+        if not math.isfinite(ground_height):
+            raise ValueError("Ground height must be finite")
         self.colliders = tuple(colliders)
         self.bounds = bounds
+        self.ground_height = ground_height
 
     def _horizontal_world(self, feet: float, height: float) -> CollisionWorld:
         return CollisionWorld((
@@ -24,16 +27,16 @@ class CollisionWorld3D:
         ), self.bounds)
 
     def is_blocked(self, position: glm.vec3, radius: float, height: float) -> bool:
-        return position.y < -self.EPSILON or self._horizontal_world(
+        return position.y < self.ground_height - self.EPSILON or self._horizontal_world(
             position.y, height,
         ).is_blocked(position, radius)
 
     def support_height(self, position: glm.vec3, radius: float, limit: float) -> float:
-        return max(0.0, max((
+        return max(self.ground_height, max((
             box.top for box in self.colliders
             if box.top <= limit + self.EPSILON
             and box.footprint.intersects_circle(position.x, position.z, radius)
-        ), default=0.0))
+        ), default=self.ground_height))
 
     def move_horizontal(self, position: glm.vec3, displacement: glm.vec3,
                         radius: float, height: float, max_step: float,

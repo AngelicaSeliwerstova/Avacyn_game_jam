@@ -23,7 +23,7 @@ def build_light_grid(level: Level, cell_size: float, max_cells: int) -> LightGri
     if level.lighting is None or len(level.lighting.lights) <= 16:
         return None
     width, depth = level.floor_size
-    points = [(-width / 2, 0, -depth / 2), (width / 2, 0, depth / 2)]
+    points = [(-width / 2, level.base_height, -depth / 2), (width / 2, level.base_height, depth / 2)]
     for box in level.boxes + level.decorations:
         points.extend(tuple(p + sign * size / 2 for p, size in zip(box.position, box.size))
                       for sign in (-1, 1))

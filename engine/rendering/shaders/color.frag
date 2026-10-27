@@ -13,10 +13,10 @@ uniform vec3 emission;
 uniform bool lighting_enabled;
 uniform vec3 ambient_light;
 uniform int light_count;
-uniform vec4 light_position_radius[128];
-uniform vec4 light_color_intensity[128];
+uniform sampler2D light_data;
 uniform sampler2D shadow_atlas;
 uniform vec2 shadow_grid;
+uniform int shadow_light_columns;
 uniform bool use_light_grid;
 uniform isampler2D local_light_grid;
 uniform vec3 light_grid_origin;
@@ -55,7 +55,8 @@ float visibility(int index, vec3 delta, float radius, vec3 normal) {
         distance = a.z;
     }
     uv = uv / max(distance, 0.0001) * 0.5 + 0.5;
-    vec2 tile = vec2((index % 8) * 3 + face % 3, (index / 8) * 2 + face / 3);
+    vec2 tile = vec2((index % shadow_light_columns) * 3 + face % 3,
+                     (index / shadow_light_columns) * 2 + face / 3);
     vec2 face_size = vec2(textureSize(shadow_atlas, 0)) / shadow_grid;
     float plane = dot(normal, delta);
     float visible = 0.0;
@@ -106,8 +107,10 @@ void main() {
         for (int candidate = 0; candidate < count; ++candidate) {
             int i = use_light_grid ? texelFetch(local_light_grid, ivec2(candidate + 1, cell), 0).r : candidate;
             if (i >= light_count) continue;
-            vec3 delta = world_point - light_position_radius[i].xyz;
-            float radius = light_position_radius[i].w;
+            vec4 position_radius = texelFetch(light_data, ivec2(i, 0), 0);
+            vec4 color_intensity = texelFetch(light_data, ivec2(i, 1), 0);
+            vec3 delta = world_point - position_radius.xyz;
+            float radius = position_radius.w;
             float distance_squared = dot(delta, delta);
             if (distance_squared >= radius * radius) continue;
             float distance = sqrt(max(distance_squared, 0.00001));
@@ -115,7 +118,7 @@ void main() {
             if (incidence <= 0.0) continue;
             float falloff = 1.0 - distance_squared / (radius * radius);
             falloff = falloff * falloff / (1.0 + 0.12 * distance_squared);
-            illumination += light_color_intensity[i].rgb * light_color_intensity[i].w
+            illumination += color_intensity.rgb * color_intensity.w
                           * incidence * falloff * visibility(i, delta, radius, normal);
         }
         color *= illumination;

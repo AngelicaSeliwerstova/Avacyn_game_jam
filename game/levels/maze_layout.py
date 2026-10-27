@@ -5,6 +5,7 @@ import math
 from pathlib import Path
 
 from engine.scene.lighting import Lighting, PointLight
+from game.levels.basement import BasementLayout
 
 
 Node = tuple[int, int, int]  # Этаж, строка, столбец.
@@ -40,6 +41,7 @@ class MazeLayout:
     spawn: Node
     exit: Node
     lighting: Lighting | None = None
+    basement: BasementLayout | None = None
 
     def __post_init__(self):
         if len(self.floors) != 2 or len(self.floor_materials) != 2 or len(self.wall_materials) != 2:
@@ -73,6 +75,18 @@ class MazeLayout:
             raise ValueError("Maze spawn and exit must be open")
         if self.exit[0] != 1 or self.exit[1] != 0:
             raise ValueError("Maze exit must lead north from the upper floor")
+        if self.basement is not None:
+            spec = self.basement
+            if spec.entry[0] != 0 or spec.entry[2] != 0 or not self.is_open(spec.entry):
+                raise ValueError("Basement entrance must be an open cell on the west side of floor 1")
+            if not 1 <= spec.lower_row < depth - 1 or abs(spec.lower_row - spec.entry[1]) * self.cell_size <= self.stair_steps * self.stair_run:
+                raise ValueError("Basement stairs need space for both landings")
+            if spec.depth <= self.slab_thickness or 2 * spec.lamp_margin >= min(self.width, self.depth):
+                raise ValueError("Basement lamp grid and ceiling must fit inside the room")
+            low, high = sorted((spec.lower_row, spec.entry[1]))
+            for link in self.stairs:
+                if link.side == "west" and max(low, min(link.lower_row, link.upper_row)) <= min(high, max(link.lower_row, link.upper_row)) + 1:
+                    raise ValueError("Basement stairs overlap another west stair wing")
 
     @property
     def width(self) -> float:
@@ -158,6 +172,11 @@ class MazeLayout:
 def load_maze_layout(path: Path) -> MazeLayout:
     data = json.loads(path.read_text(encoding="utf-8"))
     lighting = data.pop("lighting", None)
+    basement = data.get("basement")
+    if basement is not None:
+        basement["entry"] = tuple(basement["entry"])
+        basement["lamp_color"] = tuple(basement["lamp_color"])
+        data["basement"] = BasementLayout(**basement)
     data["floors"] = tuple(tuple(rows) for rows in data["floors"])
     data["stairs"] = tuple(StairLink(**link) for link in data["stairs"])
     data["spawn"] = tuple(data["spawn"])

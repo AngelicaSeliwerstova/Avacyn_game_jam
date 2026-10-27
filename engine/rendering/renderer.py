@@ -91,7 +91,7 @@ class Renderer:
             self._cube = CubeMesh(self.context, self._program)
             self._floor = FloorMesh(
                 self.context, self._program, level.floor_size, level.floor_tile_size,
-                colors=level.floor_colors,
+                colors=level.floor_colors, height=level.base_height,
             )
             self._lighting = LevelLighting(self.context, self._program, level, self.options.light_cell_size)
             self._render_target = RenderTarget(self.context, render_size)
@@ -119,7 +119,7 @@ class Renderer:
                    or frustum.intersects(item[0].position, item[2])]
         self._current_material = None
         draw_floor = not self.options.frustum_culling or frustum.intersects(
-            (0, 0, 0), (self._level.floor_size[0] / 2, 0, self._level.floor_size[1] / 2),
+            (0, self._level.base_height, 0), (self._level.floor_size[0] / 2, 0, self._level.floor_size[1] / 2),
         )
         if self.options.depth_prepass:
             self._draw_depth(objects, draw_floor)

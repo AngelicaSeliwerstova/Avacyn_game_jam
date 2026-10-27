@@ -63,6 +63,10 @@ def save_plan(layout, level, path):
             pygame.draw.line(image, (240, 177, 68), pixel(bottom[0], door[2]), pixel(door[0], door[2]), 4)
             image.blit(font.render(link.name, False, (255, 238, 185)), (left + 5, top_y + 4))
         if floor == 0:
+            if layout.basement is not None:
+                bx, _, bz = layout.position(layout.basement.entry)
+                pygame.draw.circle(image, (160, 125, 255), pixel(bx, bz), 5)
+                image.blit(font.render("B1 DOWN", False, (190, 165, 255)), pixel(bx - 8, bz + 2))
             x, _, z = layout.position(layout.spawn)
             pygame.draw.circle(image, (70, 160, 255), pixel(x, z), 5)
             image.blit(font.render("START", False, (70, 160, 255)), pixel(x + 1, z))
@@ -83,7 +87,7 @@ def main():
     try:
         layout = load_maze_layout(maze_layout_path())
         level = create_level("maze")
-        world = CollisionWorld3D((box.collider for box in level.boxes), level.floor_bounds)
+        world = CollisionWorld3D((box.collider for box in level.boxes), level.floor_bounds, level.base_height)
         player = create_player(level, world)
         points = layout.walk_points(layout.path(layout.spawn, layout.exit)) + (layout.goal_position,)
         save_plan(layout, level, output / "maze-plan.png")

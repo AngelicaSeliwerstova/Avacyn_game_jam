@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from engine.scene.lighting import Lighting, PointLight
+from engine.scene.lighting import Lighting, PointLight, MAX_POINT_LIGHTS
 from game.levels.maze import create_maze_level, maze_layout_path
 from game.levels.maze_layout import load_maze_layout
 
@@ -16,15 +16,15 @@ class LightingTests(unittest.TestCase):
                        {"color": (1, -1, 0)}, {"radius": float("inf")}):
             with self.subTest(values=values), self.assertRaises(ValueError):
                 replace(light, **values)
-        for values in ({"ambient": (-1, 0, 0)}, {"lights": (light,) * 129}, {"shadow_resolution": 0}):
+        for values in ({"ambient": (-1, 0, 0)}, {"lights": (light,) * (MAX_POINT_LIGHTS + 1)}, {"shadow_resolution": 0}):
             with self.subTest(values=values), self.assertRaises(ValueError):
                 replace(Lighting((0.2, 0.2, 0.2), (light,)), **values)
 
     def test_authored_lamps_have_clear_positions_and_do_not_change_collision_geometry(self):
         layout = load_maze_layout(maze_layout_path())
         level = create_maze_level()
-        self.assertEqual(level.lighting, layout.lighting)
-        self.assertEqual(len(level.boxes), 355)
+        self.assertEqual(level.lighting.lights[:len(layout.lighting.lights)], layout.lighting.lights)
+        self.assertFalse(any(any(box.emission) for box in level.boxes))
         self.assertTrue(any(any(box.emission) for box in level.decorations))
         for light in level.lighting.lights:
             for box in level.boxes:
