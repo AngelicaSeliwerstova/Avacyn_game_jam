@@ -6,9 +6,11 @@ uniform mat4 m_view;
 uniform float point_scale;
 uniform float snow_height;
 out float visibility;
+out float particle_distance;
 
 void main() {
     vec4 view_position = m_view * vec4(in_position, 1.0);
+    particle_distance = length(view_position.xyz);
     gl_Position = m_projection * view_position;
     float depth = max(-view_position.z, 0.001);
     float size = point_scale / depth;

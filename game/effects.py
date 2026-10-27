@@ -1,5 +1,12 @@
 from config import settings
 from engine.rendering.postprocess import PostProcessSettings
+from engine.rendering.fog import FogSettings
+
+
+def create_fog_settings() -> FogSettings | None:
+    if not settings.FOG_ENABLED:
+        return None
+    return FogSettings(settings.FOG_COLOR, settings.FOG_START, settings.FOG_END)
 
 
 def create_postprocess_settings() -> PostProcessSettings | None:

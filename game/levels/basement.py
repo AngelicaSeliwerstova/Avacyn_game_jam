@@ -2,7 +2,7 @@ from dataclasses import dataclass, replace
 import math
 
 from engine.scene.box import Box
-from engine.scene.lighting import PointLight, validate_rgb
+from engine.scene.lighting import LightFlicker, PointLight, validate_rgb
 
 
 @dataclass(frozen=True)
@@ -17,6 +17,8 @@ class BasementLayout:
     lamp_intensity: float
     lamp_radius: float
     boxes: tuple[Box, ...] = ()
+    flickering_lamps: tuple[int, ...] = ()
+    flicker: LightFlicker = LightFlicker()
 
     def __post_init__(self):
         for value in (self.depth, self.lamp_margin, self.lamp_intensity, self.lamp_radius):
@@ -25,6 +27,10 @@ class BasementLayout:
         if any(not isinstance(n, int) or n < 2 for n in (self.lamp_columns, self.lamp_rows)):
             raise ValueError("Basement lamp grid needs at least two rows and columns")
         validate_rgb(self.lamp_color)
+        if (len(set(self.flickering_lamps)) != len(self.flickering_lamps)
+                or any(not isinstance(index, int) or not 0 <= index < self.lamp_columns * self.lamp_rows
+                       for index in self.flickering_lamps)):
+            raise ValueError("Flickering lamp indices must be unique and inside the basement grid")
 
     def stair_points(self, layout):
         upper = layout.position(self.entry)
@@ -40,7 +46,9 @@ class BasementLayout:
             / (self.lamp_columns - 1), y,
             -layout.depth / 2 + self.lamp_margin + row * (layout.depth - 2 * self.lamp_margin)
             / (self.lamp_rows - 1),
-        ), self.lamp_color, self.lamp_intensity, self.lamp_radius)
+        ), self.lamp_color, self.lamp_intensity, self.lamp_radius,
+            flicker=replace(self.flicker, seed=self.flicker.seed + row * self.lamp_columns + column)
+            if row * self.lamp_columns + column in self.flickering_lamps else None)
                      for row in range(self.lamp_rows) for column in range(self.lamp_columns))
 
 

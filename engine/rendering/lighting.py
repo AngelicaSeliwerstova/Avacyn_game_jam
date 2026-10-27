@@ -20,7 +20,7 @@ FACE_VIEWS = (
 
 
 class LevelLighting:
-    """Статические карты теней ламп. Запекаются один раз при загрузке уровня."""
+    """Карты теней запекаются при загрузке; яркость отдельных ламп меняется во времени."""
 
     def __init__(self, context: moderngl.Context, program: moderngl.Program, level: Level, cell_size: float = 4.0):
         self._context = context
@@ -32,6 +32,9 @@ class LevelLighting:
         self._framebuffer = None
         self._program = None
         self._cube = None
+        self._elapsed = 0.0
+        self._animated = ()
+        self._scales = []
         lighting = level.lighting
         program["lighting_enabled"].value = lighting is not None
         program["shadow_atlas"].value = 2
@@ -50,6 +53,10 @@ class LevelLighting:
             if not lighting.lights:
                 positions.extend([0.0] * 4)
                 colors.extend([0.0] * 4)
+            self._colors = colors
+            self._scales = [1.0] * len(lighting.lights)
+            self._animated = tuple((index, light) for index, light in enumerate(lighting.lights)
+                                   if light.flicker is not None)
             self._light_data = context.texture((max(1, len(lighting.lights)), 2), 4,
                                                positions.tobytes() + colors.tobytes(), dtype="f4")
             self._light_data.filter = moderngl.NEAREST, moderngl.NEAREST
@@ -117,6 +124,25 @@ class LevelLighting:
                     self._program["m_model"].write(box.model_matrix)
                     self._cube.render()
         self._context.scissor = None
+
+    def update(self, delta_time: float, enabled: bool = True):
+        if not math.isfinite(delta_time) or delta_time < 0:
+            raise ValueError("Light delta time must be finite and nonnegative")
+        self._elapsed += delta_time
+        changed = False
+        for index, light in self._animated:
+            scale = light.flicker.brightness(self._elapsed) if enabled else 1.0
+            if scale != self._scales[index]:
+                self._scales[index] = scale
+                self._colors[index * 4 + 3] = light.intensity * scale
+                changed = True
+        if changed:
+            # Одна небольшая запись строки яркостей; геометрия, сетка и атлас теней прежние.
+            self._light_data.write(self._colors.tobytes(), viewport=(0, 1, len(self._scales), 1))
+
+    def emission(self, box):
+        scale = self._scales[box.emission_light] if box.emission_light is not None else 1.0
+        return box.emission if scale == 1.0 else tuple(c * scale for c in box.emission)
 
     def bind(self, local_lights=True):
         if self._texture is not None:

@@ -14,6 +14,7 @@ from engine.rendering.hud import AimOverlay, HudStyle, TextOverlay
 from engine.rendering.postprocess import PostProcessor, PostProcessSettings
 from engine.rendering.lighting import LevelLighting
 from engine.rendering.options import RenderOptions
+from engine.rendering.fog import FogSettings, configure_fog
 from engine.rendering.visibility import ViewFrustum, distance_to_box_squared
 from engine.scene.camera import Camera
 from engine.scene.level import Level
@@ -35,6 +36,7 @@ class Renderer:
         postprocess: PostProcessSettings | None = None,
         debug_style: HudStyle | None = None,
         options: RenderOptions | None = None,
+        fog: FogSettings | None = None,
     ):
         major, minor = opengl_version
         self.context = moderngl.create_context(require=major * 100 + minor * 10)
@@ -69,11 +71,14 @@ class Renderer:
         try:
             # Pygame использует 0–255, OpenGL принимает цвет в диапазоне 0–1.
             self._background_color = tuple(channel / 255 for channel in background_color)
+            if fog is not None:
+                self._background_color = fog.color
             shader_dir = Path(__file__).resolve().parent / "shaders"
             self._program = self.context.program(
                 vertex_shader=(shader_dir / "color.vert").read_text(encoding="utf-8"),
                 fragment_shader=(shader_dir / "color.frag").read_text(encoding="utf-8"),
             )
+            configure_fog(self._program, fog)
             self._update_projection(render_size)
             self._program["surface_texture"].value = 0
             self._fallback_texture = self.context.texture((1, 1), 3, b"\xff\xff\xff")
@@ -102,10 +107,14 @@ class Renderer:
             self._debug_hud = TextOverlay(self.context, debug_style or HudStyle(font_size=16))
             self._aim_hud = AimOverlay(self.context, hud_style or HudStyle())
             if snow is not None and snow.settings.count > 0:
-                self._snow = SnowRenderer(self.context, snow, camera, render_size)
+                self._snow = SnowRenderer(self.context, snow, camera, render_size, fog=fog)
         except Exception:
             self.release()
             raise
+
+    def update(self, delta_time: float):
+        """Продвигает время визуальных эффектов отдельно от повторной отрисовки."""
+        self._lighting.update(delta_time, enabled=self.options.light_flicker)
 
     def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = "",
                *, aim_text: str | None = None):
@@ -116,6 +125,7 @@ class Renderer:
         self._update_projection(self._render_target.size)
         view = self._camera.view_matrix
         self._program["m_view"].write(view)
+        self._program["camera_position"].value = tuple(self._camera.position)
         self._lighting.bind(self.options.local_lights)
         frustum = ViewFrustum(self._projection * view)
         objects = [item for item in self._objects if not self.options.frustum_culling
@@ -134,7 +144,7 @@ class Renderer:
             self._draw_floor()
         try:
             for box, model, _ in objects:
-                self._program["emission"].value = box.emission
+                self._program["emission"].value = self._lighting.emission(box)
                 self._use_material(box.material, self._wall_texture,
                                    self._textures.wall_world_size if self._textures else 1.0)
                 self._program["m_model"].write(model)

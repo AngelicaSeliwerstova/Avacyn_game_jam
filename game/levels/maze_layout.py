@@ -4,7 +4,7 @@ import json
 import math
 from pathlib import Path
 
-from engine.scene.lighting import Lighting, PointLight
+from engine.scene.lighting import LightFlicker, Lighting, PointLight
 from engine.scene.box import Box
 from engine.scene.interaction import Interaction
 from game.levels.basement import BasementLayout
@@ -178,6 +178,8 @@ def load_maze_layout(path: Path) -> MazeLayout:
     if basement is not None:
         basement["entry"] = tuple(basement["entry"])
         basement["lamp_color"] = tuple(basement["lamp_color"])
+        basement["flickering_lamps"] = tuple(basement.get("flickering_lamps", ()))
+        basement["flicker"] = LightFlicker(**basement.get("flicker", {}))
         basement["boxes"] = tuple(Box(tuple(box["position"]), tuple(box["size"]), box.get("material"),
                                       interaction=Interaction(**box["interaction"])
                                       if box.get("interaction") is not None else None)
@@ -202,7 +204,9 @@ def load_maze_layout(path: Path) -> MazeLayout:
                 position = (x, y + layout.wall_height - 0.24, z)
             else:
                 position = tuple(lamp["position"])
-            lamps.append(PointLight(position, tuple(style["color"]), style["intensity"], style["radius"]))
+            flicker = lamp.get("flicker", style.get("flicker"))
+            lamps.append(PointLight(position, tuple(style["color"]), style["intensity"], style["radius"],
+                                    flicker=LightFlicker(**flicker) if flicker is not None else None))
         layout = replace(layout, lighting=Lighting(tuple(lighting["ambient"]), tuple(lamps),
                                                   lighting["shadow_resolution"]))
     return layout

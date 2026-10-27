@@ -36,6 +36,10 @@ class Level:
             raise ValueError("Floor labels and hints must match floor heights")
         if any(length <= 0 for length in self.floor_size) or self.floor_tile_size <= 0:
             raise ValueError("Floor dimensions and tile size must be positive")
+        light_count = len(self.lighting.lights) if self.lighting is not None else 0
+        if any(box.emission_light is not None and box.emission_light >= light_count
+               for box in self.boxes + self.decorations):
+            raise ValueError("Emissive panel must reference a light in this level")
         if len(self.floor_colors) != 2 or any(
             len(color) != 3 or any(not 0 <= channel <= 255 for channel in color)
             for color in self.floor_colors

@@ -75,20 +75,22 @@ def create_maze_level() -> Level:
     decorations = []
     lighting = layout.lighting
     if layout.lighting is not None:
-        for light in layout.lighting.lights:
+        for index, light in enumerate(layout.lighting.lights):
             ceiling = roof_y if abs(light.position[0]) > layout.width / 2 else (
                 layout.wall_height + (layout.floor_height if light.position[1] > layout.floor_height else 0)
             )
-            _build_lamp(light, ceiling, decorations)
+            _build_lamp(light, ceiling, decorations, light_index=index)
         if layout.basement is not None:
             lights = layout.basement.lights(layout)
             for index, light in enumerate(lights):
-                _build_lamp(light, -thickness, decorations, rotated=bool(index % 2))
+                _build_lamp(light, -thickness, decorations, rotated=bool(index % 2),
+                            light_index=len(layout.lighting.lights) + index)
             extra = []
             for point in layout.basement.stair_points(layout)[1:3]:
                 px, py, pz = point
                 light = PointLight((px, py + layout.wall_height - 0.24, pz), (1.0, 0.65, 0.35), 2.6, 6.0)
-                _build_lamp(light, layout.wall_height, decorations)
+                _build_lamp(light, layout.wall_height, decorations,
+                            light_index=len(layout.lighting.lights) + len(lights) + len(extra))
                 extra.append(light)
             lighting = Lighting(lighting.ambient, lighting.lights + lights + tuple(extra), lighting.shadow_resolution)
     underground = layout.basement is not None
@@ -109,13 +111,13 @@ def create_maze_level() -> Level:
     )
 
 
-def _build_lamp(light, ceiling, boxes, rotated=False):
+def _build_lamp(light, ceiling, boxes, rotated=False, light_index=None):
     x, y, z = light.position
     casing = (0.52, 0.12, 1.12) if rotated else (1.12, 0.12, 0.52)
     panel = (0.32, 0.04, 0.92) if rotated else (0.92, 0.04, 0.32)
     boxes.append(Box((x, y + 0.17, z), casing, material="rust"))
     boxes.append(Box((x, y + 0.10, z), panel,
-                     emission=tuple(channel * 1.8 for channel in light.color)))
+                     emission=tuple(channel * 1.8 for channel in light.color), emission_light=light_index))
     suspension = ceiling - (y + 0.23)
     if suspension > 0.05:
         boxes.append(Box((x, ceiling - suspension / 2, z), (0.04, suspension, 0.04), material="rust"))

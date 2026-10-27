@@ -8,6 +8,7 @@ class RenderOptions:
     depth_prepass: bool = True
     local_lights: bool = True
     light_cell_size: float = 4.0
+    light_flicker: bool = True
 
     def __post_init__(self):
         if not math.isfinite(self.light_cell_size) or self.light_cell_size <= 0:

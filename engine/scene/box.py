@@ -17,6 +17,7 @@ class Box:
     material: str | None = None
     emission: tuple[float, float, float] = (0.0, 0.0, 0.0)
     interaction: Interaction | None = None
+    emission_light: int | None = None
 
     def __post_init__(self):
         validate_rgb(self.emission)
@@ -24,6 +25,8 @@ class Box:
             raise ValueError("Box dimensions must be positive")
         if self.material is not None and not self.material:
             raise ValueError("Material name must not be empty")
+        if self.emission_light is not None and (not isinstance(self.emission_light, int) or self.emission_light < 0):
+            raise ValueError("Emissive light index must be a nonnegative integer")
 
     @property
     def model_matrix(self) -> glm.mat4:

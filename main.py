@@ -4,7 +4,7 @@ from engine.core.application import Application
 from engine.rendering.options import RenderOptions
 from engine.particles.snow import Snowfall, SnowSettings
 from game.entities.player import create_player
-from game.effects import create_postprocess_settings
+from game.effects import create_fog_settings, create_postprocess_settings
 from game.materials import create_texture_settings
 from game.levels import create_level
 from game.ui import create_debug_settings, create_hud_style
@@ -47,9 +47,11 @@ def main():
         textures=create_texture_settings(),
         hud_style=create_hud_style(),
         postprocess=create_postprocess_settings(),
+        fog=create_fog_settings(),
         debug=create_debug_settings(),
         render_options=RenderOptions(settings.FRUSTUM_CULLING, settings.DEPTH_PREPASS,
-                                     settings.LOCAL_LIGHTS, settings.LIGHT_GRID_CELL_SIZE),
+                                     settings.LOCAL_LIGHTS, settings.LIGHT_GRID_CELL_SIZE,
+                                     light_flicker=settings.LIGHT_FLICKER_ENABLED),
     )
     app.run()
 

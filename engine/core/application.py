@@ -11,6 +11,7 @@ from engine.rendering.hud import HudStyle
 from engine.rendering.texture import TextureSettings
 from engine.rendering.postprocess import PostProcessSettings
 from engine.rendering.options import RenderOptions
+from engine.rendering.fog import FogSettings
 from engine.scene.entity import ControlledEntity
 from engine.scene.level import Level
 
@@ -36,6 +37,7 @@ class Application:
         postprocess: PostProcessSettings | None = None,
         debug: DebugSettings | None = None,
         render_options: RenderOptions | None = None,
+        fog: FogSettings | None = None,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -54,6 +56,7 @@ class Application:
         self._debug_settings = debug or DebugSettings()
         self._debug = DeveloperPanel(self._debug_settings)
         self._render_options = render_options
+        self._fog = fog
         self._running = False
 
     def run(self):
@@ -83,6 +86,7 @@ class Application:
                                      font_path=self._debug_settings.font_path,
                                      antialias=self._debug_settings.antialias),
                 options=self._render_options,
+                fog=self._fog,
             )
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)
@@ -101,6 +105,7 @@ class Application:
                 self._controlled_entity.update(delta_time, inputs)
                 if self._snow is not None:
                     self._snow.update(delta_time)
+                renderer.update(delta_time)
                 updated = perf_counter() if profiling else 0.0
                 renderer.render(window.size, hud_text=self._controlled_entity.status_text,
                                 debug_text=self._debug.text, aim_text=self._controlled_entity.aim_text)

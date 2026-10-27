@@ -6,13 +6,14 @@ import moderngl
 
 from engine.particles.snow import Snowfall
 from engine.scene.camera import Camera
+from engine.rendering.fog import FogSettings, configure_fog
 
 
 class SnowRenderer:
     """Мягкие точечные частицы с перспективой и глубиной общей 3D-сцены."""
 
     def __init__(self, context: moderngl.Context, snow: Snowfall, camera: Camera,
-                 render_size: tuple[int, int]):
+                 render_size: tuple[int, int], fog: FogSettings | None = None):
         self._context = context
         self._snow = snow
         self._render_size = render_size
@@ -26,6 +27,7 @@ class SnowRenderer:
                 vertex_shader=(shaders / "snow.vert").read_text(encoding="utf-8"),
                 fragment_shader=(shaders / "snow.frag").read_text(encoding="utf-8"),
             )
+            configure_fog(self._program, fog)
             self._update_projection(camera)
             self._program["snow_color"].value = tuple(c / 255 for c in snow.settings.color)
             self._program["snow_height"].value = snow.settings.height

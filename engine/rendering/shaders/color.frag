@@ -23,6 +23,11 @@ uniform vec3 light_grid_origin;
 uniform ivec3 light_grid_shape;
 uniform float light_grid_cell_size;
 uniform bool depth_only;
+uniform bool fog_enabled;
+uniform vec3 fog_color;
+uniform float fog_start;
+uniform float fog_end;
+uniform vec3 camera_position;
 
 out vec4 fragment_color;
 
@@ -88,6 +93,11 @@ void main() {
         fragment_color = vec4(0.0);
         return;
     }
+    float fog = fog_enabled ? smoothstep(fog_start, fog_end, length(world_point - camera_position)) : 0.0;
+    if (fog >= 1.0) {
+        fragment_color = vec4(fog_color, 1.0);
+        return;
+    }
     vec3 color = vertex_color;
     if (textured) {
         color = texture(surface_texture, texture_uv / texture_world_size).rgb;
@@ -123,5 +133,5 @@ void main() {
         }
         color *= illumination;
     }
-    fragment_color = vec4(color + emission, 1.0);
+    fragment_color = vec4(mix(color + emission, fog_color, fog), 1.0);
 }
