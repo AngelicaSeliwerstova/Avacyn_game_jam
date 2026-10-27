@@ -20,6 +20,7 @@ class KeyboardMouseTests(unittest.TestCase):
         self.bindings = InputBindings(
             pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d, pygame.K_ESCAPE, 1,
             sprint_keys=(pygame.K_LSHIFT, pygame.K_RSHIFT), jump=pygame.K_SPACE,
+            crouch_keys=(pygame.K_LCTRL, pygame.K_RCTRL),
         )
         self.input = KeyboardMouse(self.bindings)
 
@@ -94,6 +95,26 @@ class KeyboardMouseTests(unittest.TestCase):
         for repeat in (False, True):
             self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE, repeat=repeat))
             self.assertFalse(self.input.read().jump)
+
+    def test_either_control_crouches_while_held_and_focus_loss_disables_it(self):
+        for key in self.bindings.crouch_keys:
+            self.keys[key] = True
+            self.assertTrue(self.input.read().crouch)
+            self.assertTrue(self.input.read().crouch)
+            self.keys[key] = False
+            self.assertFalse(self.input.read().crouch)
+        self.keys[pygame.K_LCTRL] = True
+        self.input.handle_event(pygame.event.Event(pygame.WINDOWFOCUSLOST))
+        self.assertEqual(self.input.read(), InputState())
+
+    def test_crouch_uses_custom_binding(self):
+        bindings = InputBindings(pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d,
+                                 pygame.K_ESCAPE, 1, crouch_keys=(pygame.K_c,))
+        device = KeyboardMouse(bindings)
+        self.keys[pygame.K_LCTRL] = True
+        self.assertFalse(device.read().crouch)
+        self.keys[pygame.K_c] = True
+        self.assertTrue(device.read().crouch)
 
     def test_release_and_focus_loss_clear_jump_and_sprint(self):
         self.keys[pygame.K_LSHIFT] = True

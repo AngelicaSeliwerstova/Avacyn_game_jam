@@ -7,5 +7,6 @@ class MovementState(Enum):
     IDLE = "IDLE"
     WALKING = "WALKING"
     RUNNING = "RUNNING"
+    CROUCHING = "CROUCHING"
     RISING = "RISING"
     FALLING = "FALLING"

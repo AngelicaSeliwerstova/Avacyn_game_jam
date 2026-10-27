@@ -23,11 +23,16 @@ class FirstPersonController:
         body: CharacterBody | None = None,
         eye_height: float = 1.6,
         sprint_speed: float | None = None,
+        crouch_speed: float | None = None,
+        crouch_eye_height: float | None = None,
     ):
         if move_speed < 0 or mouse_sensitivity < 0:
             raise ValueError("Movement speed and mouse sensitivity must be nonnegative")
         if sprint_speed is not None and (not math.isfinite(sprint_speed) or sprint_speed < move_speed):
             raise ValueError("Sprint speed must be finite and at least the walking speed")
+        crouch_speed = move_speed / 2 if crouch_speed is None else crouch_speed
+        if not math.isfinite(crouch_speed) or not 0 <= crouch_speed <= move_speed:
+            raise ValueError("Crouch speed must be finite and between zero and walking speed")
         if not 0 < pitch_limit_degrees < 90:
             raise ValueError("Pitch limit must be between 0 and 90 degrees")
         if max_delta_time <= 0:
@@ -38,6 +43,12 @@ class FirstPersonController:
             raise ValueError("Choose either a character body or planar collisions")
         if body is not None:
             body.eye_position(eye_height)
+            if crouch_eye_height is None:
+                crouch_eye_height = eye_height * body.crouch_height / body.standing_height
+            if (not math.isfinite(crouch_eye_height)
+                    or not 0 < crouch_eye_height < body.crouch_height
+                    or crouch_eye_height > eye_height):
+                raise ValueError("Crouch eye height must fit the crouching body and standing view")
         if collision_world is not None and collision_world.is_blocked(camera.position, player_radius):
             raise ValueError("Player spawn overlaps an obstacle or lies outside the floor")
 
@@ -47,6 +58,8 @@ class FirstPersonController:
         self._camera = camera
         self._move_speed = move_speed
         self._sprint_speed = move_speed if sprint_speed is None else sprint_speed
+        self._crouch_speed = crouch_speed
+        self._crouch_eye_height = crouch_eye_height
         self._sensitivity = math.radians(mouse_sensitivity)
         self._pitch_limit = math.radians(pitch_limit_degrees)
         self._max_delta_time = max_delta_time
@@ -77,6 +90,7 @@ class FirstPersonController:
         mouse_delta: tuple[int, int] = (0, 0),
         sprint: bool = False,
         jump: bool = False,
+        crouch: bool = False,
     ):
         if delta_time < 0:
             raise ValueError("Delta time must be nonnegative")
@@ -98,8 +112,14 @@ class FirstPersonController:
             movement = glm.normalize(movement)
         speed = self._sprint_speed if sprint else self._move_speed
         if self._body is not None:
-            self._body.update(delta_time, movement * speed, jump=jump)
-            self._camera.position = self._body.eye_position(self._eye_height)
+            if crouch or self._body.is_crouching:
+                speed = self._crouch_speed
+            self._body.update(delta_time, movement * speed, jump=jump, crouch=crouch)
+            height_range = self._body.standing_height - self._body.crouch_height
+            stance = ((self._body.height - self._body.crouch_height) / height_range
+                      if height_range > 0 else 1.0)
+            eye_height = self._crouch_eye_height + (self._eye_height - self._crouch_eye_height) * stance
+            self._camera.position = self._body.eye_position(eye_height)
         elif glm.length(movement) > 0:
             displacement = movement * speed * delta_time
             if self._collision_world is None:

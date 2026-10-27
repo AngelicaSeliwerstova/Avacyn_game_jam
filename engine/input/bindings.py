@@ -15,3 +15,4 @@ class InputBindings:
     sprint_keys: tuple[int, ...] = ()
     jump: int | None = None
     toggle_debug: int | None = None
+    crouch_keys: tuple[int, ...] = ()

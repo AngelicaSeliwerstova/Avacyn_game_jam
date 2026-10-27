@@ -51,6 +51,7 @@ class Player(Entity):
         self.controller.update(
             delta_time, inputs.forward, inputs.right, inputs.mouse_delta,
             sprint=inputs.sprint, jump=inputs.jump,
+            crouch=inputs.crouch,
         )
         self._sync_transform()
         if self._level is not None and self._level.goal_position is not None:
@@ -64,6 +65,8 @@ class Player(Entity):
             return MovementState.RISING if self.body.vertical_speed > 0 else MovementState.FALLING
         if self.body.horizontal_speed < 0.01:
             return MovementState.IDLE
+        if self.body.is_crouching:
+            return MovementState.CROUCHING
         return MovementState.RUNNING if self._sprinting else MovementState.WALKING
 
     @property
@@ -85,7 +88,8 @@ class Player(Entity):
             f"CAM XYZ: {cx:+.2f} {cy:+.2f} {cz:+.2f}",
             f"LOOK: Y {self.controller.yaw_degrees:.1f} P {self.controller.pitch_degrees:+.1f}",
             f"MOVE: {self.movement_state.value} | {self.body.horizontal_speed:.2f} m/s",
-            f"GROUND: {'YES' if self.body.grounded else 'NO'} | VY: {self.body.vertical_speed:+.2f}",
+            f"GROUND: {'YES' if self.body.grounded else 'NO'} | VY: {self.body.vertical_speed:+.2f}"
+            f" | {'CROUCH' if self.body.is_crouching else 'STAND'}",
             f"{area} | EXIT: {goal}",
         )
 
@@ -105,6 +109,7 @@ def create_player(level: Level, world: CollisionWorld3D) -> Player:
         step_height=settings.PLAYER_STEP_HEIGHT, gravity=settings.GRAVITY,
         collision_max_step=settings.COLLISION_MAX_STEP, physics_step=settings.PHYSICS_STEP,
         camera_smoothing=settings.STAIR_CAMERA_SMOOTHING, jump_height=settings.JUMP_HEIGHT,
+        crouch_height=settings.PLAYER_CROUCH_HEIGHT, stance_speed=settings.PLAYER_STANCE_SPEED,
     )
     camera = Camera(
         position=level.spawn_position, target=level.spawn_target,
@@ -113,6 +118,7 @@ def create_player(level: Level, world: CollisionWorld3D) -> Player:
     controller = FirstPersonController(
         camera=camera, body=body, eye_height=settings.PLAYER_EYE_HEIGHT,
         move_speed=settings.MOVE_SPEED, sprint_speed=settings.SPRINT_SPEED,
+        crouch_speed=settings.CROUCH_SPEED, crouch_eye_height=settings.PLAYER_CROUCH_EYE_HEIGHT,
         mouse_sensitivity=settings.MOUSE_SENSITIVITY,
         pitch_limit_degrees=settings.PITCH_LIMIT_DEGREES, max_delta_time=settings.MAX_DELTA_TIME,
         player_radius=settings.PLAYER_RADIUS, collision_max_step=settings.COLLISION_MAX_STEP,

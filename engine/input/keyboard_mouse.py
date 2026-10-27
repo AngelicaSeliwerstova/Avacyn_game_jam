@@ -67,6 +67,7 @@ class KeyboardMouse:
             forward=float(forward), right=float(right), mouse_delta=mouse_delta,
             sprint=any(keys[key] for key in self._bindings.sprint_keys),
             jump=self._jump_queued,
+            crouch=any(keys[key] for key in self._bindings.crouch_keys),
         )
         self._jump_queued = False
         return state

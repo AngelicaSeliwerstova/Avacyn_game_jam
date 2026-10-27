@@ -94,6 +94,9 @@ HUD_MARGIN = 8
 # Высота игрока и параметры камеры.
 PLAYER_EYE_HEIGHT = 1.6
 PLAYER_HEIGHT = 1.8
+PLAYER_CROUCH_HEIGHT = 1.0
+PLAYER_CROUCH_EYE_HEIGHT = 0.85
+PLAYER_STANCE_SPEED = 5.0       # Скорость изменения высоты тела при приседе, м/с.
 PLAYER_STEP_HEIGHT = 0.3         # Максимальная высота автоматического подъёма.
 GRAVITY = 18.0
 JUMP_HEIGHT = 0.9              # Высота прыжка над текущей опорой.
@@ -117,6 +120,7 @@ CAMERA_FAR = 100.0        # Дальняя граница видимости.
 # Управление от первого лица.
 MOVE_SPEED = 2.5                  # Мировых единиц в секунду.
 SPRINT_SPEED = 5.0                # При удержании Shift.
+CROUCH_SPEED = 1.25               # При удержании Ctrl; имеет приоритет над бегом.
 MOUSE_SENSITIVITY = 0.12          # Градусов на пиксель движения мыши.
 PITCH_LIMIT_DEGREES = 80.0        # Предел обзора вверх и вниз.
 MAX_DELTA_TIME = 0.1              # Ограничение шага после длительной задержки.

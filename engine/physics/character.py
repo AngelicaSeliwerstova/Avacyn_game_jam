@@ -11,17 +11,25 @@ class CharacterBody:
     def __init__(self, position: tuple[float, float, float], world: CollisionWorld3D,
                  radius: float, height: float, step_height: float, gravity: float,
                  collision_max_step: float, physics_step: float, camera_smoothing: float,
-                 jump_height: float):
+                 jump_height: float, crouch_height: float | None = None,
+                 stance_speed: float = 5.0):
         if any(not math.isfinite(value) or value <= 0 for value in (
             radius, height, gravity, collision_max_step, physics_step, camera_smoothing,
         )) or not 0 <= step_height < height or not math.isfinite(jump_height) or jump_height < 0:
             raise ValueError("Character dimensions and physics parameters must be positive")
+        crouch_height = height if crouch_height is None else crouch_height
+        if (not math.isfinite(crouch_height) or not 0 < crouch_height <= height
+                or not math.isfinite(stance_speed) or stance_speed <= 0):
+            raise ValueError("Crouch height must fit the standing body; stance speed must be positive")
         self._position = glm.vec3(position)
         if world.is_blocked(self._position, radius, height):
             raise ValueError("Player spawn overlaps an obstacle or lies outside the floor")
         self.world = world
         self.radius = radius
         self.height = height
+        self.standing_height = height
+        self.crouch_height = crouch_height
+        self._stance_speed = stance_speed
         self.step_height = step_height
         self.gravity = gravity
         self._jump_speed = math.sqrt(2 * gravity * jump_height)
@@ -40,6 +48,10 @@ class CharacterBody:
     def position(self) -> glm.vec3:
         return glm.vec3(self._position)
 
+    @property
+    def is_crouching(self) -> bool:
+        return self.height < self.standing_height - self.world.EPSILON
+
     def eye_position(self, eye_height: float) -> glm.vec3:
         if not 0 < eye_height < self.height:
             raise ValueError("Eye height must be inside the character body")
@@ -49,7 +61,8 @@ class CharacterBody:
         ))
         return self._position + glm.vec3(0, eye_height + offset, 0)
 
-    def update(self, delta_time: float, velocity: glm.vec3, jump: bool = False):
+    def update(self, delta_time: float, velocity: glm.vec3, jump: bool = False,
+               crouch: bool = False):
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("Character delta time must be finite and nonnegative")
         self._accumulator += delta_time
@@ -58,10 +71,17 @@ class CharacterBody:
             self._jump_pending = True
         # Фиксированный шаг даёт одинаковую физику при 30, 60 и 120 FPS.
         while self._accumulator + 1e-10 >= self._physics_step:
-            self._step(self._physics_step, velocity)
+            self._step(self._physics_step, velocity, crouch)
             self._accumulator = max(0.0, self._accumulator - self._physics_step)
 
-    def _step(self, delta_time: float, velocity: glm.vec3):
+    def _step(self, delta_time: float, velocity: glm.vec3, crouch: bool):
+        target_height = self.crouch_height if crouch else self.standing_height
+        # Отпускание Ctrl под потолком не должно расширять тело внутрь препятствия.
+        if target_height <= self.height or not self.world.is_blocked(
+            self._position, self.radius, target_height,
+        ):
+            change = self._stance_speed * delta_time
+            self.height += max(-change, min(change, target_height - self.height))
         if self._jump_pending:
             self._jump_pending = False
             if self.grounded and self._jump_speed > 0:

@@ -59,11 +59,26 @@ def check_application(render_size, initially_enabled, output):
                 checks["repeat_ignored"] = True
             if frames == 10:
                 keys[pygame.K_w] = True
+                keys[pygame.K_LCTRL] = True
+                keys[pygame.K_LSHIFT] = True
             if frames == 20:
+                player = application._controlled_entity
+                assert abs(player.body.horizontal_speed - settings.CROUCH_SPEED) < 0.001
                 keys[pygame.K_w] = False
+                keys[pygame.K_LSHIFT] = False
             if frames == 30:
                 assert "FPS: " in debug_text and "FPS: ..." not in debug_text
                 assert "FEET XYZ:" in debug_text and "SCENE:" in debug_text
+                player = application._controlled_entity
+                assert abs(player.body.height - settings.PLAYER_CROUCH_HEIGHT) < 0.001
+                assert abs(player.camera.position.y - player.body.position.y
+                           - settings.PLAYER_CROUCH_EYE_HEIGHT) < 0.001
+                assert "CROUCH" in debug_text
+                target = self.output_target
+                save_image(output / f"debug-crouch-{render_size[0]}.png",
+                           target.framebuffer.read(components=3, alignment=1), target.size)
+                keys[pygame.K_LCTRL] = False
+                checks["ctrl_crouch_overrides_sprint"] = True
                 pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_F3))
             if frames == 31:
                 assert not debug_text
@@ -73,6 +88,11 @@ def check_application(render_size, initially_enabled, output):
             if frames == 40:
                 pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
             if frames == 65:
+                player = application._controlled_entity
+                assert not player.body.is_crouching
+                assert abs(player.camera.position.y - player.body.position.y
+                           - settings.PLAYER_EYE_HEIGHT) < 0.001
+                checks["ctrl_release_stands_up"] = True
                 assert "INPUT: CURSOR FREE" in debug_text
                 assert "SIM: RUNNING" in debug_text
                 target = self.output_target
