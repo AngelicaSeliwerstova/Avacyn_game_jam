@@ -4,6 +4,7 @@ from engine.core.application import Application
 from engine.rendering.options import RenderOptions
 from engine.particles.snow import Snowfall, SnowSettings
 from game.entities.player import create_player
+from game.enemies import EnemySystem
 from game.effects import create_fog_settings, create_postprocess_settings
 from game.materials import create_texture_settings
 from game.levels import create_level
@@ -19,6 +20,7 @@ def main():
         objects=level.objects,
     )
     player = create_player(level, collision_world)
+    enemies = EnemySystem(level, player)
     snow = None
     if settings.SNOW_ENABLED and level.snow_enabled:
         snow = Snowfall(
@@ -51,6 +53,7 @@ def main():
         fog=create_fog_settings(),
         dynamic_lights=player.dynamic_lights,
         dynamic_shadow_resolution=settings.DYNAMIC_SHADOW_RESOLUTION,
+        systems=(enemies,),
         debug=create_debug_settings(),
         render_options=RenderOptions(settings.FRUSTUM_CULLING, settings.DEPTH_PREPASS,
                                      settings.LOCAL_LIGHTS, settings.LIGHT_GRID_CELL_SIZE,

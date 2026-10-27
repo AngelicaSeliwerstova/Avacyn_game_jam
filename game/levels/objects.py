@@ -1,26 +1,41 @@
 from dataclasses import replace
 import math
 
+from config import settings
+
 from engine.scene.box import Box
 from engine.scene.interaction import Interaction
 from engine.scene.object import ObjectState, SceneObject
+from game.entities.enemy import Enemy, EnemySettings
 
 
 def build_objects(definitions, layout) -> tuple[SceneObject, ...]:
-    """Игровые заготовки двери и ключа из данных карты, без привязки к координатам."""
+    """Объекты и сущности из карты."""
     objects = []
     for data in definitions:
-        node = tuple(data["node"])
-        if not layout.is_open(node):
-            raise ValueError(f"Object must be in an open maze cell: {node}")
+        if data["type"] == "enemy" and not settings.ENEMIES_ENABLED:
+            continue
+        if "node" in data:
+            node = tuple(data["node"])
+            if not layout.is_open(node):
+                raise ValueError(f"Object must be in an open maze cell: {node}")
+            base_position = layout.position(node)
+        else:
+            base_position = tuple(data["position"])
+            if len(base_position) != 3 or not all(math.isfinite(v) for v in base_position):
+                raise ValueError("Object position needs three finite coordinates")
         offset = data.get("offset", (0, 0, 0))
         if len(offset) != 3 or any(not math.isfinite(v) for v in offset):
             raise ValueError("Object offset needs three finite coordinates")
-        position = tuple(p + o for p, o in zip(layout.position(node), offset))
+        position = tuple(p + o for p, o in zip(base_position, offset))
         if data["type"] == "key":
             objects.extend(_key(data, position))
         elif data["type"] == "door":
             objects.extend(_door(data, position, layout))
+        elif data["type"] == "enemy":
+            enemy = Enemy(data["id"], position, patrol=data.get("patrol", ()),
+                          tuning=EnemySettings(**data.get("settings", {})))
+            objects.append(enemy.scene_object)
         else:
             raise ValueError(f"Unknown map object type: {data['type']}")
     return tuple(objects)

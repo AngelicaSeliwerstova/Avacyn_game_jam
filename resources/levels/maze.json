@@ -70,6 +70,17 @@
       "open_seconds": 0.9,
       "hinge_side": "left",
       "open_angle": -90.0
+    },
+    {
+      "id": "basement_watcher",
+      "type": "enemy",
+      "position": [-21.0, -3.6, 16.5],
+      "patrol": [
+        [-21.0, -3.6, 16.5],
+        [-17.0, -3.6, 16.5],
+        [-17.0, -3.6, 9.5],
+        [-21.0, -3.6, 9.5]
+      ]
     }
   ],
   "cell_size": 3.0,

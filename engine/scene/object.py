@@ -5,6 +5,7 @@ from collections.abc import Callable
 
 from engine.scene.box import Box
 from engine.scene.interaction import Interaction
+from engine.scene.entity import Entity
 
 
 @dataclass(frozen=True)
@@ -22,12 +23,15 @@ class SceneObject:
 
     def __init__(self, name: str, states: dict[str, ObjectState], initial: str = "default",
                  transition_seconds: dict[str, float] | None = None,
-                 rotation_pivot: tuple[float, float, float] | None = None):
+                 rotation_pivot: tuple[float, float, float] | None = None,
+                 entity: Entity | None = None, static_shadows: bool = True):
         if not name.strip() or not states or any(not key.strip() for key in states):
             raise ValueError("Scene object and state names must not be empty")
         if initial not in states:
             raise ValueError(f"Unknown initial state: {initial!r}")
         self.name = name
+        self.entity = entity
+        self.static_shadows = static_shadows
         if rotation_pivot is not None and (len(rotation_pivot) != 3 or not all(math.isfinite(v) for v in rotation_pivot)):
             raise ValueError("Rotation pivot needs three finite coordinates")
         self.rotation_pivot = rotation_pivot
@@ -55,6 +59,12 @@ class SceneObject:
             self._transition = None
             self._current_state = target
         self._state_name = name
+
+    def set_geometry(self, boxes: tuple[Box, ...]):
+        """Меняет позу подвижной сущности без создания нового именованного состояния."""
+        if self._transition is not None:
+            raise ValueError("Cannot replace geometry during a state transition")
+        self._current_state = replace(self._current_state, boxes=boxes)
 
     def update(self, delta_time: float):
         if not math.isfinite(delta_time) or delta_time < 0:

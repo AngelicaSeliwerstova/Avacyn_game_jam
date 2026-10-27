@@ -131,7 +131,7 @@ class Renderer:
                *, aim_text: str | None = None):
         boxes = self._level.object_boxes
         if boxes != self._object_boxes:
-            self._lighting.sync_objects(boxes)
+            self._lighting.sync_objects(self._level.static_shadow_boxes)
             self._objects = self._static_objects + self._prepare_objects(boxes)
             self._object_boxes = boxes
         self._dynamic_lighting.render_shadows(self._objects)

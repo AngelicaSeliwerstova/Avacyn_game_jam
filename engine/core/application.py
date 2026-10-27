@@ -12,7 +12,7 @@ from engine.rendering.texture import TextureSettings
 from engine.rendering.postprocess import PostProcessSettings
 from engine.rendering.options import RenderOptions
 from engine.rendering.fog import FogSettings
-from engine.scene.entity import ControlledEntity
+from engine.scene.entity import ControlledEntity, SimulationSystem
 from engine.scene.level import Level
 from engine.scene.lighting import SpotLight
 
@@ -41,6 +41,7 @@ class Application:
         fog: FogSettings | None = None,
         dynamic_lights: tuple[SpotLight, ...] = (),
         dynamic_shadow_resolution: int = 512,
+        systems: tuple[SimulationSystem, ...] = (),
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -62,6 +63,7 @@ class Application:
         self._fog = fog
         self._dynamic_lights = dynamic_lights
         self._dynamic_shadow_resolution = dynamic_shadow_resolution
+        self._systems = systems
         self._running = False
 
     def run(self):
@@ -112,6 +114,8 @@ class Application:
                 for obj in self._level.objects:
                     obj.update(delta_time)
                 self._controlled_entity.update(delta_time, inputs)
+                for system in self._systems:
+                    system.update(delta_time)
                 if self._snow is not None:
                     self._snow.update(delta_time)
                 renderer.update(delta_time)

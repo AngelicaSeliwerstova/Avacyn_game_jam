@@ -37,7 +37,7 @@ class LevelLighting:
         self._animated = ()
         self._scales = []
         self._level = level
-        self._object_boxes = level.object_boxes
+        self._object_boxes = level.static_shadow_boxes
         self._static_geometry = tuple((box, box.model_matrix.to_bytes(), box.bounds_half_size)
                                       for box in level.boxes + level.decorations)
         lighting = level.lighting

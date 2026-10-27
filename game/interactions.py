@@ -15,6 +15,9 @@ class InteractionController:
         if any(not math.isfinite(value) or value <= 0 for value in (reach, message_seconds)):
             raise ValueError("Interaction reach and message duration must be positive")
         self._static_boxes = boxes
+        self._static_colliders = tuple(box.collider for box in boxes)
+        self._static_targets = tuple(box for box in boxes if box.interaction is not None)
+        self._static_target_colliders = tuple(box.collider for box in self._static_targets)
         self._objects = objects
         self._states = None
         self.inventory = inventory if inventory is not None else Inventory()
@@ -48,17 +51,16 @@ class InteractionController:
         states = tuple(obj.current_state for obj in self._objects)
         if states == self._states:
             return
-        entries = [(box, box) for box in self._static_boxes]
-        entries.extend((box, obj) for obj in self._objects for box in obj.boxes)
-        self._owners = tuple(owner for _, owner in entries)
-        self._colliders = tuple(box.collider for box, _ in entries)
-        targets = [(box, box) for box in self._static_boxes if box.interaction is not None]
+        entries = [(box, obj) for obj in self._objects for box in obj.boxes]
+        self._owners = self._static_boxes + tuple(owner for _, owner in entries)
+        self._colliders = self._static_colliders + tuple(box.collider for box, _ in entries)
+        targets = []
         for obj in self._objects:
             if obj.interaction is not None:
                 boxes = (obj.current_state.selection_box,) if obj.current_state.selection_box is not None else obj.boxes
                 targets.extend((box, obj) for box in boxes)
-        self._targets = tuple(owner for _, owner in targets)
-        self._target_colliders = tuple(box.collider for box, _ in targets)
+        self._targets = self._static_targets + tuple(owner for _, owner in targets)
+        self._target_colliders = self._static_target_colliders + tuple(box.collider for box, _ in targets)
         self._states = states
 
     def _activate(self, target: Box | SceneObject) -> str:

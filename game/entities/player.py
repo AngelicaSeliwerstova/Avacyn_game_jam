@@ -34,6 +34,8 @@ class Player(Entity):
         self._sprinting = False
         self.flashlight = Flashlight(camera)
         self.inventory = Inventory()
+        self.enemy_status = ""
+        self.enemy_debug_lines: tuple[str, ...] = ()
         self._interactions = InteractionController(
             level.boxes + level.decorations if level is not None else (),
             settings.INTERACTION_REACH, settings.INTERACTION_MESSAGE_SECONDS,
@@ -71,6 +73,8 @@ class Player(Entity):
         text = self._location_text()
         if self.inventory.key_names:
             text += ("\n" if text else "") + "KEYS: " + ", ".join(self.inventory.key_names)
+        if self.enemy_status:
+            text += ("\n" if text else "") + self.enemy_status
         return text
 
     def _location_text(self) -> str:
@@ -139,6 +143,7 @@ class Player(Entity):
             f"GROUND: {'YES' if self.body.grounded else 'NO'} | VY: {self.body.vertical_speed:+.2f}"
             f" | {'CROUCH' if self.body.is_crouching else 'STAND'}",
             f"{area} | EXIT: {goal}",
+            *self.enemy_debug_lines,
         )
 
     def _sync_transform(self):

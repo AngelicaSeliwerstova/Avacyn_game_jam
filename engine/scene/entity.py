@@ -31,3 +31,9 @@ class ControlledEntity(Protocol):
     def debug_lines(self) -> tuple[str, ...]: ...
 
     def update(self, delta_time: float, inputs: InputState) -> None: ...
+
+
+class SimulationSystem(Protocol):
+    """Обновляемая система сцены без привязки движка к правилам игры."""
+
+    def update(self, delta_time: float) -> None: ...

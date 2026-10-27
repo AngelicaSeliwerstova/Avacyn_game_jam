@@ -55,6 +55,10 @@ class Level:
         return tuple(box for obj in self.objects for box in obj.boxes)
 
     @property
+    def static_shadow_boxes(self) -> tuple[Box, ...]:
+        return tuple(box for obj in self.objects if obj.static_shadows for box in obj.boxes)
+
+    @property
     def all_object_boxes(self) -> tuple[Box, ...]:
         """Все состояния нужны для проверки материалов и построения сетки света."""
         return tuple(box for obj in self.objects for state in obj.states.values() for box in state.boxes)
