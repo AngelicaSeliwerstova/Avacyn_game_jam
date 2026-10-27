@@ -75,18 +75,20 @@ class CharacterBody:
             self._accumulator = max(0.0, self._accumulator - self._physics_step)
 
     def _step(self, delta_time: float, velocity: glm.vec3, crouch: bool):
-        target_height = self.crouch_height if crouch else self.standing_height
-        # Отпускание Ctrl под потолком не должно расширять тело внутрь препятствия.
-        if target_height <= self.height or not self.world.is_blocked(
-            self._position, self.radius, target_height,
-        ):
-            change = self._stance_speed * delta_time
-            self.height += max(-change, min(change, target_height - self.height))
         if self._jump_pending:
             self._jump_pending = False
             if self.grounded and self._jump_speed > 0:
                 self.vertical_speed = self._jump_speed
                 self.grounded = False
+        # В воздухе сохраняем высоту тела при отрыве от опоры, включая переходную позу.
+        if self.grounded:
+            target_height = self.crouch_height if crouch else self.standing_height
+            # Отпускание Ctrl под потолком не должно расширять тело внутрь препятствия.
+            if target_height <= self.height or not self.world.is_blocked(
+                self._position, self.radius, target_height,
+            ):
+                change = self._stance_speed * delta_time
+                self.height += max(-change, min(change, target_height - self.height))
         old_y = self._position.y
         old_x, old_z = self._position.x, self._position.z
         self._position = self.world.move_horizontal(

@@ -112,7 +112,7 @@ class FirstPersonController:
             movement = glm.normalize(movement)
         speed = self._sprint_speed if sprint else self._move_speed
         if self._body is not None:
-            if crouch or self._body.is_crouching:
+            if self._body.is_crouching or (crouch and self._body.grounded and not jump):
                 speed = self._crouch_speed
             self._body.update(delta_time, movement * speed, jump=jump, crouch=crouch)
             height_range = self._body.standing_height - self._body.crouch_height

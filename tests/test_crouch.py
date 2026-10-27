@@ -108,6 +108,62 @@ class CrouchTests(unittest.TestCase):
                 self.assertAlmostEqual(body.position.y, height, places=5)
                 self.assertTrue(body.grounded)
 
+    def test_airborne_control_press_does_not_change_stance_view_or_speed(self):
+        for fps in (30, 60, 120):
+            for simultaneous in (False, True):
+                body, camera, controller = make_character(CollisionWorld3D(()))
+                reference, _, reference_controller = make_character(CollisionWorld3D(()))
+                airborne_frames = 0
+                for frame in range(fps):
+                    # Нажимаем либо вместе с прыжком, либо уже в полёте; отпускаем до посадки.
+                    crouch = (simultaneous or frame >= fps // 10) and frame < fps // 4
+                    controller.update(1 / fps, forward_axis=1, sprint=True,
+                                      jump=frame == 0, crouch=crouch)
+                    reference_controller.update(1 / fps, forward_axis=1, sprint=True,
+                                                jump=frame == 0)
+                    self.assertAlmostEqual(body.height, 1.8)
+                    self.assertAlmostEqual(camera.position.y - body.position.y, 1.6, places=5)
+                    self.assertLess(glm.length(body.position - reference.position), 1e-5)
+                    airborne_frames += not body.grounded
+                self.assertGreater(airborne_frames, fps // 2)
+                self.assertTrue(body.grounded)
+
+    def test_release_in_air_preserves_crouch_until_landing(self):
+        for fps in (30, 60, 120):
+            for transition in (False, True):
+                body, camera, controller = make_character(CollisionWorld3D(()))
+                for _ in range(1 if transition else fps):
+                    controller.update(1 / fps, crouch=True)
+                takeoff_height = body.height
+                takeoff_eye_height = camera.position.y - body.position.y
+                controller.update(1 / fps, jump=True)  # Ctrl отпущен вместе с прыжком.
+                frames = 0
+                while not body.grounded:
+                    self.assertAlmostEqual(body.height, takeoff_height)
+                    self.assertAlmostEqual(camera.position.y - body.position.y, takeoff_eye_height, places=5)
+                    controller.update(1 / fps)
+                    frames += 1
+                    self.assertLess(frames, fps * 2)
+                for _ in range(fps):
+                    controller.update(1 / fps)
+                self.assertFalse(body.is_crouching)
+                self.assertAlmostEqual(camera.position.y - body.position.y, 1.6, places=5)
+
+    def test_control_held_during_fall_starts_crouch_only_after_landing(self):
+        for fps in (30, 60, 120):
+            body, camera, controller = make_character(CollisionWorld3D(()), (0, 3, 0))
+            frames = 0
+            while not body.grounded:
+                self.assertAlmostEqual(body.height, 1.8)
+                self.assertAlmostEqual(camera.position.y - body.position.y, 1.6, places=5)
+                controller.update(1 / fps, crouch=True)
+                frames += 1
+                self.assertLess(frames, fps * 2)
+            for _ in range(fps):
+                controller.update(1 / fps, crouch=True)
+            self.assertAlmostEqual(body.height, 1)
+            self.assertAlmostEqual(camera.position.y, 0.85, places=5)
+
     def test_player_wires_settings_and_reports_actual_stance_even_when_idle(self):
         level = Level((10, 10), 1, (), (0, 1.6, 0), (0, 1.6, -1), ((80, 80, 80),) * 2)
         player = create_player(level, CollisionWorld3D(()))
