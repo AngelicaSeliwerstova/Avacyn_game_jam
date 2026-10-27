@@ -13,15 +13,14 @@ class GameSession(Session):
             self._update_hint()
 
     @staticmethod
-    def _buttons(restart_label):
-        return (DialogButton(restart_label, "restart", ("return", "keypad enter", "r")),
-                DialogButton("Quit [Esc]", "quit", ("escape",)))
+    def _buttons():
+        return (DialogButton("Заново   Enter", "restart", ("return", "keypad enter", "r")),
+                DialogButton("Выйти   Esc", "quit", ("escape",)))
 
     def lose(self):
         if self.dialog is None:
             self.dialog = Dialog(
-                "YOU LOST", "The snail caught you.",
-                self._buttons("Try again [Enter]"),
+                "Ты проиграл", "", self._buttons(),
             )
 
     def update(self, delta_time):
@@ -29,8 +28,7 @@ class GameSession(Session):
             return
         for goal in self.goals:
             if goal.reached(self.player.body.position, self.player.inventory):
-                self.dialog = Dialog("YOU ESCAPED", "You reached the balcony. You survived.",
-                                     self._buttons("Play again [Enter]"))
+                self.dialog = Dialog("Ты выбрался", "", self._buttons())
                 return
         self._update_hint()
 

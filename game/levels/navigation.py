@@ -29,6 +29,12 @@ def build_maze_navigation(layout):
                     if layout.is_open(other):
                         connect(layout.position(here), layout.position(other))
 
+    for passage in layout.crawl_passages:
+        a, b = passage.endpoints
+        center = layout.position(passage.node)
+        connect(layout.position(a), center)
+        connect(center, layout.position(b))
+
     def stairs(path):
         entrance, bottom, top, exit = path
         connect(entrance, bottom)

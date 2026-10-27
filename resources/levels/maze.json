@@ -47,6 +47,14 @@
       "#####################"
     ]
   ],
+  "crawl_passages": [
+    {"node": [0, 11, 10], "axis": "x"},
+    {"node": [0, 8, 4], "axis": "z"},
+    {"node": [0, 13, 2], "axis": "x"},
+    {"node": [1, 12, 13], "axis": "z"},
+    {"node": [1, 4, 3], "axis": "z"},
+    {"node": [1, 10, 18], "axis": "x"}
+  ],
   "objects": [
     {
       "id": "basement_key",

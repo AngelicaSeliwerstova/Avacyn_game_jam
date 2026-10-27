@@ -25,6 +25,26 @@ class StairLink:
 
 
 @dataclass(frozen=True)
+class CrawlPassage:
+    node: Node
+    axis: str
+    width: float = 1.2
+    clearance: float = 1.12
+
+    def __post_init__(self):
+        if (len(self.node) != 3 or any(not isinstance(n, int) for n in self.node)
+                or self.axis not in ("x", "z")
+                or any(not math.isfinite(v) or v <= 0 for v in (self.width, self.clearance))):
+            raise ValueError("Crawl passage needs an integer grid node, x/z axis and positive dimensions")
+
+    @property
+    def endpoints(self):
+        floor, row, column = self.node
+        dr, dc = (0, 1) if self.axis == "x" else (1, 0)
+        return (floor, row - dr, column - dc), (floor, row + dr, column + dc)
+
+
+@dataclass(frozen=True)
 class MazeLayout:
     floors: tuple[tuple[str, ...], ...]
     cell_size: float
@@ -48,6 +68,7 @@ class MazeLayout:
     basement: BasementLayout | None = None
     objects: tuple[SceneObject, ...] = ()
     lamp_power_pattern: tuple[bool, ...] = (True,)
+    crawl_passages: tuple[CrawlPassage, ...] = ()
 
     def __post_init__(self):
         if not self.lamp_power_pattern or any(not isinstance(value, bool) for value in self.lamp_power_pattern):
@@ -62,6 +83,15 @@ class MazeLayout:
             for floor in self.floors
         ):
             raise ValueError("Maze floors must be equally sized rectangular grids of # and .")
+        if len({passage.node for passage in self.crawl_passages}) != len(self.crawl_passages):
+            raise ValueError("Crawl passages must use different cells")
+        for passage in self.crawl_passages:
+            floor, row, column = passage.node
+            if (not 0 <= floor < len(self.floors) or not 0 < row < depth - 1 or not 0 < column < width - 1
+                    or self.floors[floor][row][column] != "#"
+                    or not all(self.is_open(node) for node in passage.endpoints)
+                    or passage.width >= self.cell_size or passage.clearance >= self.wall_height):
+                raise ValueError("Crawl passage must fit a wall between two open cells inside the maze")
         values = (self.cell_size, self.floor_height, self.wall_height, self.slab_thickness,
                   self.wing_width, self.wall_thickness, self.stair_run, self.stair_width,
                   self.rail_height, self.rail_thickness, self.balcony_depth)
@@ -198,6 +228,8 @@ def load_maze_layout(path: Path) -> MazeLayout:
         data["basement"] = BasementLayout(**basement)
     data["floors"] = tuple(tuple(rows) for rows in data["floors"])
     data["stairs"] = tuple(StairLink(**link) for link in data["stairs"])
+    data["crawl_passages"] = tuple(CrawlPassage(**{**passage, "node": tuple(passage["node"])})
+                                    for passage in data.get("crawl_passages", ()))
     data["spawn"] = tuple(data["spawn"])
     data["exit"] = tuple(data["exit"])
     data["floor_materials"] = tuple(data["floor_materials"])

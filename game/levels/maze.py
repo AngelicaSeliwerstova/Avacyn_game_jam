@@ -6,6 +6,7 @@ from engine.scene.box import Box
 from engine.scene.level import Level
 from engine.scene.lighting import Lighting, PointLight
 from game.levels.basement import build_basement_room
+from game.levels.crawl import build_crawl_passage
 from game.levels.navigation import build_maze_navigation
 from game.levels.maze_layout import MazeLayout, StairLink, load_maze_layout
 
@@ -20,6 +21,7 @@ def create_maze_level() -> Level:
     cell = layout.cell_size
     thickness = layout.slab_thickness
     roof_y = layout.floor_height + layout.wall_height
+    passages = {passage.node: passage for passage in layout.crawl_passages}
 
     for floor, rows in enumerate(layout.floors):
         base = floor * layout.floor_height
@@ -30,15 +32,20 @@ def create_maze_level() -> Level:
                 if cells[start] != "#":
                     start += 1
                     continue
+                material = materials[min(len(materials) - 1, row * len(materials) // len(rows))]
+                if (floor, row, start) in passages:
+                    build_crawl_passage(layout, passages[floor, row, start], boxes, material)
+                    start += 1
+                    continue
                 end = start + 1
-                while end < len(cells) and cells[end] == "#":
+                while end < len(cells) and cells[end] == "#" and (floor, row, end) not in passages:
                     end += 1
                 # Соседние стеновые клетки объединяются в один блок.
                 boxes.append(Box(
                     ((start + end) * cell / 2 - layout.width / 2,
                      base + layout.wall_height / 2, (row + 0.5) * cell - layout.depth / 2),
                     ((end - start) * cell, layout.wall_height, cell),
-                    material=materials[min(len(materials) - 1, row * len(materials) // len(rows))],
+                    material=material,
                 ))
                 start = end
 

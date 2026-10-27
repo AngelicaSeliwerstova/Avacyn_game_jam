@@ -194,7 +194,7 @@ class Renderer:
                 self._aim_hud.draw(aim_text, target.size)
             self._debug_hud.draw(debug_text, target.size, anchor="bottom_right")
         else:
-            self._dialog.draw(dialog, target.size)
+            self._dialog.draw(dialog, target.size, window_size)
         self._presenter.present(target.color, self.context.screen, window_size)
 
     @property
