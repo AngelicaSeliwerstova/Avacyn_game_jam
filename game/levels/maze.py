@@ -5,6 +5,7 @@ from engine.scene.box import Box
 from engine.scene.level import Level
 from engine.scene.lighting import Lighting, PointLight
 from game.levels.basement import build_basement_room
+from game.levels.navigation import build_maze_navigation
 from game.levels.maze_layout import MazeLayout, StairLink, load_maze_layout
 
 
@@ -105,6 +106,7 @@ def create_maze_level() -> Level:
         lighting=lighting,
         decorations=tuple(decorations),
         objects=layout.objects,
+        navigation=build_maze_navigation(layout),
         base_height=-layout.basement.depth if underground else 0.0,
         floor_labels=("B1", "1", "2") if underground else (),
         floor_hints=("Lamp hall. Stairs lead back up.", "B1 door left of spawn. Find its key nearby.",

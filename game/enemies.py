@@ -1,4 +1,5 @@
 import math
+import glm
 
 from config import settings
 from engine.collision.world3d import CollisionWorld3D
@@ -51,8 +52,12 @@ class EnemySystem:
         dt = min(delta_time, settings.MAX_DELTA_TIME)
         self._player_obstacle.set_geometry((self._player_box(),))
         position = self.player.body.position
+        target = position
+        if not self.player.body.grounded:
+            target = glm.vec3(position)
+            target.y = self.player.body.world.support_height(position, self.player.body.radius, position.y)
         for enemy in self.enemies:
-            enemy.update(dt, position, self.player.camera.position)
+            enemy.update(dt, target)
         self._hud_timer -= dt
         if self._hud_timer > 0:
             return
@@ -63,8 +68,8 @@ class EnemySystem:
         if nearby:
             enemy = nearby[0]
             distance = math.dist(enemy.transform.position, tuple(position))
-            self.player.enemy_debug_lines = (f"ENEMY: {enemy.state.value} | {distance:.1f} m",)
-            if enemy.state is EnemyState.CHASE and distance < 5:
-                self.player.enemy_status = "Something is following you."
-            elif distance < 2:
+            self.player.enemy_debug_lines = (f"ENEMY: {enemy.state.value} | {distance:.1f} m | PATH: {enemy.path_length}",)
+            if distance < 2:
                 self.player.enemy_status = "Something is close."
+            elif enemy.state is EnemyState.CHASE and distance < 5:
+                self.player.enemy_status = "Something is following you."

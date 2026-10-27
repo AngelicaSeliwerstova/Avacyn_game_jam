@@ -145,23 +145,20 @@ CAMERA_NEAR = 0.1         # Ближняя граница видимости.
 CAMERA_FAR = 100.0        # Дальняя граница видимости.
 
 # Управление от первого лица.
-MOVE_SPEED = 2.5                  # Мировых единиц в секунду.
-SPRINT_SPEED = 5.0                # При удержании Shift.
-CROUCH_SPEED = 1.25               # При удержании Ctrl; имеет приоритет над бегом.
+MOVE_SPEED = 3.5                  # Мировых единиц в секунду.
+SPRINT_SPEED = 6.5                # При удержании Shift.
+CROUCH_SPEED = 1.7                # При удержании Ctrl; имеет приоритет над бегом.
 INTERACTION_REACH = 2.5           # Расстояние от камеры до поверхности объекта, м.
 INTERACTION_MESSAGE_SECONDS = 3.0
 
-# Первый враг: значения можно переопределить у объекта enemy в карте.
+# Медленная улитка-преследователь. Значения можно переопределить в карте.
 ENEMIES_ENABLED = True
-ENEMY_PATROL_SPEED = 1.0
-ENEMY_CHASE_SPEED = 1.9
-ENEMY_SIGHT_RANGE = 10.0
-ENEMY_VIEW_ANGLE = 120.0
-ENEMY_MEMORY_SECONDS = 3.0
-ENEMY_VISION_INTERVAL = 0.2
-ENEMY_STOP_DISTANCE = 1.0
-ENEMY_RADIUS = 0.4
-ENEMY_HEIGHT = 1.75
+ENEMY_SPEED = 0.65
+ENEMY_REPATH_INTERVAL = 0.75
+ENEMY_STOP_DISTANCE = 0.7
+ENEMY_RADIUS = 0.32
+ENEMY_HEIGHT = 0.45
+ENEMY_STEP_HEIGHT = 0.26
 
 MOUSE_SENSITIVITY = 0.12          # Градусов на пиксель движения мыши.
 PITCH_LIMIT_DEGREES = 80.0        # Предел обзора вверх и вниз.

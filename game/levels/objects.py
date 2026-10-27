@@ -33,7 +33,7 @@ def build_objects(definitions, layout) -> tuple[SceneObject, ...]:
         elif data["type"] == "door":
             objects.extend(_door(data, position, layout))
         elif data["type"] == "enemy":
-            enemy = Enemy(data["id"], position, patrol=data.get("patrol", ()),
+            enemy = Enemy(data["id"], position,
                           tuning=EnemySettings(**data.get("settings", {})))
             objects.append(enemy.scene_object)
         else:

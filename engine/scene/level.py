@@ -5,6 +5,7 @@ from engine.collision.aabb import AABB
 from engine.scene.box import Box
 from engine.scene.lighting import Lighting
 from engine.scene.object import SceneObject
+from engine.navigation.graph import NavigationGraph
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ class Level:
     floor_labels: tuple[str, ...] = ()
     floor_hints: tuple[str, ...] = ()
     objects: tuple[SceneObject, ...] = ()
+    navigation: NavigationGraph | None = None
 
     def __post_init__(self):
         if len({obj.name for obj in self.objects}) != len(self.objects):
