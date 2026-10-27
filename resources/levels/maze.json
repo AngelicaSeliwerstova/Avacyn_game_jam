@@ -72,6 +72,59 @@
       "open_angle": -90.0
     },
     {
+      "id": "upper_floor_key",
+      "type": "key",
+      "name": "Upper-floor key",
+      "key_id": "upper_floor",
+      "node": [0, 5, 5],
+      "offset": [0.75, 0.0, 0.75]
+    },
+    {
+      "id": "west_stair_door",
+      "type": "door",
+      "name": "West staircase - Upper-floor key",
+      "key_id": "upper_floor",
+      "node": [0, 7, 0],
+      "offset": [-1.5, 0.0, 0.0],
+      "axis": "z",
+      "open_angle": -90.0
+    },
+    {
+      "id": "east_stair_door",
+      "type": "door",
+      "name": "East staircase - Upper-floor key",
+      "key_id": "upper_floor",
+      "node": [0, 13, 20],
+      "offset": [1.5, 0.0, 0.0],
+      "axis": "z",
+      "open_angle": 90.0
+    },
+    {
+      "id": "balcony_key",
+      "type": "key",
+      "name": "Balcony key",
+      "key_id": "balcony",
+      "node": [1, 15, 5],
+      "offset": [0.75, 0.0, 0.75]
+    },
+    {
+      "id": "balcony_door",
+      "type": "door",
+      "name": "Balcony door - Balcony key",
+      "key_id": "balcony",
+      "node": [1, 0, 19],
+      "offset": [0.0, 0.0, -1.5],
+      "axis": "x"
+    },
+    {
+      "id": "balcony_escape",
+      "type": "exit",
+      "node": [1, 0, 19],
+      "offset": [0.0, 0.0, -4.5],
+      "radius": 1.0,
+      "required_keys": ["upper_floor", "balcony"]
+    },
+    {
       "id": "basement_snail",
       "type": "enemy",
       "position": [-21.0, -3.6, 16.5]
@@ -128,6 +181,7 @@
     19
   ],
   "lighting": {
+    "power_pattern": [true, false],
     "ambient": [
       0.18,
       0.21,

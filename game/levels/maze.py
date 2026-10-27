@@ -1,4 +1,5 @@
 from pathlib import Path
+from dataclasses import replace
 
 from config import settings
 from engine.scene.box import Box
@@ -65,12 +66,6 @@ def create_maze_level() -> Level:
                          (rail, guard, layout.balcony_depth), material="rust"))
     boxes.append(Box((goal_x, goal_y + guard / 2, goal_z - (layout.balcony_depth - rail) / 2),
                      (cell, guard, rail), material="rust"))
-    # Ржавая рама отличает выход от обычного прохода.
-    frame_z = -layout.depth / 2 - rail
-    for side in (-1, 1):
-        boxes.append(Box((goal_x + side * cell * 0.4, goal_y + 1.3, frame_z),
-                         (rail, 2.6, rail * 2), material="rust"))
-    boxes.append(Box((goal_x, goal_y + 2.6, frame_z), (cell * 0.8, rail, rail * 2), material="rust"))
 
     x, y, z = layout.position(layout.spawn)
     decorations = []
@@ -94,6 +89,7 @@ def create_maze_level() -> Level:
                             light_index=len(layout.lighting.lights) + len(lights) + len(extra))
                 extra.append(light)
             lighting = Lighting(lighting.ambient, lighting.lights + lights + tuple(extra), lighting.shadow_resolution)
+        lighting, decorations = _power_lamps(lighting, decorations, layout.lamp_power_pattern)
     underground = layout.basement is not None
     return Level(
         floor_size=(layout.width + 2 * layout.wing_width, layout.depth + 2 * layout.balcony_depth),
@@ -109,9 +105,26 @@ def create_maze_level() -> Level:
         navigation=build_maze_navigation(layout),
         base_height=-layout.basement.depth if underground else 0.0,
         floor_labels=("B1", "1", "2") if underground else (),
-        floor_hints=("Lamp hall. Stairs lead back up.", "B1 door left of spawn. Find its key nearby.",
-                     "Find the rusted exit frame.") if underground else (),
+        floor_hints=("Lamp hall. Stairs lead back up.", "The staircases need the upper-floor key.",
+                     "The balcony door needs its own key.") if underground else (),
     )
+
+
+def _power_lamps(lighting, decorations, pattern):
+    """Сохраняет корпуса погасших ламп, оставляя на GPU только работающие источники."""
+    active, indices = [], {}
+    for index, light in enumerate(lighting.lights):
+        if pattern[index % len(pattern)]:
+            indices[index] = len(active)
+            active.append(light)
+    panels = []
+    for box in decorations:
+        if box.emission_light is not None:
+            old_index = box.emission_light
+            box = replace(box, emission_light=indices.get(old_index),
+                          emission=box.emission if old_index in indices else (0, 0, 0))
+        panels.append(box)
+    return replace(lighting, lights=tuple(active)), panels
 
 
 def _build_lamp(light, ceiling, boxes, rotated=False, light_index=None):

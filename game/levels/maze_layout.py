@@ -47,8 +47,11 @@ class MazeLayout:
     lighting: Lighting | None = None
     basement: BasementLayout | None = None
     objects: tuple[SceneObject, ...] = ()
+    lamp_power_pattern: tuple[bool, ...] = (True,)
 
     def __post_init__(self):
+        if not self.lamp_power_pattern or any(not isinstance(value, bool) for value in self.lamp_power_pattern):
+            raise ValueError("Lamp power pattern needs a nonempty list of booleans")
         if len(self.floors) != 2 or len(self.floor_materials) != 2 or len(self.wall_materials) != 2:
             raise ValueError("Maze needs two floors and their materials")
         if any(not floor or not floor[0] for floor in self.floors) or any(not names for names in self.wall_materials):
@@ -177,6 +180,8 @@ class MazeLayout:
 def load_maze_layout(path: Path) -> MazeLayout:
     data = json.loads(path.read_text(encoding="utf-8"))
     lighting = data.pop("lighting", None)
+    if lighting is not None:
+        data["lamp_power_pattern"] = tuple(lighting.get("power_pattern", (True,)))
     objects = data.pop("objects", ())
     basement = data.get("basement")
     if basement is not None:

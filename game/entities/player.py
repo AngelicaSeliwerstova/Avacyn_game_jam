@@ -35,6 +35,7 @@ class Player(Entity):
         self.flashlight = Flashlight(camera)
         self.inventory = Inventory()
         self.enemy_status = ""
+        self.objective_status = ""
         self.enemy_debug_lines: tuple[str, ...] = ()
         self._interactions = InteractionController(
             level.boxes + level.decorations if level is not None else (),
@@ -75,13 +76,15 @@ class Player(Entity):
             text += ("\n" if text else "") + "KEYS: " + ", ".join(self.inventory.key_names)
         if self.enemy_status:
             text += ("\n" if text else "") + self.enemy_status
+        if self.objective_status:
+            text += ("\n" if text else "") + self.objective_status
         return text
 
     def _location_text(self) -> str:
         if self._level is None or len(self._level.floor_heights) < 2:
             return ""
         if self._exit_found:
-            return "EXIT FOUND\nYou can keep exploring."
+            return "EXIT FOUND"
         y = self.body.position.y
         heights = self._level.floor_heights
         floor = min(range(len(heights)), key=lambda index: abs(heights[index] - y))

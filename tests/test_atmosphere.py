@@ -60,10 +60,13 @@ class AtmosphereTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 a.brightness(elapsed)
 
-    def test_all_basement_lamps_flicker_and_each_panel_references_its_source(self):
+    def test_powered_lamps_flicker_and_each_panel_references_its_source(self):
         level = create_level("maze")
         animated = [light for light in level.lighting.lights if light.flicker is not None]
-        self.assertEqual(len(animated), 229)
+        self.assertEqual(len(animated), 114)
+        off_panels = [box for box in level.decorations
+                      if box.material is None and box.emission_light is None and box.emission == (0, 0, 0)]
+        self.assertEqual(len(off_panels), 164)
         panels = [box for box in level.decorations if box.emission_light is not None]
         self.assertEqual(len(panels), len(level.lighting.lights))
         self.assertEqual({panel.emission_light for panel in panels}, set(range(len(level.lighting.lights))))

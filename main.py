@@ -21,7 +21,7 @@ def run_session():
         objects=level.objects,
     )
     player = create_player(level, collision_world)
-    session = GameSession()
+    session = GameSession(level, player)
     enemies = EnemySystem(level, player, on_caught=session.lose)
     snow = None
     if settings.SNOW_ENABLED and level.snow_enabled:
@@ -55,7 +55,7 @@ def run_session():
         fog=create_fog_settings(),
         dynamic_lights=player.dynamic_lights,
         dynamic_shadow_resolution=settings.DYNAMIC_SHADOW_RESOLUTION,
-        systems=(enemies,),
+        systems=(enemies, session),
         session=session,
         debug=create_debug_settings(),
         render_options=RenderOptions(settings.FRUSTUM_CULLING, settings.DEPTH_PREPASS,

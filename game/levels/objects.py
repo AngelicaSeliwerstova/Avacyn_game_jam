@@ -6,7 +6,9 @@ from config import settings
 from engine.scene.box import Box
 from engine.scene.interaction import Interaction
 from engine.scene.object import ObjectState, SceneObject
+from engine.scene.transform import Transform
 from game.entities.enemy import Enemy, EnemySettings
+from game.entities.escape import EscapeGoal
 
 
 def build_objects(definitions, layout) -> tuple[SceneObject, ...]:
@@ -36,6 +38,10 @@ def build_objects(definitions, layout) -> tuple[SceneObject, ...]:
             enemy = Enemy(data["id"], position,
                           tuning=EnemySettings(**data.get("settings", {})))
             objects.append(enemy.scene_object)
+        elif data["type"] == "exit":
+            goal = EscapeGoal(data["id"], transform=Transform(position=position),
+                              radius=data.get("radius", 1.0), required_keys=tuple(data.get("required_keys", ())))
+            objects.append(SceneObject(data["id"], {"default": ObjectState()}, entity=goal))
         else:
             raise ValueError(f"Unknown map object type: {data['type']}")
     return tuple(objects)
