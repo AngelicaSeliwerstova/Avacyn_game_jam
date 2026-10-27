@@ -67,14 +67,20 @@ class TextOverlay:
             surface.fill((10, 10, 14, 205))
             for index, line in enumerate(lines):
                 surface.blit(line, (padding, padding + index * line_height - top))
-            if self._texture is not None:
-                self._texture.release()
-            self._texture = self._context.texture(
-                surface.get_size(), 4, pygame.image.tobytes(surface, "RGBA", True), alignment=1,
-            )
-            self._texture.filter = moderngl.NEAREST, moderngl.NEAREST
+            self._upload_surface(surface)
             self._text = text
             self._wrap_width = max_width
+        self._draw_texture(render_size, anchor)
+
+    def _upload_surface(self, surface: pygame.Surface):
+        if self._texture is not None:
+            self._texture.release()
+        self._texture = self._context.texture(
+            surface.get_size(), 4, pygame.image.tobytes(surface, "RGBA", True), alignment=1,
+        )
+        self._texture.filter = moderngl.NEAREST, moderngl.NEAREST
+
+    def _draw_texture(self, render_size: tuple[int, int], anchor: str):
         width, height = self._texture.size
         margin = self._style.margin
         if anchor == "top_left":
@@ -83,6 +89,8 @@ class TextOverlay:
             position = (render_size[0] - width - margin, margin)
         elif anchor == "bottom_center":
             position = ((render_size[0] - width) // 2, margin)
+        elif anchor == "center":
+            position = ((render_size[0] - width) // 2, (render_size[1] - height) // 2)
         else:
             raise ValueError(f"Unknown text anchor: {anchor}")
         self._context.viewport = (*position, width, height)

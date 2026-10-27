@@ -11,6 +11,7 @@ from engine.rendering.render_target import RenderTarget
 from engine.rendering.snow import SnowRenderer
 from engine.rendering.texture import Texture2D, TextureSettings
 from engine.rendering.hud import AimOverlay, HudStyle, TextOverlay
+from engine.rendering.dialog import DialogOverlay
 from engine.rendering.postprocess import PostProcessor, PostProcessSettings
 from engine.rendering.lighting import LevelLighting
 from engine.rendering.dynamic_lighting import DynamicLighting
@@ -20,6 +21,7 @@ from engine.rendering.visibility import ViewFrustum, distance_to_box_squared
 from engine.scene.camera import Camera
 from engine.scene.level import Level
 from engine.scene.lighting import SpotLight
+from engine.scene.session import Dialog
 
 
 class Renderer:
@@ -53,6 +55,7 @@ class Renderer:
         self._hud = None
         self._debug_hud = None
         self._aim_hud = None
+        self._dialog = None
         self._postprocess = None
         self._lighting = None
         self._dynamic_lighting = None
@@ -117,6 +120,7 @@ class Renderer:
             self._hud = TextOverlay(self.context, hud_style or HudStyle())
             self._debug_hud = TextOverlay(self.context, debug_style or HudStyle(font_size=16))
             self._aim_hud = AimOverlay(self.context, hud_style or HudStyle())
+            self._dialog = DialogOverlay(self.context, hud_style or HudStyle())
             if snow is not None and snow.settings.count > 0:
                 self._snow = SnowRenderer(self.context, snow, camera, render_size, fog=fog)
         except Exception:
@@ -128,7 +132,7 @@ class Renderer:
         self._lighting.update(delta_time, enabled=self.options.light_flicker)
 
     def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = "",
-               *, aim_text: str | None = None):
+               *, aim_text: str | None = None, dialog: Dialog | None = None):
         boxes = self._level.object_boxes
         if boxes != self._object_boxes:
             self._lighting.sync_objects(self._level.static_shadow_boxes)
@@ -184,10 +188,13 @@ class Renderer:
         if self._postprocess is not None:
             self._postprocess.apply(self._render_target.color)
         target = self.output_target
-        self._hud.draw(hud_text, target.size)
-        if aim_text is not None:
-            self._aim_hud.draw(aim_text, target.size)
-        self._debug_hud.draw(debug_text, target.size, anchor="bottom_right")
+        if dialog is None:
+            self._hud.draw(hud_text, target.size)
+            if aim_text is not None:
+                self._aim_hud.draw(aim_text, target.size)
+            self._debug_hud.draw(debug_text, target.size, anchor="bottom_right")
+        else:
+            self._dialog.draw(dialog, target.size)
         self._presenter.present(target.color, self.context.screen, window_size)
 
     @property
@@ -267,6 +274,9 @@ class Renderer:
             texture.use(location=0)
 
     def release(self):
+        if self._dialog is not None:
+            self._dialog.release()
+            self._dialog = None
         if self._dynamic_lighting is not None:
             self._dynamic_lighting.release()
             self._dynamic_lighting = None

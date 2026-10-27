@@ -9,9 +9,10 @@ from game.effects import create_fog_settings, create_postprocess_settings
 from game.materials import create_texture_settings
 from game.levels import create_level
 from game.ui import create_debug_settings, create_hud_style
+from game.session import GameSession
 
 
-def main():
+def run_session():
     level = create_level(settings.LEVEL_NAME)
     collision_world = CollisionWorld3D(
         colliders=(box.collider for box in level.boxes),
@@ -20,7 +21,8 @@ def main():
         objects=level.objects,
     )
     player = create_player(level, collision_world)
-    enemies = EnemySystem(level, player)
+    session = GameSession()
+    enemies = EnemySystem(level, player, on_caught=session.lose)
     snow = None
     if settings.SNOW_ENABLED and level.snow_enabled:
         snow = Snowfall(
@@ -54,12 +56,18 @@ def main():
         dynamic_lights=player.dynamic_lights,
         dynamic_shadow_resolution=settings.DYNAMIC_SHADOW_RESOLUTION,
         systems=(enemies,),
+        session=session,
         debug=create_debug_settings(),
         render_options=RenderOptions(settings.FRUSTUM_CULLING, settings.DEPTH_PREPASS,
                                      settings.LOCAL_LIGHTS, settings.LIGHT_GRID_CELL_SIZE,
                                      light_flicker=settings.LIGHT_FLICKER_ENABLED),
     )
-    app.run()
+    return app.run()
+
+
+def main():
+    while run_session() == "restart":
+        pass
 
 
 if __name__ == "__main__":
