@@ -163,6 +163,16 @@ CAMERA_ZOOM_SPEED = 12.0       # Скорость плавного перехо�
 CAMERA_NEAR = 0.1         # Ближняя граница видимости.
 CAMERA_FAR = 100.0        # Дальняя граница видимости.
 
+# Камера сзади персонажа. False возвращает вид от первого лица.
+THIRD_PERSON_ENABLED = True
+THIRD_PERSON_DISTANCE = 3.2
+THIRD_PERSON_HEIGHT = 0.65      # Над точкой взгляда персонажа.
+THIRD_PERSON_LOOK_AHEAD = 4.0
+THIRD_PERSON_CAMERA_RADIUS = 0.18
+THIRD_PERSON_CAMERA_RECOVERY = 8.0
+THIRD_PERSON_FLASHLIGHT_OFFSET = (0.30, -0.10, 0.24)
+PLAYER_PLACEHOLDER_ENABLED = True
+
 # Управление от первого лица.
 MOVE_SPEED = 3.5                  # Мировых единиц в секунду.
 SPRINT_SPEED = 6.5                # При удержании Shift.

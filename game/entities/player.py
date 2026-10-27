@@ -6,6 +6,7 @@ import pygame
 from config import controls, settings
 from engine.collision.world3d import CollisionWorld3D
 from engine.controllers.first_person import FirstPersonController
+from engine.controllers.third_person import ThirdPersonCamera
 from engine.input.state import InputState
 from engine.physics.character import CharacterBody
 from engine.scene.camera import Camera
@@ -16,6 +17,7 @@ from engine.scene.transform import Transform
 from engine.scene.object import ObjectState
 from game.entities.player_state import MovementState
 from game.entities.flashlight import Flashlight
+from game.entities.player_visual import PlayerVisual
 from game.interactions import InteractionController
 from game.inventory import Inventory
 
@@ -27,12 +29,23 @@ class Player(Entity):
                  controller: FirstPersonController, model: ModelComponent, level: Level | None = None):
         super().__init__(name="player", model=model)
         self.body = body
+        self._aim_camera = camera
         self.camera = camera
+        self._third_person = None
+        if settings.THIRD_PERSON_ENABLED:
+            self.camera = Camera(tuple(camera.position), tuple(camera.target), camera.fov_degrees, camera.near, camera.far)
+            self._third_person = ThirdPersonCamera(
+                self.camera, (box.collider for box in level.boxes + level.decorations) if level else (),
+                level.objects if level else (), distance=settings.THIRD_PERSON_DISTANCE,
+                height=settings.THIRD_PERSON_HEIGHT, look_ahead=settings.THIRD_PERSON_LOOK_AHEAD,
+                radius=settings.THIRD_PERSON_CAMERA_RADIUS, recovery_speed=settings.THIRD_PERSON_CAMERA_RECOVERY,
+                ground_height=level.base_height if level else body.world.ground_height,
+            )
         self.controller = controller
         self._level = level
         self._exit_found = False
         self._sprinting = False
-        self.flashlight = Flashlight(camera)
+        self.flashlight = Flashlight(camera, offset=settings.THIRD_PERSON_FLASHLIGHT_OFFSET if self._third_person else None)
         self.inventory = Inventory()
         self.enemy_status = ""
         self.objective_status = ""
@@ -45,6 +58,8 @@ class Player(Entity):
             objects=level.objects if level is not None else (), inventory=self.inventory,
         )
         self._sync_transform()
+        self.visual = PlayerVisual(self) if settings.PLAYER_PLACEHOLDER_ENABLED else None
+        self._update_camera(0)
         if level is not None:
             for obj in level.objects:
                 obj.motion_guard = self._object_motion_allowed
@@ -106,12 +121,23 @@ class Player(Entity):
             zoom=inputs.zoom,
         )
         self._sync_transform()
-        self.flashlight.update(self.camera, toggle=inputs.toggle_flashlight)
-        self._interactions.update(delta_time, self.camera, inputs.interact)
+        self._update_camera(delta_time)
+        self.flashlight.update(self._aim_camera, toggle=inputs.toggle_flashlight)
+        self._interactions.update(delta_time, self.camera, inputs.interact,
+                                  reach_origin=self._aim_camera.position if self._third_person else None)
         if self._level is not None and self._level.goal_position is not None:
             self._exit_found = self._exit_found or math.dist(
                 tuple(self.body.position), self._level.goal_position,
             ) <= self._level.goal_radius
+
+    def _update_camera(self, delta_time):
+        if self._third_person is not None:
+            self.camera.fov_degrees = self._aim_camera.fov_degrees
+            self._third_person.update(delta_time, self._aim_camera.position,
+                                      self._aim_camera.target - self._aim_camera.position)
+        if self.visual is not None:
+            visible = self._third_person is not None and self._third_person.distance_from_player > 0.8
+            self.visual.update(min(delta_time, settings.MAX_DELTA_TIME), visible)
 
     @property
     def movement_state(self) -> MovementState:

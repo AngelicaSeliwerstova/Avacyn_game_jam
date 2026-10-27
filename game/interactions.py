@@ -29,13 +29,16 @@ class InteractionController:
         self._message = ""
         self._remaining = 0.0
 
-    def update(self, delta_time: float, camera: Camera, pressed: bool = False):
+    def update(self, delta_time: float, camera: Camera, pressed: bool = False, reach_origin=None):
         self._refresh_objects()
         self._remaining = max(0.0, self._remaining - delta_time)
         self.focused = None
         if self._targets:
             origin, direction = camera.position, camera.target - camera.position
-            hit = cast_ray(origin, direction, self._target_colliders, self._reach)
+            reach = self._reach + (math.dist(tuple(origin), tuple(reach_origin)) if reach_origin is not None else 0)
+            hit = cast_ray(origin, direction, self._target_colliders, reach)
+            if hit is not None and reach_origin is not None and math.dist(hit.position, tuple(reach_origin)) > self._reach:
+                hit = None
             # Стены проверяем только при наведении на доступную цель.
             if hit is not None:
                 blocker = cast_ray(origin, direction, self._colliders, hit.distance)

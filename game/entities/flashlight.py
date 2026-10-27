@@ -10,7 +10,7 @@ from engine.scene.lighting import SpotLight
 class Flashlight:
     """Фонарик персонажа управляет обычным динамическим источником движка."""
 
-    def __init__(self, camera: Camera):
+    def __init__(self, camera: Camera, offset=None):
         self.light = SpotLight(
             position=(0, 0, 0), direction=(0, 0, -1),
             color=settings.FLASHLIGHT_COLOR, intensity=settings.FLASHLIGHT_INTENSITY,
@@ -18,7 +18,7 @@ class Flashlight:
             outer_angle=settings.FLASHLIGHT_OUTER_ANGLE, enabled=settings.FLASHLIGHT_STARTS_ON,
             shadows=settings.FLASHLIGHT_SHADOWS,
         )
-        self._offset = glm.vec3(settings.FLASHLIGHT_OFFSET)
+        self._offset = glm.vec3(settings.FLASHLIGHT_OFFSET if offset is None else offset)
         self._aim_distance = settings.FLASHLIGHT_AIM_DISTANCE
         if (not math.isfinite(self._aim_distance) or self._aim_distance <= 0
                 or not all(math.isfinite(v) for v in self._offset)):
