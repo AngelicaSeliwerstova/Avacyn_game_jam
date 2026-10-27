@@ -14,6 +14,7 @@ from engine.rendering.options import RenderOptions
 from engine.rendering.fog import FogSettings
 from engine.scene.entity import ControlledEntity
 from engine.scene.level import Level
+from engine.scene.lighting import SpotLight
 
 
 class Application:
@@ -38,6 +39,8 @@ class Application:
         debug: DebugSettings | None = None,
         render_options: RenderOptions | None = None,
         fog: FogSettings | None = None,
+        dynamic_lights: tuple[SpotLight, ...] = (),
+        dynamic_shadow_resolution: int = 512,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -57,6 +60,8 @@ class Application:
         self._debug = DeveloperPanel(self._debug_settings)
         self._render_options = render_options
         self._fog = fog
+        self._dynamic_lights = dynamic_lights
+        self._dynamic_shadow_resolution = dynamic_shadow_resolution
         self._running = False
 
     def run(self):
@@ -87,6 +92,8 @@ class Application:
                                      antialias=self._debug_settings.antialias),
                 options=self._render_options,
                 fog=self._fog,
+                dynamic_lights=self._dynamic_lights,
+                dynamic_shadow_resolution=self._dynamic_shadow_resolution,
             )
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)

@@ -31,6 +31,8 @@ uniform vec3 camera_position;
 
 out vec4 fragment_color;
 
+#include "dynamic_lighting.glsl"
+
 vec3 shadow_ray(int face, vec2 local) {
     vec2 p = local * 2.0 - 1.0;
     if (face == 0) return vec3(1.0, -p.y, -p.x);
@@ -98,9 +100,9 @@ void main() {
         fragment_color = vec4(fog_color, 1.0);
         return;
     }
-    vec3 color = vertex_color;
+    vec3 albedo = textured ? texture(surface_texture, texture_uv / texture_world_size).rgb : vertex_color;
+    vec3 color = albedo;
     if (textured) {
-        color = texture(surface_texture, texture_uv / texture_world_size).rgb;
         if (!lighting_enabled) color *= surface_shade;
     }
     if (lighting_enabled) {
@@ -133,5 +135,6 @@ void main() {
         }
         color *= illumination;
     }
+    if (dynamic_light_count > 0) color += albedo * dynamic_illumination(normalize(world_normal));
     fragment_color = vec4(mix(color + emission, fog_color, fog), 1.0);
 }

@@ -16,6 +16,8 @@ class KeyboardMouse:
         self._jump_held = False
         self._interact_queued = False
         self._interact_held = False
+        self._flashlight_queued = False
+        self._flashlight_held = False
         self._set_capture(self._focused)
 
     def _set_capture(self, captured: bool):
@@ -33,6 +35,11 @@ class KeyboardMouse:
             captured and self._bindings.interact is not None
             and pygame.key.get_pressed()[self._bindings.interact]
         )
+        self._flashlight_queued = False
+        self._flashlight_held = bool(
+            captured and self._bindings.toggle_flashlight is not None
+            and pygame.key.get_pressed()[self._bindings.toggle_flashlight]
+        )
         # Первый отсчёт после захвата может содержать смещение курсора ОС.
         self._discard_mouse_delta = True
 
@@ -44,6 +51,13 @@ class KeyboardMouse:
             self._focused = True
         elif event.type == pygame.KEYDOWN and event.key == self._bindings.release_mouse:
             self._set_capture(False)
+        elif event.type == pygame.KEYUP and event.key == self._bindings.toggle_flashlight:
+            self._flashlight_held = False
+        elif event.type == pygame.KEYDOWN and event.key == self._bindings.toggle_flashlight:
+            if (self._focused and self._captured and not self._flashlight_held
+                    and not getattr(event, "repeat", False)):
+                self._flashlight_queued = not self._flashlight_queued
+            self._flashlight_held = True
         elif event.type == pygame.KEYUP and event.key == self._bindings.interact:
             self._interact_held = False
         elif event.type == pygame.KEYDOWN and event.key == self._bindings.interact:
@@ -85,9 +99,11 @@ class KeyboardMouse:
             interact=self._interact_queued,
             zoom=(self._bindings.zoom_mouse_button is not None
                   and pygame.mouse.get_pressed(5)[self._bindings.zoom_mouse_button - 1]),
+            toggle_flashlight=self._flashlight_queued,
         )
         self._jump_queued = False
         self._interact_queued = False
+        self._flashlight_queued = False
         return state
 
     @property

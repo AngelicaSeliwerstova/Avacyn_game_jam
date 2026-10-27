@@ -14,6 +14,7 @@ from engine.scene.level import Level
 from engine.scene.model import ModelComponent
 from engine.scene.transform import Transform
 from game.entities.player_state import MovementState
+from game.entities.flashlight import Flashlight
 from game.interactions import InteractionController
 
 
@@ -29,6 +30,7 @@ class Player(Entity):
         self._level = level
         self._exit_found = False
         self._sprinting = False
+        self.flashlight = Flashlight(camera)
         self._interactions = InteractionController(
             level.boxes + level.decorations if level is not None else (),
             settings.INTERACTION_REACH, settings.INTERACTION_MESSAGE_SECONDS,
@@ -40,6 +42,10 @@ class Player(Entity):
     @property
     def aim_text(self) -> str:
         return self._interactions.text
+
+    @property
+    def dynamic_lights(self):
+        return (self.flashlight.light,)
 
     @property
     def status_text(self) -> str:
@@ -68,6 +74,7 @@ class Player(Entity):
             zoom=inputs.zoom,
         )
         self._sync_transform()
+        self.flashlight.update(self.camera, toggle=inputs.toggle_flashlight)
         self._interactions.update(delta_time, self.camera, inputs.interact)
         if self._level is not None and self._level.goal_position is not None:
             self._exit_found = self._exit_found or math.dist(
@@ -102,7 +109,7 @@ class Player(Entity):
             f"FEET XYZ: {x:+.2f} {y:+.2f} {z:+.2f}",
             f"CAM XYZ: {cx:+.2f} {cy:+.2f} {cz:+.2f}",
             f"LOOK: Y {self.controller.yaw_degrees:.1f} P {self.controller.pitch_degrees:+.1f}"
-            f" | FOV: {self.camera.fov_degrees:.1f}",
+            f" | FOV: {self.camera.fov_degrees:.1f} | F: {'ON' if self.flashlight.light.enabled else 'OFF'}",
             f"MOVE: {self.movement_state.value} | {self.body.horizontal_speed:.2f} m/s",
             f"GROUND: {'YES' if self.body.grounded else 'NO'} | VY: {self.body.vertical_speed:+.2f}"
             f" | {'CROUCH' if self.body.is_crouching else 'STAND'}",

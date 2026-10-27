@@ -17,4 +17,5 @@ INPUT_BINDINGS = InputBindings(
     crouch_keys=(pygame.K_LCTRL, pygame.K_RCTRL),
     interact=pygame.K_e,
     zoom_mouse_button=3,  # Удержание правой кнопки мыши.
+    toggle_flashlight=pygame.K_f,
 )

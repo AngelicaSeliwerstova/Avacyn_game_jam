@@ -53,6 +53,18 @@ FOG_END = 30.0
 # Мерцают только лампы с описанием flicker в данных уровня.
 LIGHT_FLICKER_ENABLED = True
 
+# Фонарик на F. Углы задают половину конуса, расстояния - в метрах.
+FLASHLIGHT_STARTS_ON = False
+FLASHLIGHT_COLOR = (1.0, 0.96, 0.85)
+FLASHLIGHT_INTENSITY = 4.5
+FLASHLIGHT_RANGE = 18.0
+FLASHLIGHT_INNER_ANGLE = 12.0
+FLASHLIGHT_OUTER_ANGLE = 24.0
+FLASHLIGHT_OFFSET = (0.16, -0.16, 0.04)  # Вправо, вверх и вперёд относительно камеры.
+FLASHLIGHT_AIM_DISTANCE = 8.0
+FLASHLIGHT_SHADOWS = True
+DYNAMIC_SHADOW_RESOLUTION = 512
+
 # Одинаковые RGB-цвета дают однотонный пол, спокойный при движении.
 # Для тестовой клетки можно задать разные цвета, например (43, 51, 59) и (59, 66, 74).
 FLOOR_COLORS = ((48, 55, 62), (48, 55, 62))

@@ -18,6 +18,7 @@ class InputBindings:
     crouch_keys: tuple[int, ...] = ()
     interact: int | None = None
     zoom_mouse_button: int | None = None
+    toggle_flashlight: int | None = None
 
     def __post_init__(self):
         if self.zoom_mouse_button is not None and self.zoom_mouse_button not in range(1, 6):

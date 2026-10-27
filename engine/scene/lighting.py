@@ -3,6 +3,7 @@ import math
 
 
 MAX_POINT_LIGHTS = 512
+MAX_DYNAMIC_SPOT_LIGHTS = 4
 
 
 def validate_rgb(color):
@@ -73,3 +74,32 @@ class Lighting:
             raise ValueError(f"A level supports up to {MAX_POINT_LIGHTS} point lights")
         if self.shadow_resolution not in (64, 128, 256):
             raise ValueError("Shadow resolution must be 64, 128 or 256")
+
+
+@dataclass
+class SpotLight:
+    """Подвижный направленный источник. Положение и параметры можно менять каждый кадр."""
+
+    position: tuple[float, float, float]
+    direction: tuple[float, float, float]
+    color: tuple[float, float, float] = (1.0, 0.96, 0.85)
+    intensity: float = 4.5
+    radius: float = 18.0
+    inner_angle: float = 12.0
+    outer_angle: float = 24.0
+    enabled: bool = True
+    shadows: bool = True
+
+    def __post_init__(self):
+        self.validate()
+
+    def validate(self):
+        if (len(self.position) != 3 or len(self.direction) != 3
+                or not all(math.isfinite(v) for v in (*self.position, *self.direction))
+                or math.hypot(*self.direction) == 0):
+            raise ValueError("Spotlight needs a finite position and a nonzero finite direction")
+        validate_rgb(self.color)
+        if (not math.isfinite(self.intensity) or self.intensity < 0
+                or not math.isfinite(self.radius) or self.radius <= 0.1
+                or not 0 <= self.inner_angle < self.outer_angle < 89):
+            raise ValueError("Spotlight needs nonnegative intensity, radius > 0.1 and 0 <= inner < outer < 89")

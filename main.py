@@ -48,6 +48,8 @@ def main():
         hud_style=create_hud_style(),
         postprocess=create_postprocess_settings(),
         fog=create_fog_settings(),
+        dynamic_lights=player.dynamic_lights,
+        dynamic_shadow_resolution=settings.DYNAMIC_SHADOW_RESOLUTION,
         debug=create_debug_settings(),
         render_options=RenderOptions(settings.FRUSTUM_CULLING, settings.DEPTH_PREPASS,
                                      settings.LOCAL_LIGHTS, settings.LIGHT_GRID_CELL_SIZE,

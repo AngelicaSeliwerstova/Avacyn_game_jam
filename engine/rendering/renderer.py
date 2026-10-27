@@ -13,11 +13,13 @@ from engine.rendering.texture import Texture2D, TextureSettings
 from engine.rendering.hud import AimOverlay, HudStyle, TextOverlay
 from engine.rendering.postprocess import PostProcessor, PostProcessSettings
 from engine.rendering.lighting import LevelLighting
+from engine.rendering.dynamic_lighting import DynamicLighting
 from engine.rendering.options import RenderOptions
 from engine.rendering.fog import FogSettings, configure_fog
 from engine.rendering.visibility import ViewFrustum, distance_to_box_squared
 from engine.scene.camera import Camera
 from engine.scene.level import Level
+from engine.scene.lighting import SpotLight
 
 
 class Renderer:
@@ -37,6 +39,8 @@ class Renderer:
         debug_style: HudStyle | None = None,
         options: RenderOptions | None = None,
         fog: FogSettings | None = None,
+        dynamic_lights: tuple[SpotLight, ...] = (),
+        dynamic_shadow_resolution: int = 512,
     ):
         major, minor = opengl_version
         self.context = moderngl.create_context(require=major * 100 + minor * 10)
@@ -51,6 +55,7 @@ class Renderer:
         self._aim_hud = None
         self._postprocess = None
         self._lighting = None
+        self._dynamic_lighting = None
         self._floor_texture = None
         self._wall_texture = None
         self._fallback_texture = None
@@ -76,7 +81,9 @@ class Renderer:
             shader_dir = Path(__file__).resolve().parent / "shaders"
             self._program = self.context.program(
                 vertex_shader=(shader_dir / "color.vert").read_text(encoding="utf-8"),
-                fragment_shader=(shader_dir / "color.frag").read_text(encoding="utf-8"),
+                fragment_shader=(shader_dir / "color.frag").read_text(encoding="utf-8").replace(
+                    '#include "dynamic_lighting.glsl"',
+                    (shader_dir / "dynamic_lighting.glsl").read_text(encoding="utf-8")),
             )
             configure_fog(self._program, fog)
             self._update_projection(render_size)
@@ -99,6 +106,8 @@ class Renderer:
                 colors=level.floor_colors, height=level.base_height,
             )
             self._lighting = LevelLighting(self.context, self._program, level, self.options.light_cell_size)
+            self._dynamic_lighting = DynamicLighting(self.context, self._program, dynamic_lights,
+                                                      dynamic_shadow_resolution)
             self._render_target = RenderTarget(self.context, render_size)
             if postprocess is not None:
                 self._postprocess = PostProcessor(self.context, render_size, postprocess)
@@ -118,6 +127,7 @@ class Renderer:
 
     def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = "",
                *, aim_text: str | None = None):
+        self._dynamic_lighting.render_shadows(self._objects)
         self._render_target.framebuffer.use()
         self.context.viewport = (0, 0, *self._render_target.size)
         self.context.enable(moderngl.DEPTH_TEST)
@@ -127,6 +137,7 @@ class Renderer:
         self._program["m_view"].write(view)
         self._program["camera_position"].value = tuple(self._camera.position)
         self._lighting.bind(self.options.local_lights)
+        self._dynamic_lighting.bind()
         frustum = ViewFrustum(self._projection * view)
         objects = [item for item in self._objects if not self.options.frustum_culling
                    or frustum.intersects(item[0].position, item[2])]
@@ -184,7 +195,8 @@ class Renderer:
             self.options.local_lights and self._lighting.grid is not None
         ) else ""
         return (f"SCENE: {self._submitted_triangles} tris | {self._draw_calls}/{len(self._objects) + 1} draws",
-                f"ZPASS: {self._depth_draw_calls} | LIGHTS: {lights}{local}",
+                f"ZPASS: {self._depth_draw_calls} | LIGHTS: {lights}{local}"
+                f" | SPOT: {self._dynamic_lighting.active_count}",
                 *((f"SNOW: {particles}",) if particles else ()))
 
     def _draw_floor(self):
@@ -242,6 +254,9 @@ class Renderer:
             texture.use(location=0)
 
     def release(self):
+        if self._dynamic_lighting is not None:
+            self._dynamic_lighting.release()
+            self._dynamic_lighting = None
         if self._aim_hud is not None:
             self._aim_hud.release()
             self._aim_hud = None

@@ -13,3 +13,4 @@ class InputState:
     crouch: bool = False
     interact: bool = False
     zoom: bool = False
+    toggle_flashlight: bool = False
