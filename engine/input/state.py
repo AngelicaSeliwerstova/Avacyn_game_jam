@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class InputState:
-    """Ввод кадра: направления, мышь, бег/присед, нажатия прыжка и действия."""
+    """Ввод кадра: направления, мышь, бег/присед/зум, нажатия прыжка и действия."""
 
     forward: float = 0.0
     right: float = 0.0
@@ -12,3 +12,4 @@ class InputState:
     jump: bool = False
     crouch: bool = False
     interact: bool = False
+    zoom: bool = False

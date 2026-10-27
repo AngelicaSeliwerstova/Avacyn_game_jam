@@ -57,6 +57,7 @@ class Renderer:
         self._materials = {}
         self._camera = camera
         self._level = level
+        self._projection_settings = None
         self.options = options or RenderOptions()
         self._objects = tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size))
                               for box in level.boxes + level.decorations)
@@ -73,9 +74,7 @@ class Renderer:
                 vertex_shader=(shader_dir / "color.vert").read_text(encoding="utf-8"),
                 fragment_shader=(shader_dir / "color.frag").read_text(encoding="utf-8"),
             )
-            width, height = render_size
-            self._projection = camera.projection_matrix(width / height)
-            self._program["m_projection"].write(self._projection)
+            self._update_projection(render_size)
             self._program["surface_texture"].value = 0
             self._fallback_texture = self.context.texture((1, 1), 3, b"\xff\xff\xff")
             if textures is not None:
@@ -114,6 +113,7 @@ class Renderer:
         self.context.viewport = (0, 0, *self._render_target.size)
         self.context.enable(moderngl.DEPTH_TEST)
         self.context.clear(*self._background_color, alpha=1.0, depth=1.0)
+        self._update_projection(self._render_target.size)
         view = self._camera.view_matrix
         self._program["m_view"].write(view)
         self._lighting.bind(self.options.local_lights)
@@ -183,6 +183,14 @@ class Renderer:
         self._use_material(self._level.floor_material, self._floor_texture,
                            self._textures.floor_world_size if self._textures else 1.0)
         self._floor.render()
+
+    def _update_projection(self, render_size: tuple[int, int]):
+        camera = self._camera
+        state = (render_size, camera.fov_degrees, camera.near, camera.far)
+        if state != self._projection_settings:
+            self._projection = camera.projection_matrix(render_size[0] / render_size[1])
+            self._program["m_projection"].write(self._projection)
+            self._projection_settings = state
 
     def _draw_depth(self, objects, draw_floor):
         target = self._render_target.framebuffer

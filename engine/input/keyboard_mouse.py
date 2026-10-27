@@ -83,6 +83,8 @@ class KeyboardMouse:
             jump=self._jump_queued,
             crouch=any(keys[key] for key in self._bindings.crouch_keys),
             interact=self._interact_queued,
+            zoom=(self._bindings.zoom_mouse_button is not None
+                  and pygame.mouse.get_pressed(5)[self._bindings.zoom_mouse_button - 1]),
         )
         self._jump_queued = False
         self._interact_queued = False

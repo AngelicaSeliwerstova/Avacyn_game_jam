@@ -65,6 +65,7 @@ class Player(Entity):
             delta_time, inputs.forward, inputs.right, inputs.mouse_delta,
             sprint=inputs.sprint, jump=inputs.jump,
             crouch=inputs.crouch,
+            zoom=inputs.zoom,
         )
         self._sync_transform()
         self._interactions.update(delta_time, self.camera, inputs.interact)
@@ -100,7 +101,8 @@ class Player(Entity):
         return (
             f"FEET XYZ: {x:+.2f} {y:+.2f} {z:+.2f}",
             f"CAM XYZ: {cx:+.2f} {cy:+.2f} {cz:+.2f}",
-            f"LOOK: Y {self.controller.yaw_degrees:.1f} P {self.controller.pitch_degrees:+.1f}",
+            f"LOOK: Y {self.controller.yaw_degrees:.1f} P {self.controller.pitch_degrees:+.1f}"
+            f" | FOV: {self.camera.fov_degrees:.1f}",
             f"MOVE: {self.movement_state.value} | {self.body.horizontal_speed:.2f} m/s",
             f"GROUND: {'YES' if self.body.grounded else 'NO'} | VY: {self.body.vertical_speed:+.2f}"
             f" | {'CROUCH' if self.body.is_crouching else 'STAND'}",
@@ -133,6 +135,7 @@ def create_player(level: Level, world: CollisionWorld3D) -> Player:
         camera=camera, body=body, eye_height=settings.PLAYER_EYE_HEIGHT,
         move_speed=settings.MOVE_SPEED, sprint_speed=settings.SPRINT_SPEED,
         crouch_speed=settings.CROUCH_SPEED, crouch_eye_height=settings.PLAYER_CROUCH_EYE_HEIGHT,
+        zoom_fov_degrees=settings.CAMERA_ZOOM_FOV_DEGREES, zoom_speed=settings.CAMERA_ZOOM_SPEED,
         mouse_sensitivity=settings.MOUSE_SENSITIVITY,
         pitch_limit_degrees=settings.PITCH_LIMIT_DEGREES, max_delta_time=settings.MAX_DELTA_TIME,
         player_radius=settings.PLAYER_RADIUS, collision_max_step=settings.COLLISION_MAX_STEP,

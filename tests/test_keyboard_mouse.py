@@ -15,6 +15,8 @@ class KeyboardMouseTests(unittest.TestCase):
         self.grab = self.patch("pygame.event.set_grab")
         self.visible = self.patch("pygame.mouse.set_visible")
         self.motion = self.patch("pygame.mouse.get_rel", return_value=(0, 0))
+        self.buttons = [False] * 5
+        self.patch("pygame.mouse.get_pressed", side_effect=lambda count: tuple(self.buttons))
         self.patch("pygame.key.get_focused", return_value=True)
         self.patch("pygame.key.get_pressed", return_value=self.keys)
         self.bindings = InputBindings(
@@ -22,6 +24,7 @@ class KeyboardMouseTests(unittest.TestCase):
             sprint_keys=(pygame.K_LSHIFT, pygame.K_RSHIFT), jump=pygame.K_SPACE,
             crouch_keys=(pygame.K_LCTRL, pygame.K_RCTRL),
             interact=pygame.K_e,
+            zoom_mouse_button=3,
         )
         self.input = KeyboardMouse(self.bindings)
 
@@ -151,6 +154,39 @@ class KeyboardMouseTests(unittest.TestCase):
         self.assertFalse(device.read().interact)
         device.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_f))
         self.assertTrue(device.read().interact)
+
+    def test_zoom_is_held_right_mouse_button_and_release_stops_it(self):
+        self.buttons[0] = True
+        self.assertFalse(self.input.read().zoom)
+        self.buttons[2] = True
+        self.assertTrue(self.input.read().zoom)
+        self.assertTrue(self.input.read().zoom)
+        self.buttons[2] = False
+        self.assertFalse(self.input.read().zoom)
+
+    def test_escape_and_focus_loss_disable_zoom_until_recapture(self):
+        self.buttons[2] = True
+        for event in (pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE),
+                      pygame.event.Event(pygame.WINDOWFOCUSLOST)):
+            self.input.handle_event(event)
+            self.assertFalse(self.input.read().zoom)
+            self.input.handle_event(pygame.event.Event(pygame.WINDOWFOCUSGAINED))
+            self.assertFalse(self.input.read().zoom)
+            self.input.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1))
+            self.assertTrue(self.input.read().zoom)
+
+    def test_zoom_uses_configured_mouse_button(self):
+        bindings = InputBindings(pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d,
+                                 pygame.K_ESCAPE, 1, zoom_mouse_button=2)
+        device = KeyboardMouse(bindings)
+        self.buttons[2] = True
+        self.assertFalse(device.read().zoom)
+        self.buttons[1] = True
+        self.assertTrue(device.read().zoom)
+        for button in (0, 6):
+            with self.assertRaises(ValueError):
+                InputBindings(pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d,
+                              pygame.K_ESCAPE, 1, zoom_mouse_button=button)
 
     def test_release_and_focus_loss_clear_jump_and_sprint(self):
         self.keys[pygame.K_LSHIFT] = True

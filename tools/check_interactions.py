@@ -127,6 +127,7 @@ def check_application(render_size, output):
             patch("pygame.key.get_pressed", return_value=keys), \
             patch("pygame.key.get_focused", return_value=True), \
             patch("pygame.mouse.get_rel", side_effect=read_motion), \
+            patch("pygame.mouse.get_pressed", return_value=(False,) * 5), \
             patch("pygame.event.set_grab"), patch("pygame.mouse.set_visible"):
         game_main.main()
     assert frames == 30 and presses == 2, (frames, presses)

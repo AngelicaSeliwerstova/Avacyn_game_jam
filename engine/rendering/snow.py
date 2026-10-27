@@ -15,6 +15,8 @@ class SnowRenderer:
                  render_size: tuple[int, int]):
         self._context = context
         self._snow = snow
+        self._render_size = render_size
+        self._projection_settings = None
         self._program = None
         self._buffer = None
         self._vertices = None
@@ -24,11 +26,7 @@ class SnowRenderer:
                 vertex_shader=(shaders / "snow.vert").read_text(encoding="utf-8"),
                 fragment_shader=(shaders / "snow.frag").read_text(encoding="utf-8"),
             )
-            width, height = render_size
-            self._program["m_projection"].write(camera.projection_matrix(width / height))
-            self._program["point_scale"].value = (
-                snow.settings.flake_size * height / (2 * tan(radians(camera.fov_degrees) / 2))
-            )
+            self._update_projection(camera)
             self._program["snow_color"].value = tuple(c / 255 for c in snow.settings.color)
             self._program["snow_height"].value = snow.settings.height
             self._buffer = context.buffer(reserve=snow.settings.count * 3 * 4, dynamic=True)
@@ -44,6 +42,7 @@ class SnowRenderer:
         return self._snow.settings.count
 
     def render(self, camera: Camera):
+        self._update_projection(camera)
         positions = array("f", (value for position in self._snow.positions for value in position))
         self._buffer.write(positions.tobytes())
         self._program["m_view"].write(camera.view_matrix)
@@ -57,6 +56,16 @@ class SnowRenderer:
         finally:
             target.depth_mask = True
             self._context.disable(moderngl.BLEND | moderngl.PROGRAM_POINT_SIZE)
+
+    def _update_projection(self, camera: Camera):
+        state = (camera.fov_degrees, camera.near, camera.far)
+        if state != self._projection_settings:
+            width, height = self._render_size
+            self._program["m_projection"].write(camera.projection_matrix(width / height))
+            self._program["point_scale"].value = (
+                self._snow.settings.flake_size * height / (2 * tan(radians(camera.fov_degrees) / 2))
+            )
+            self._projection_settings = state
 
     def release(self):
         for name in ("_vertices", "_buffer", "_program"):

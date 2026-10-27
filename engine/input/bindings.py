@@ -17,3 +17,8 @@ class InputBindings:
     toggle_debug: int | None = None
     crouch_keys: tuple[int, ...] = ()
     interact: int | None = None
+    zoom_mouse_button: int | None = None
+
+    def __post_init__(self):
+        if self.zoom_mouse_button is not None and self.zoom_mouse_button not in range(1, 6):
+            raise ValueError("Zoom mouse button must be between 1 and 5")

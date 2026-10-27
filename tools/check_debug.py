@@ -124,6 +124,7 @@ def check_application(render_size, initially_enabled, output):
             patch("engine.core.application.KeyboardMouse", ScriptedInput), \
             patch("pygame.key.get_focused", return_value=True), \
             patch("pygame.key.get_pressed", return_value=keys), \
+            patch("pygame.mouse.get_pressed", return_value=(False,) * 5), \
             patch("pygame.mouse.get_rel", return_value=(0, 0)):
         game_main.main()
     assert not application._running

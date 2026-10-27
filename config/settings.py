@@ -114,6 +114,8 @@ PLAYER_MODEL_SCALE = 1.0
 CAMERA_POSITION = (3.0, PLAYER_EYE_HEIGHT, 4.0)
 CAMERA_TARGET = (0.0, 1.0, 0.0)
 CAMERA_FOV_DEGREES = 60.0  # Вертикальный угол обзора.
+CAMERA_ZOOM_FOV_DEGREES = 35.0  # Меньше угол - сильнее приближение на ПКМ.
+CAMERA_ZOOM_SPEED = 12.0       # Скорость плавного перехода, 1/с.
 CAMERA_NEAR = 0.1         # Ближняя граница видимости.
 CAMERA_FAR = 100.0        # Дальняя граница видимости.
 

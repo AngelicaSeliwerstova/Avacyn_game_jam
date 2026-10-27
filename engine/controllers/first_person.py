@@ -25,6 +25,8 @@ class FirstPersonController:
         sprint_speed: float | None = None,
         crouch_speed: float | None = None,
         crouch_eye_height: float | None = None,
+        zoom_fov_degrees: float | None = None,
+        zoom_speed: float = 12.0,
     ):
         if move_speed < 0 or mouse_sensitivity < 0:
             raise ValueError("Movement speed and mouse sensitivity must be nonnegative")
@@ -33,6 +35,10 @@ class FirstPersonController:
         crouch_speed = move_speed / 2 if crouch_speed is None else crouch_speed
         if not math.isfinite(crouch_speed) or not 0 <= crouch_speed <= move_speed:
             raise ValueError("Crouch speed must be finite and between zero and walking speed")
+        zoom_fov_degrees = camera.fov_degrees if zoom_fov_degrees is None else zoom_fov_degrees
+        if (not 0 < zoom_fov_degrees <= camera.fov_degrees
+                or not math.isfinite(zoom_speed) or zoom_speed <= 0):
+            raise ValueError("Zoom FOV must fit the normal view; zoom speed must be positive")
         if not 0 < pitch_limit_degrees < 90:
             raise ValueError("Pitch limit must be between 0 and 90 degrees")
         if max_delta_time <= 0:
@@ -60,6 +66,10 @@ class FirstPersonController:
         self._sprint_speed = move_speed if sprint_speed is None else sprint_speed
         self._crouch_speed = crouch_speed
         self._crouch_eye_height = crouch_eye_height
+        self._normal_fov = camera.fov_degrees
+        self._zoom_fov = zoom_fov_degrees
+        self._zoom_speed = zoom_speed
+        self._normal_tan_half_fov = math.tan(math.radians(camera.fov_degrees) / 2)
         self._sensitivity = math.radians(mouse_sensitivity)
         self._pitch_limit = math.radians(pitch_limit_degrees)
         self._max_delta_time = max_delta_time
@@ -91,17 +101,25 @@ class FirstPersonController:
         sprint: bool = False,
         jump: bool = False,
         crouch: bool = False,
+        zoom: bool = False,
     ):
         if delta_time < 0:
             raise ValueError("Delta time must be nonnegative")
         delta_time = min(delta_time, self._max_delta_time)
 
+        target_fov = self._zoom_fov if zoom else self._normal_fov
+        fov = target_fov + (self._camera.fov_degrees - target_fov) * math.exp(-self._zoom_speed * delta_time)
+        self._camera.fov_degrees = target_fov if abs(fov - target_fov) < 0.001 else fov
+        # Сохраняем комфортную скорость наведения в экранных координатах при зуме.
+        sensitivity = (self._sensitivity * math.tan(math.radians(self._camera.fov_degrees) / 2)
+                       / self._normal_tan_half_fov)
+
         # Мышь передаёт пройденные пиксели; умножать их на delta_time не нужно.
         dx, dy = mouse_delta
-        self._yaw = (self._yaw + dx * self._sensitivity) % math.tau
+        self._yaw = (self._yaw + dx * sensitivity) % math.tau
         self._pitch = max(
             -self._pitch_limit,
-            min(self._pitch_limit, self._pitch - dy * self._sensitivity),
+            min(self._pitch_limit, self._pitch - dy * sensitivity),
         )
 
         # Ходьба остаётся в плоскости XZ независимо от вертикального обзора.
