@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 
 from engine.scene.box import Box
@@ -16,6 +16,7 @@ class BasementLayout:
     lamp_color: tuple[float, float, float]
     lamp_intensity: float
     lamp_radius: float
+    boxes: tuple[Box, ...] = ()
 
     def __post_init__(self):
         for value in (self.depth, self.lamp_margin, self.lamp_intensity, self.lamp_radius):
@@ -44,7 +45,7 @@ class BasementLayout:
 
 
 def build_basement_room(layout, boxes):
-    """Пустой прямоугольный зал. Внутри только свободное пространство и потолочный свет."""
+    """Прямоугольный зал с потолочным светом и блоками из описания карты."""
     spec = layout.basement
     bottom, ceiling = -spec.depth, -layout.slab_thickness
     height = ceiling - bottom
@@ -64,3 +65,6 @@ def build_basement_room(layout, boxes):
     # Нижняя бетонная облицовка отделяет потолок зала от плитки пола над ним.
     boxes.append(Box((0, -layout.slab_thickness - 0.01, 0),
                      (layout.width, 0.02, layout.depth), material="concrete"))
+    for box in spec.boxes:
+        x, y, z = box.position
+        boxes.append(replace(box, position=(x, bottom + y, z)))

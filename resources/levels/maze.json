@@ -255,6 +255,11 @@
       1.0
     ],
     "lamp_intensity": 2.8,
-    "lamp_radius": 5.0
+    "lamp_radius": 5.0,
+    "boxes": [
+      {"position": [-25.0, 0.35, 13.8], "size": [1.5, 0.7, 1.5], "material": "wood"},
+      {"position": [-25.0, 1.05, 13.8], "size": [1.2, 0.7, 1.2], "material": "wood"},
+      {"position": [-25.0, 1.75, 13.8], "size": [0.9, 0.7, 0.9], "material": "wood"}
+    ]
   }
 }
