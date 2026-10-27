@@ -66,7 +66,7 @@ class Renderer:
         self._level = level
         self._projection_settings = None
         self.options = options or RenderOptions()
-        self._static_objects = tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size))
+        self._static_objects = tuple((box, box.model_matrix.to_bytes(), box.bounds_half_size)
                                      for box in level.boxes + level.decorations)
         self._object_boxes = level.object_boxes
         self._objects = self._static_objects + self._prepare_objects(self._object_boxes)
@@ -163,6 +163,7 @@ class Renderer:
         try:
             for box, model, _ in objects:
                 self._program["emission"].value = self._lighting.emission(box)
+                self._program["local_texture"].value = box.local_texture
                 self._use_material(box.material, self._wall_texture,
                                    self._textures.wall_world_size if self._textures else 1.0)
                 self._program["m_model"].write(model)
@@ -196,7 +197,7 @@ class Renderer:
 
     @staticmethod
     def _prepare_objects(boxes):
-        return tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size)) for box in boxes)
+        return tuple((box, box.model_matrix.to_bytes(), box.bounds_half_size) for box in boxes)
 
     @property
     def debug_lines(self) -> tuple[str, ...]:
@@ -211,6 +212,7 @@ class Renderer:
                 *((f"SNOW: {particles}",) if particles else ()))
 
     def _draw_floor(self):
+        self._program["local_texture"].value = False
         self._program["m_model"].write(glm.mat4(1.0))
         self._program["emission"].value = (0, 0, 0)
         self._use_material(self._level.floor_material, self._floor_texture,

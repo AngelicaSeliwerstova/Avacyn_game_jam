@@ -89,15 +89,27 @@ def _door(data, position, layout):
     # Ручки с обеих сторон видны независимо от стороны подхода.
     panel += tuple(box(width * 0.3, 1.05, sign * (thickness / 2 + 0.04),
                        0.22, 0.055, 0.08, "wood") for sign in (-1, 1))
-    shift = layout.cell_size
-    opened = tuple(replace(b, position=(b.position[0] + (shift if axis == "x" else 0),
-                                       b.position[1], b.position[2] + (shift if axis == "z" else 0)))
-                   for b in panel)
-    action = Interaction(data.get("name", "Locked door"), "Unlocked. The door slides aside.",
+    panel = tuple(replace(b, local_texture=True) for b in panel)
+    hinge_side = data.get("hinge_side", "left")
+    if hinge_side not in ("left", "right"):
+        raise ValueError("Door hinge_side must be left or right")
+    sign = -1 if hinge_side == "left" else 1
+    default_angle = (90 if axis == "x" else -90) * -sign
+    angle = data.get("open_angle", default_angle)
+    if not math.isfinite(angle) or not 10 <= abs(angle) <= 110:
+        raise ValueError("Door open_angle must be between 10 and 110 degrees in magnitude")
+    # Ось петли вынесена за лицевую плоскость рамы: полотно не врезается в косяк.
+    normal_offset = -(thickness + 0.1) / 2 - 0.02
+    if angle * default_angle < 0:
+        normal_offset = -normal_offset
+    u = sign * width / 2
+    pivot = (x + u, y, z + normal_offset) if axis == "x" else (x + normal_offset, y, z + u)
+    opened = tuple(b.rotated_around(pivot, angle) for b in panel)
+    action = Interaction(data.get("name", "Locked door"), "Unlocked. The door opens.",
                          "Open", "unlock_door", key_id)
     return (
         SceneObject(data["id"] + "_frame", {"default": ObjectState(frame)}),
         SceneObject(data["id"], {"default": ObjectState(panel, interaction=action),
-                                 "open": ObjectState(opened, collidable=False)},
-                    transition_seconds={"open": data.get("open_seconds", 0.9)}),
+                                 "open": ObjectState(opened)},
+                    transition_seconds={"open": data.get("open_seconds", 0.9)}, rotation_pivot=pivot),
     )

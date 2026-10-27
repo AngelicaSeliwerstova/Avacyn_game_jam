@@ -4,6 +4,7 @@ from collections.abc import Iterable
 import glm
 
 from engine.collision.aabb import AABB
+from engine.collision.obb import OBB
 
 
 class CollisionWorld:
@@ -12,7 +13,7 @@ class CollisionWorld:
     # Допуск для координат, округлённых до float32 при передаче в glm.vec3.
     _CONTACT_EPSILON = 1e-6
 
-    def __init__(self, colliders: Iterable[AABB], bounds: AABB | None = None):
+    def __init__(self, colliders: Iterable[AABB | OBB], bounds: AABB | None = None):
         self.colliders = tuple(colliders)
         self.bounds = bounds
 
@@ -68,6 +69,16 @@ class CollisionWorld:
             destination = max(low + radius, min(high - radius, destination))
 
         for box in self.colliders:
+            if isinstance(box, OBB):
+                interval = box.axis_interval(other, radius, axis)
+                if interval is None:
+                    continue
+                entry, exit = interval
+                if delta > 0 and origin <= entry + self._CONTACT_EPSILON:
+                    destination = min(destination, entry)
+                elif delta < 0 and origin >= exit - self._CONTACT_EPSILON:
+                    destination = max(destination, exit)
+                continue
             low = box.min_x if axis == 0 else box.min_z
             high = box.max_x if axis == 0 else box.max_z
             other_low = box.min_z if axis == 0 else box.min_x

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import math
 
 from engine.collision.aabb3d import AABB3D
+from engine.collision.obb import OBB
 
 
 @dataclass(frozen=True)
@@ -14,7 +15,7 @@ class RayHit:
 
 def cast_ray(origin: Sequence[float], direction: Sequence[float],
              colliders: Iterable[AABB3D], max_distance: float) -> RayHit | None:
-    """Ближайшее пересечение луча с AABB; расстояние измеряется в мировых единицах."""
+    """Пересечение луча с обычными и повёрнутыми вертикальными блоками."""
     origin, direction = tuple(origin), tuple(direction)
     if (len(origin) != 3 or len(direction) != 3
             or not all(math.isfinite(v) for v in origin + direction)
@@ -26,10 +27,19 @@ def cast_ray(origin: Sequence[float], direction: Sequence[float],
     direction = tuple(v / length for v in direction)
     nearest, result = max_distance, None
     for index, box in enumerate(colliders):
-        lower = (box.footprint.min_x, box.bottom, box.footprint.min_z)
-        upper = (box.footprint.max_x, box.top, box.footprint.max_z)
+        start_point, ray_direction = origin, direction
+        footprint = box.footprint
+        if isinstance(footprint, OBB):
+            x, z = footprint.local_point(origin[0], origin[2])
+            dx, dz = footprint.local_direction(direction[0], direction[2])
+            start_point, ray_direction = (x, origin[1], z), (dx, direction[1], dz)
+            lower = (-footprint.half_width, box.bottom, -footprint.half_depth)
+            upper = (footprint.half_width, box.top, footprint.half_depth)
+        else:
+            lower = (footprint.min_x, box.bottom, footprint.min_z)
+            upper = (footprint.max_x, box.top, footprint.max_z)
         entry, exit = 0.0, nearest
-        for start, delta, low, high in zip(origin, direction, lower, upper):
+        for start, delta, low, high in zip(start_point, ray_direction, lower, upper):
             if delta == 0:
                 if start < low or start > high:
                     break

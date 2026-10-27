@@ -38,7 +38,7 @@ class LevelLighting:
         self._scales = []
         self._level = level
         self._object_boxes = level.object_boxes
-        self._static_geometry = tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size))
+        self._static_geometry = tuple((box, box.model_matrix.to_bytes(), box.bounds_half_size)
                                       for box in level.boxes + level.decorations)
         lighting = level.lighting
         program["lighting_enabled"].value = lighting is not None
@@ -117,7 +117,7 @@ class LevelLighting:
             return
         changed = tuple(box for box in previous if box not in boxes) + tuple(box for box in boxes if box not in previous)
         affected = [index for index, light in enumerate(self._level.lighting.lights)
-                    if any(distance_to_box_squared(light.position, box.position, tuple(s / 2 for s in box.size))
+                    if any(distance_to_box_squared(light.position, box.position, box.bounds_half_size)
                            < light.radius ** 2 for box in changed)]
         if affected:
             self._render_lights(affected, self._level.lighting.shadow_resolution,
@@ -129,7 +129,7 @@ class LevelLighting:
         self._context.enable_only(moderngl.DEPTH_TEST)
         self._context.depth_func = "<"
         self._framebuffer.depth_mask = True
-        prepared = self._static_geometry + tuple((box, box.model_matrix.to_bytes(), tuple(s / 2 for s in box.size))
+        prepared = self._static_geometry + tuple((box, box.model_matrix.to_bytes(), box.bounds_half_size)
                                                  for box in boxes)
         for index in indices:
             light = self._level.lighting.lights[index]

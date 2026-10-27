@@ -25,8 +25,15 @@ def build_light_grid(level: Level, cell_size: float, max_cells: int) -> LightGri
     width, depth = level.floor_size
     points = [(-width / 2, level.base_height, -depth / 2), (width / 2, level.base_height, depth / 2)]
     for box in level.boxes + level.decorations + level.all_object_boxes:
-        points.extend(tuple(p + sign * size / 2 for p, size in zip(box.position, box.size))
+        points.extend(tuple(p + sign * half for p, half in zip(box.position, box.bounds_half_size))
                       for sign in (-1, 1))
+    for obj in level.objects:
+        if obj.rotation_pivot is not None:
+            px, py, pz = obj.rotation_pivot
+            radius = max((math.hypot(box.position[0] - px, box.position[2] - pz)
+                          + math.hypot(box.size[0], box.size[2]) / 2
+                          for state in obj.states.values() for box in state.boxes), default=0)
+            points.extend(((px - radius, py, pz - radius), (px + radius, py, pz + radius)))
     origin = tuple(min(point[axis] for point in points) for axis in range(3))
     maximum = tuple(max(point[axis] for point in points) for axis in range(3))
     shape = tuple(max(1, math.ceil((high - low) / cell_size)) for low, high in zip(origin, maximum))

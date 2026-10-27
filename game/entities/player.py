@@ -13,6 +13,7 @@ from engine.scene.entity import Entity
 from engine.scene.level import Level
 from engine.scene.model import ModelComponent
 from engine.scene.transform import Transform
+from engine.scene.object import ObjectState
 from game.entities.player_state import MovementState
 from game.entities.flashlight import Flashlight
 from game.interactions import InteractionController
@@ -41,6 +42,21 @@ class Player(Entity):
             objects=level.objects if level is not None else (), inventory=self.inventory,
         )
         self._sync_transform()
+        if level is not None:
+            for obj in level.objects:
+                obj.motion_guard = self._object_motion_allowed
+
+    def _object_motion_allowed(self, state: ObjectState) -> bool:
+        if not state.collidable:
+            return True
+        position = self.body.position
+        for box in state.boxes:
+            collider = box.collider
+            if (collider.bottom < position.y + self.body.height - 1e-5
+                    and collider.top > position.y + 1e-5
+                    and collider.footprint.intersects_circle(position.x, position.z, self.body.radius)):
+                return False
+        return True
 
     @property
     def aim_text(self) -> str:
