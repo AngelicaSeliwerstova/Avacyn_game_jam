@@ -149,7 +149,7 @@ STAIR_CAMERA_SMOOTHING = 12.0   # Больше значение - быстрее
 
 # Заготовка модели персонажа. Путь относительно resources/models, например "player/player.glb".
 # Пока это описание ресурса; чтение GLB и отрисовка модели ещё не подключены.
-PLAYER_MODEL = None
+PLAYER_MODEL = "player/player.glb"
 PLAYER_MODEL_OFFSET = (0.0, 0.0, 0.0)
 PLAYER_MODEL_ROTATION = (0.0, 0.0, 0.0)
 PLAYER_MODEL_SCALE = 1.0
