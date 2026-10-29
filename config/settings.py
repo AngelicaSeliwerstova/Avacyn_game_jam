@@ -147,12 +147,15 @@ JUMP_HEIGHT = 0.9              # Высота прыжка над текущей
 PHYSICS_STEP = 1 / 120          # Фиксированный шаг физики в секундах.
 STAIR_CAMERA_SMOOTHING = 12.0   # Больше значение - быстрее камера догоняет тело.
 
-# Заготовка модели персонажа. Путь относительно resources/models, например "player/player.glb".
-# Пока это описание ресурса; чтение GLB и отрисовка модели ещё не подключены.
-PLAYER_MODEL = "player/player.glb"
-PLAYER_MODEL_OFFSET = (0.0, 0.0, 0.0)
-PLAYER_MODEL_ROTATION = (0.0, 0.0, 0.0)
-PLAYER_MODEL_SCALE = 1.0
+# Модель игрока в GLB 2.0; путь относительно resources/models.
+PLAYER_MODEL = "player/girl_chestnut_black_stockings.glb"
+PLAYER_MODEL_OFFSET = (0.0, -0.04, 0.0)
+PLAYER_MODEL_ROTATION = (0.0, 180.0, 0.0)
+PLAYER_MODEL_SCALE = 1.14
+PLAYER_CAMERA_DISTANCE = 3.5
+PLAYER_CAMERA_HEIGHT = 0.1
+PLAYER_CAMERA_WALL_MARGIN = 0.2
+PLAYER_CAMERA_SHOULDER_OFFSET = 0.4
 
 # Старт кубовой сцены. Старт коридора хранится в TMX-карте.
 CAMERA_POSITION = (3.0, PLAYER_EYE_HEIGHT, 4.0)

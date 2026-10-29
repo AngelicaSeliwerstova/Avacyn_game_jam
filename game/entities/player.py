@@ -1,6 +1,7 @@
 from pathlib import Path
 import math
 
+import glm
 import pygame
 
 from config import controls, settings
@@ -8,6 +9,7 @@ from engine.collision.world3d import CollisionWorld3D
 from engine.controllers.first_person import FirstPersonController
 from engine.input.state import InputState
 from engine.physics.character import CharacterBody
+from engine.raycasting.aabb import cast_ray
 from engine.scene.camera import Camera
 from engine.scene.entity import Entity
 from engine.scene.level import Level
@@ -29,9 +31,14 @@ class Player(Entity):
         self.body = body
         self.camera = camera
         self.controller = controller
+        self._interaction_camera = Camera(
+            position=tuple(camera.position), target=tuple(camera.target),
+            fov_degrees=camera.fov_degrees, near=camera.near, far=camera.far,
+        )
         self._level = level
         self._exit_found = False
         self._sprinting = False
+        self._look_back = False
         self.flashlight = Flashlight(camera)
         self.inventory = Inventory()
         self.enemy_status = ""
@@ -45,6 +52,7 @@ class Player(Entity):
             objects=level.objects if level is not None else (), inventory=self.inventory,
         )
         self._sync_transform()
+        self._sync_third_person_camera()
         if level is not None:
             for obj in level.objects:
                 obj.motion_guard = self._object_motion_allowed
@@ -99,6 +107,7 @@ class Player(Entity):
 
     def update(self, delta_time: float, inputs: InputState) -> None:
         self._sprinting = inputs.sprint
+        self._look_back = inputs.look_back
         self.controller.update(
             delta_time, inputs.forward, inputs.right, inputs.mouse_delta,
             sprint=inputs.sprint, jump=inputs.jump,
@@ -106,8 +115,10 @@ class Player(Entity):
             zoom=inputs.zoom,
         )
         self._sync_transform()
+        self._sync_third_person_camera()
+        self._sync_interaction_camera()
         self.flashlight.update(self.camera, toggle=inputs.toggle_flashlight)
-        self._interactions.update(delta_time, self.camera, inputs.interact)
+        self._interactions.update(delta_time, self._interaction_camera, inputs.interact)
         if self._level is not None and self._level.goal_position is not None:
             self._exit_found = self._exit_found or math.dist(
                 tuple(self.body.position), self._level.goal_position,
@@ -122,6 +133,17 @@ class Player(Entity):
         if self.body.is_crouching:
             return MovementState.CROUCHING
         return MovementState.RUNNING if self._sprinting else MovementState.WALKING
+
+    @property
+    def model_animation_speed(self) -> float:
+        return {
+            MovementState.IDLE: 0.0,
+            MovementState.WALKING: 1.0,
+            MovementState.RUNNING: 1.5,
+            MovementState.CROUCHING: 0.6,
+            MovementState.RISING: 0.0,
+            MovementState.FALLING: 0.0,
+        }[self.movement_state]
 
     @property
     def debug_lines(self) -> tuple[str, ...]:
@@ -155,6 +177,52 @@ class Player(Entity):
             position=tuple(self.body.position),
             rotation=(0.0, (-self.controller.yaw_degrees - 90.0) % 360.0, 0.0),
         )
+
+    def _sync_third_person_camera(self):
+        body_yaw = math.radians(self.controller.yaw_degrees)
+        yaw = body_yaw + (math.pi if self._look_back else 0.0)
+        pitch = math.radians(self.controller.pitch_degrees)
+        horizontal_distance = settings.PLAYER_CAMERA_DISTANCE * math.cos(pitch)
+        shoulder = settings.PLAYER_CAMERA_SHOULDER_OFFSET if self._look_back else 0.0
+        focus = glm.vec3(
+            self.body.position.x,
+            self.body.position.y + min(self.body.height * 0.8, settings.PLAYER_EYE_HEIGHT),
+            self.body.position.z,
+        )
+        look_direction = glm.vec3(
+            math.cos(yaw) * math.cos(pitch),
+            math.sin(pitch),
+            math.sin(yaw) * math.cos(pitch),
+        )
+        camera_offset = glm.vec3(
+            -math.cos(yaw) * horizontal_distance - math.sin(body_yaw) * shoulder,
+            settings.PLAYER_CAMERA_HEIGHT - settings.PLAYER_CAMERA_DISTANCE * math.sin(pitch),
+            -math.sin(yaw) * horizontal_distance + math.cos(body_yaw) * shoulder,
+        )
+        desired_distance = glm.length(camera_offset)
+        hit = cast_ray(tuple(focus), tuple(camera_offset), self.body.world.colliders, desired_distance)
+        if hit is not None:
+            safe_distance = max(0.0, hit.distance - settings.PLAYER_CAMERA_WALL_MARGIN)
+            camera_offset *= safe_distance / desired_distance
+        self.camera.position = focus + camera_offset
+        self.camera.target = self.camera.position + look_direction * settings.PLAYER_CAMERA_DISTANCE * 2
+
+    def _sync_interaction_camera(self):
+        height_range = self.body.standing_height - self.body.crouch_height
+        stance = ((self.body.height - self.body.crouch_height) / height_range
+                  if height_range > 0 else 1.0)
+        eye_height = (settings.PLAYER_CROUCH_EYE_HEIGHT
+                      + (settings.PLAYER_EYE_HEIGHT - settings.PLAYER_CROUCH_EYE_HEIGHT) * stance)
+        position = self.body.eye_position(eye_height)
+        yaw = math.radians(self.controller.yaw_degrees) + (math.pi if self._look_back else 0.0)
+        pitch = math.radians(self.controller.pitch_degrees)
+        direction = glm.vec3(
+            math.cos(yaw) * math.cos(pitch),
+            math.sin(pitch),
+            math.sin(yaw) * math.cos(pitch),
+        )
+        self._interaction_camera.position = position
+        self._interaction_camera.target = position + direction
 
 
 def create_player(level: Level, world: CollisionWorld3D) -> Player:

@@ -14,3 +14,4 @@ class InputState:
     interact: bool = False
     zoom: bool = False
     toggle_flashlight: bool = False
+    look_back: bool = False
