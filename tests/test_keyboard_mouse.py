@@ -142,6 +142,29 @@ class KeyboardMouseTests(unittest.TestCase):
             self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e, repeat=repeat))
             self.assertFalse(self.input.read().interact)
 
+    def test_camera_editor_keys_are_queued_once(self):
+        bindings = InputBindings(
+            pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d, pygame.K_ESCAPE, 1,
+            toggle_camera_editor=pygame.K_F6, add_camera=pygame.K_F7,
+            delete_camera=pygame.K_DELETE, add_object=pygame.K_F9,
+            cycle_creator_material=pygame.K_F8, creator_up=pygame.K_SPACE,
+        )
+        device = KeyboardMouse(bindings)
+        for key in (pygame.K_F6, pygame.K_F7, pygame.K_DELETE, pygame.K_F9, pygame.K_F8):
+            device.handle_event(pygame.event.Event(pygame.KEYDOWN, key=key))
+        state = device.read()
+        self.assertTrue(state.toggle_camera_editor)
+        self.assertTrue(state.add_camera)
+        self.assertTrue(state.delete_camera)
+        self.assertTrue(state.add_object)
+        self.assertTrue(state.cycle_creator_material)
+        self.assertEqual(device.read(), InputState())
+        self.keys[pygame.K_SPACE] = True
+        self.assertTrue(device.read().creator_up)
+        self.keys[pygame.K_SPACE] = False
+        device.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_F7, repeat=True))
+        self.assertFalse(device.read().add_camera)
+
     def test_focus_loss_and_recapture_do_not_trigger_held_interaction(self):
         self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
         self.input.handle_event(pygame.event.Event(pygame.WINDOWFOCUSLOST))

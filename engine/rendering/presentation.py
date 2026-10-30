@@ -22,6 +22,17 @@ def integer_viewport(
     )
 
 
+def horizontal_side_bars(
+    window_size: tuple[int, int], render_size: tuple[int, int],
+) -> tuple[int, int]:
+    """Returns unused left/right widths around the centered integer-scaled frame."""
+    window_width = window_size[0]
+    x, _, width, _ = integer_viewport(window_size, render_size)
+    if width == 0:
+        return 0, 0
+    return x, window_width - x - width
+
+
 class PixelPresenter:
     """Выводит готовую текстуру в окно, сохраняя чёткие квадратные пиксели."""
 

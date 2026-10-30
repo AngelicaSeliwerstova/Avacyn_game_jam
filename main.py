@@ -1,3 +1,5 @@
+import argparse
+
 from config import controls, settings
 from engine.collision.world3d import CollisionWorld3D
 from engine.core.application import Application
@@ -12,7 +14,7 @@ from game.ui import create_debug_settings, create_hud_style
 from game.session import GameSession
 
 
-def run_session():
+def run_session(creator_mode: bool = False):
     level = create_level(settings.LEVEL_NAME)
     collision_world = CollisionWorld3D(
         colliders=(box.collider for box in level.boxes),
@@ -20,7 +22,7 @@ def run_session():
         ground_height=level.base_height,
         objects=level.objects,
     )
-    player = create_player(level, collision_world)
+    player = create_player(level, collision_world, creator_mode=creator_mode)
     session = GameSession(level, player)
     enemies = EnemySystem(level, player, on_caught=session.lose)
     snow = None
@@ -68,7 +70,13 @@ def run_session():
 
 
 def main():
-    while run_session() == "restart":
+    parser = argparse.ArgumentParser(description="Run the game or its level creator.")
+    parser.add_argument(
+        "--creator", action="store_true",
+        help="start directly in the free-fly level creator",
+    )
+    args = parser.parse_args()
+    while run_session(creator_mode=args.creator) == "restart":
         pass
 
 

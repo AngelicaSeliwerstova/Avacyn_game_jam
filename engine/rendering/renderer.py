@@ -10,7 +10,7 @@ from engine.rendering.presentation import PixelPresenter
 from engine.rendering.render_target import RenderTarget
 from engine.rendering.snow import SnowRenderer
 from engine.rendering.texture import Texture2D, TextureSettings
-from engine.rendering.hud import AimOverlay, HudStyle, TextOverlay
+from engine.rendering.hud import AimOverlay, CreatorSidebarOverlay, HudStyle, TextOverlay
 from engine.rendering.dialog import DialogOverlay
 from engine.rendering.debug_lines import DebugLineRenderer
 from engine.debug.geometry import DebugPath
@@ -20,6 +20,7 @@ from engine.rendering.dynamic_lighting import DynamicLighting
 from engine.rendering.options import RenderOptions
 from engine.rendering.fog import FogSettings, configure_fog
 from engine.rendering.visibility import ViewFrustum, distance_to_box_squared
+from engine.scene.box import Box
 from engine.scene.camera import Camera
 from engine.scene.level import Level
 from engine.scene.lighting import SpotLight
@@ -63,6 +64,7 @@ class Renderer:
         self._hud = None
         self._debug_hud = None
         self._aim_hud = None
+        self._creator_sidebar = None
         self._dialog = None
         self._debug_lines = None
         self._postprocess = None
@@ -81,9 +83,16 @@ class Renderer:
         self._level = level
         self._projection_settings = None
         self.options = options or RenderOptions()
+        static_decorations = level.decorations
+        if level.creator_objects:
+            static_decorations = static_decorations[:-len(level.creator_objects)]
         self._static_objects = tuple((box, box.model_matrix.to_bytes(), box.bounds_half_size)
-                                     for box in level.boxes + level.decorations)
+                                     for box in level.boxes + static_decorations)
         self._object_boxes = level.object_boxes
+        self._camera_marker_boxes = ()
+        self._camera_marker_objects = ()
+        self._creator_object_boxes = ()
+        self._creator_objects = ()
         self._objects = self._static_objects + self._prepare_objects(self._object_boxes)
         self._submitted_objects = len(self._objects)
         self._submitted_triangles = 0
@@ -140,6 +149,7 @@ class Renderer:
             self._hud = TextOverlay(self.context, hud_style or HudStyle())
             self._debug_hud = TextOverlay(self.context, debug_style or HudStyle(font_size=16))
             self._aim_hud = AimOverlay(self.context, hud_style or HudStyle())
+            self._creator_sidebar = CreatorSidebarOverlay(self.context, hud_style or HudStyle())
             self._dialog = DialogOverlay(self.context, hud_style or HudStyle())
             if snow is not None and snow.settings.count > 0:
                 self._snow = SnowRenderer(self.context, snow, camera, render_size, fog=fog)
@@ -153,6 +163,24 @@ class Renderer:
         if self._player_model is not None:
             self._player_model.update(delta_time, speed=model_animation_speed)
 
+    def set_camera_markers(self, boxes: tuple[Box, ...]):
+        if boxes == self._camera_marker_boxes:
+            return
+        self._camera_marker_boxes = boxes
+        self._camera_marker_objects = self._prepare_objects(boxes)
+        self._rebuild_objects()
+
+    def set_creator_objects(self, boxes: tuple[Box, ...]):
+        if boxes == self._creator_object_boxes:
+            return
+        self._creator_object_boxes = boxes
+        self._creator_objects = self._prepare_objects(boxes)
+        self._rebuild_objects()
+
+    def _rebuild_objects(self):
+        self._objects = (self._static_objects + self._prepare_objects(self._object_boxes)
+                         + self._creator_objects + self._camera_marker_objects)
+
     def cycle_postprocess(self):
         if self._postprocess is None or not self._postprocess_presets:
             return
@@ -163,12 +191,17 @@ class Renderer:
     def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = "",
                *, aim_text: str | None = None, dialog: Dialog | None = None,
                debug_paths: tuple[DebugPath, ...] = (),
-               player_transform: Transform | None = None):
+               player_transform: Transform | None = None,
+               camera_markers: tuple[Box, ...] = (),
+               creator_objects: tuple[Box, ...] = (),
+               creator_help_text: tuple[str, str] | None = None):
+        self.set_camera_markers(camera_markers)
+        self.set_creator_objects(creator_objects)
         boxes = self._level.object_boxes
         if boxes != self._object_boxes:
             self._lighting.sync_objects(self._level.static_shadow_boxes)
-            self._objects = self._static_objects + self._prepare_objects(boxes)
             self._object_boxes = boxes
+            self._rebuild_objects()
         self._dynamic_lighting.render_shadows(self._objects)
         self._render_target.framebuffer.use()
         self.context.viewport = (0, 0, *self._render_target.size)
@@ -204,11 +237,15 @@ class Renderer:
         try:
             for box, model, _ in objects:
                 self._program["emission"].value = self._lighting.emission(box)
+                self._program["object_color_enabled"].value = box.color is not None
+                self._program["object_color"].value = box.color or (1.0, 1.0, 1.0)
                 self._program["local_texture"].value = box.local_texture
                 self._use_material(box.material, self._wall_texture,
                                    self._textures.wall_world_size if self._textures else 1.0)
                 self._program["m_model"].write(model)
                 self._cube.render()
+            self._program["object_color_enabled"].value = False
+            self._program["object_color"].value = (1.0, 1.0, 1.0)
             if draw_floor and self.options.depth_prepass:
                 self._draw_floor()
             model_draw_calls = 0
@@ -250,6 +287,8 @@ class Renderer:
         else:
             self._dialog.draw(dialog, target.size, window_size)
         self._presenter.present(target.color, self.context.screen, window_size)
+        if creator_help_text is not None and dialog is None:
+            self._creator_sidebar.draw(window_size, target.size, creator_help_text)
 
     @property
     def output_target(self) -> RenderTarget:
@@ -346,6 +385,9 @@ class Renderer:
         if self._aim_hud is not None:
             self._aim_hud.release()
             self._aim_hud = None
+        if self._creator_sidebar is not None:
+            self._creator_sidebar.release()
+            self._creator_sidebar = None
         if self._debug_hud is not None:
             self._debug_hud.release()
             self._debug_hud = None

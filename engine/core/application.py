@@ -125,16 +125,25 @@ class Application:
                 profiling = self._debug.enabled
                 started = perf_counter() if profiling else 0.0
                 if self._session.dialog is None:
-                    for obj in self._level.objects:
-                        obj.update(delta_time)
+                    creator_was_active = getattr(self._controlled_entity, "creator_mode", False)
+                    creator_is_being_toggled = (
+                        inputs.toggle_camera_editor
+                        and getattr(self._controlled_entity, "creator_mode_available", False)
+                    )
+                    if not creator_was_active and not creator_is_being_toggled:
+                        for obj in self._level.objects:
+                            obj.update(delta_time)
                     self._controlled_entity.update(delta_time, inputs)
-                    for system in self._systems:
-                        system.update(delta_time)
-                        if self._session.dialog is not None:
-                            input_device.release()
-                            break
+                    if not creator_was_active and not creator_is_being_toggled:
+                        for system in self._systems:
+                            system.update(delta_time)
+                            if self._session.dialog is not None:
+                                input_device.release()
+                                break
                     if self._session.dialog is None:
-                        if self._snow is not None:
+                        if self._snow is not None and not getattr(
+                            self._controlled_entity, "creator_mode", False,
+                        ):
                             self._snow.update(delta_time)
                         renderer.update(
                             delta_time,
@@ -146,7 +155,15 @@ class Application:
                 renderer.render(window.size, hud_text=self._controlled_entity.status_text,
                                 debug_text=self._debug.text, aim_text=self._controlled_entity.aim_text,
                                 dialog=self._session.dialog,
-                                player_transform=self._controlled_entity.transform,
+                                camera_markers=getattr(self._controlled_entity, "camera_marker_boxes", ()),
+                                creator_objects=getattr(self._controlled_entity, "creator_object_boxes", ()),
+                                creator_help_text=getattr(
+                                    self._controlled_entity, "creator_help_text", None,
+                                ),
+                                player_transform=(
+                                    None if getattr(self._controlled_entity, "creator_mode", False)
+                                    else self._controlled_entity.transform
+                                ),
                                 debug_paths=self._debug_paths() if self._debug.enabled and self._debug_paths else ())
                 rendered = perf_counter() if profiling else 0.0
                 window.present()

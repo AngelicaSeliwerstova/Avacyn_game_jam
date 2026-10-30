@@ -1,4 +1,29 @@
+from dataclasses import dataclass
+import math
+
 import glm
+
+
+@dataclass(frozen=True)
+class FixedCameraZone:
+    """Статичный ракурс, активный пока игрок находится внутри заданной области."""
+
+    minimum: tuple[float, float, float]
+    maximum: tuple[float, float, float]
+    position: tuple[float, float, float]
+    target: tuple[float, float, float]
+
+    def __post_init__(self):
+        points = (self.minimum, self.maximum, self.position, self.target)
+        if any(len(point) != 3 or not all(math.isfinite(value) for value in point) for point in points):
+            raise ValueError("Fixed camera points must contain three finite coordinates")
+        if any(low >= high for low, high in zip(self.minimum, self.maximum)):
+            raise ValueError("Fixed camera zone dimensions must be positive")
+        if self.position == self.target:
+            raise ValueError("Fixed camera position and target must differ")
+
+    def contains(self, point: tuple[float, float, float]) -> bool:
+        return all(low <= value <= high for value, low, high in zip(point, self.minimum, self.maximum))
 
 
 class Camera:

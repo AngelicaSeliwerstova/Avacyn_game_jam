@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 import math
+from pathlib import Path
 
 from engine.collision.aabb import AABB
 from engine.scene.box import Box
+from engine.scene.camera import FixedCameraZone
 from engine.scene.lighting import Lighting
 from engine.scene.object import SceneObject
 from engine.navigation.graph import NavigationGraph
@@ -30,6 +32,12 @@ class Level:
     floor_hints: tuple[str, ...] = ()
     objects: tuple[SceneObject, ...] = ()
     navigation: NavigationGraph | None = None
+    fixed_cameras: tuple[FixedCameraZone, ...] = ()
+    camera_save_path: Path | None = None
+    fixed_cameras_authored: bool = False
+    authored_fixed_cameras: tuple[FixedCameraZone, ...] | None = None
+    creator_objects: tuple[Box, ...] = ()
+    creator_objects_path: Path | None = None
 
     def __post_init__(self):
         if len({obj.name for obj in self.objects}) != len(self.objects):

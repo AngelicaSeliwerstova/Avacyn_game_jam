@@ -14,6 +14,8 @@ uniform float material_alpha;
 uniform float material_alpha_cutoff;
 uniform float texture_world_size;
 uniform vec3 emission;
+uniform bool object_color_enabled;
+uniform vec3 object_color;
 uniform bool lighting_enabled;
 uniform vec3 ambient_light;
 uniform int light_count;
@@ -121,6 +123,7 @@ void main() {
     } else if (!textured) {
         albedo = vertex_color;
     }
+    if (object_color_enabled) albedo = object_color;
     vec3 color = albedo;
     if (textured) {
         if (!lighting_enabled) color *= surface_shade;

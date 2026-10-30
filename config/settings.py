@@ -175,7 +175,7 @@ INTERACTION_MESSAGE_SECONDS = 3.0
 
 # Медленная улитка-преследователь. Значения можно переопределить в карте.
 ENEMIES_ENABLED = True
-ENEMY_SPEED = 1.95
+ENEMY_SPEED = 2.95
 ENEMY_REPATH_INTERVAL = 0.75
 ENEMY_STOP_DISTANCE = 0.5
 ENEMY_CATCH_MARGIN = 0.03       # Допуск касания у границы коллайдера игрока, м.

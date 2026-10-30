@@ -4,6 +4,8 @@ from pathlib import Path
 import moderngl
 import pygame
 
+from engine.rendering.presentation import horizontal_side_bars
+
 
 @dataclass(frozen=True)
 class HudStyle:
@@ -27,6 +29,7 @@ class TextOverlay:
                               if style.heading_font_path is not None else self._font)
         self._text = None
         self._wrap_width = None
+        self._fill_width = False
         self._texture = None
         self._program = None
         self._vertices = None
@@ -43,10 +46,10 @@ class TextOverlay:
             raise
 
     def draw(self, text: str, render_size: tuple[int, int], *, anchor: str = "top_left",
-             max_width: int | None = None):
+             max_width: int | None = None, fill_width: bool = False):
         if not text:
             return
-        if text != self._text or max_width != self._wrap_width:
+        if text != self._text or max_width != self._wrap_width or fill_width != self._fill_width:
             lines = []
             for index, string in enumerate(text.splitlines()):
                 font = self._heading_font if index == 0 else self._font
@@ -54,7 +57,9 @@ class TextOverlay:
                            if max_width is not None else [string])
                 lines.extend(font.render(line, self._style.antialias, (230, 228, 212)) for line in strings)
             padding = self._style.margin
-            width = max(line.get_width() for line in lines) + 2 * padding
+            width = max_width if fill_width and max_width is not None else (
+                max(line.get_width() for line in lines) + 2 * padding
+            )
             # Общий диапазон видимых глифов сохраняет базовую линию и убирает
             # лишние вертикальные поля TTF; хвосты букв и диакритика остаются целыми.
             bounds = [line.get_bounding_rect() for line in lines]
@@ -70,6 +75,7 @@ class TextOverlay:
             self._upload_surface(surface)
             self._text = text
             self._wrap_width = max_width
+            self._fill_width = fill_width
         self._draw_texture(render_size, anchor)
 
     def _upload_surface(self, surface: pygame.Surface):
@@ -91,6 +97,12 @@ class TextOverlay:
             position = ((render_size[0] - width) // 2, margin)
         elif anchor == "center":
             position = ((render_size[0] - width) // 2, (render_size[1] - height) // 2)
+        elif anchor == "center_left":
+            position = (margin, (render_size[1] - height) // 2)
+        elif anchor == "center_right":
+            position = (render_size[0] - width - margin, (render_size[1] - height) // 2)
+        elif anchor == "top_right":
+            position = (render_size[0] - width - margin, render_size[1] - height - margin)
         else:
             raise ValueError(f"Unknown text anchor: {anchor}")
         self._context.viewport = (*position, width, height)
@@ -170,3 +182,41 @@ class AimOverlay:
             if resource is not None:
                 resource.release()
                 setattr(self, name, None)
+
+
+class CreatorSidebarOverlay:
+    """Draws compact creator controls in the unused side bars around the game view."""
+
+    MINIMUM_BAR_WIDTH = 180
+
+    def __init__(self, context: moderngl.Context, style: HudStyle):
+        sidebar_style = HudStyle(
+            font_size=max(12, style.font_size - 4),
+            margin=max(8, style.margin),
+            font_path=style.font_path,
+            heading_font_path=style.heading_font_path,
+            antialias=style.antialias,
+            line_gap=style.line_gap,
+        )
+        self._margin = sidebar_style.margin
+        self._left = TextOverlay(context, sidebar_style)
+        self._right = TextOverlay(context, sidebar_style)
+
+    def draw(self, window_size: tuple[int, int], render_size: tuple[int, int],
+             text: tuple[str, str]):
+        left_width, right_width = horizontal_side_bars(window_size, render_size)
+        margin = self._margin
+        if left_width >= self.MINIMUM_BAR_WIDTH:
+            self._left.draw(
+                text[0], window_size, anchor="center_left",
+                max_width=left_width - margin * 2, fill_width=True,
+            )
+        if right_width >= self.MINIMUM_BAR_WIDTH:
+            self._right.draw(
+                text[1], window_size, anchor="center_right",
+                max_width=right_width - margin * 2, fill_width=True,
+            )
+
+    def release(self):
+        self._left.release()
+        self._right.release()

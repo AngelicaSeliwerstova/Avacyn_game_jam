@@ -1,6 +1,6 @@
 import unittest
 
-from engine.rendering.presentation import integer_viewport
+from engine.rendering.presentation import horizontal_side_bars, integer_viewport
 
 
 class PresentationTests(unittest.TestCase):
@@ -32,3 +32,8 @@ class PresentationTests(unittest.TestCase):
         for size in ((0, 0), (319, 240), (320, 239)):
             with self.subTest(size=size):
                 self.assertEqual(integer_viewport(size, (320, 240)), (0, 0, 0, 0))
+
+    def test_horizontal_letterbox_bars_are_available_for_creator_controls(self):
+        self.assertEqual(horizontal_side_bars((1920, 1080), (640, 480)), (320, 320))
+        self.assertEqual(horizontal_side_bars((1280, 960), (640, 480)), (0, 0))
+        self.assertEqual(horizontal_side_bars((600, 900), (320, 240)), (140, 140))

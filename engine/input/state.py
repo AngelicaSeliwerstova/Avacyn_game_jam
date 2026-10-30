@@ -15,3 +15,9 @@ class InputState:
     zoom: bool = False
     toggle_flashlight: bool = False
     look_back: bool = False
+    toggle_camera_editor: bool = False
+    add_camera: bool = False
+    delete_camera: bool = False
+    add_object: bool = False
+    cycle_creator_material: bool = False
+    creator_up: bool = False

@@ -21,6 +21,12 @@ class InputBindings:
     toggle_flashlight: int | None = None
     cycle_postprocess: int | None = None
     look_back: int | None = None
+    toggle_camera_editor: int | None = None
+    add_camera: int | None = None
+    delete_camera: int | None = None
+    add_object: int | None = None
+    cycle_creator_material: int | None = None
+    creator_up: int | None = None
 
     def __post_init__(self):
         if self.zoom_mouse_button is not None and self.zoom_mouse_button not in range(1, 6):

@@ -1,4 +1,5 @@
 from pathlib import Path
+from dataclasses import replace
 import math
 
 import glm
@@ -10,13 +11,16 @@ from engine.controllers.first_person import FirstPersonController
 from engine.input.state import InputState
 from engine.physics.character import CharacterBody
 from engine.raycasting.aabb import cast_ray
-from engine.scene.camera import Camera
+from engine.scene.box import Box
+from engine.scene.camera import Camera, FixedCameraZone
 from engine.scene.entity import Entity
 from engine.scene.level import Level
 from engine.scene.model import ModelComponent
 from engine.scene.transform import Transform
 from engine.scene.object import ObjectState
 from game.entities.player_state import MovementState
+from game.levels.cameras import camera_model_boxes, camera_wall_normal, save_fixed_cameras
+from game.levels.creator import save_creator_objects
 from game.entities.flashlight import Flashlight
 from game.interactions import InteractionController
 from game.inventory import Inventory
@@ -26,7 +30,8 @@ class Player(Entity):
     """Персонаж объединяет тело, управление, камеру и место для своей модели."""
 
     def __init__(self, body: CharacterBody, camera: Camera,
-                 controller: FirstPersonController, model: ModelComponent, level: Level | None = None):
+                 controller: FirstPersonController, model: ModelComponent, level: Level | None = None,
+                 creator_mode: bool = False):
         super().__init__(name="player", model=model)
         self.body = body
         self.camera = camera
@@ -39,6 +44,37 @@ class Player(Entity):
         self._exit_found = False
         self._sprinting = False
         self._look_back = False
+        self._movement_yaw = math.radians(controller.yaw_degrees)
+        self._camera_save_path = level.camera_save_path if level is not None else None
+        self._camera_zones_authored = bool(level is not None and level.fixed_cameras_authored)
+        authored = level.authored_fixed_cameras if level is not None else None
+        self._authored_camera_zones = tuple(
+            authored if authored is not None else (
+                level.fixed_cameras if self._camera_zones_authored else ()
+            )
+        ) if level is not None else ()
+        self._automatic_camera_zones = tuple(
+            zone for zone in (level.fixed_cameras if level is not None else ())
+            if zone not in self._authored_camera_zones
+        )
+        self._camera_zones = (
+            self._authored_camera_zones if self._camera_zones_authored
+            else self._automatic_camera_zones
+        )
+        self._active_camera_zone = None
+        self._creator_mode = False
+        self._camera_editor_message = ""
+        self._creator_yaw = math.radians(controller.yaw_degrees)
+        self._creator_pitch = math.radians(controller.pitch_degrees)
+        self._creator_objects = tuple(level.creator_objects) if level is not None else ()
+        self._creator_objects_path = level.creator_objects_path if level is not None else None
+        self._creator_materials = ("rust", "concrete", "plaster", "brick")
+        self._creator_material_index = 0
+        self._selected_camera_index = None
+        self._saved_creator_view = None
+        self._camera_blink_elapsed = 0.0
+        self._camera_marker_phase = None
+        self._camera_marker_cache = ()
         self.flashlight = Flashlight(camera)
         self.inventory = Inventory()
         self.enemy_status = ""
@@ -50,9 +86,12 @@ class Player(Entity):
             pygame.key.name(controls.INPUT_BINDINGS.interact).upper()
             if controls.INPUT_BINDINGS.interact is not None else "-",
             objects=level.objects if level is not None else (), inventory=self.inventory,
+            aspect_ratio=settings.RENDER_SIZE[0] / settings.RENDER_SIZE[1],
         )
         self._sync_transform()
         self._sync_third_person_camera()
+        if creator_mode and self._creator_objects_path is not None:
+            self._enter_creator_mode()
         if level is not None:
             for obj in level.objects:
                 obj.motion_guard = self._object_motion_allowed
@@ -71,7 +110,68 @@ class Player(Entity):
 
     @property
     def aim_text(self) -> str:
+        if self._creator_mode:
+            return f"CREATOR | {self._camera_editor_message}" if self._camera_editor_message else ""
         return self._interactions.text
+
+    @property
+    def creator_help_text(self) -> tuple[str, str] | None:
+        if not self._creator_mode:
+            return None
+        if self._selected_camera_index is not None:
+            left = (
+                f"CAMERA {self._selected_camera_index + 1}\n\n"
+                "W / S\nTilt up / down\n\n"
+                "A / D\nPan left / right\n\n"
+                "E\nSave and exit\n\n"
+                "F6\nLeave Creator"
+            )
+        else:
+            left = (
+                "CREATOR\n\n"
+                "W / A / S / D\nFly around\n\n"
+                "Mouse\nLook around\n\n"
+                "Space / Ctrl\nFly up / down\n\n"
+                "Shift\nMove faster\n\n"
+                "E\nEdit aimed camera"
+            )
+        right = (
+            f"SCENE\n\n{len(self._authored_camera_zones)} cameras\n"
+            f"{len(self._creator_objects)} objects\n\n"
+            "F7\nPlace wall camera\n\n"
+            "F8\nChange block material\n\n"
+            "F9\nPlace block\n\n"
+            "Delete\nRemove nearest\n\n"
+            "F6\nExit Creator"
+        )
+        return left, right
+
+    @property
+    def camera_marker_boxes(self):
+        if not self._camera_zones_authored:
+            return ()
+        cameras = self._authored_camera_zones
+        phases = tuple((self._camera_blink_elapsed + index * 0.17) % 1.0 < 0.55
+                       for index in range(len(cameras)))
+        if phases != self._camera_marker_phase:
+            self._camera_marker_phase = phases
+            self._camera_marker_cache = tuple(
+                box for camera, led_on in zip(cameras, phases)
+                for box in camera_model_boxes(camera, led_on)
+            )
+        return self._camera_marker_cache
+
+    @property
+    def creator_object_boxes(self):
+        return self._creator_objects
+
+    @property
+    def creator_mode(self) -> bool:
+        return self._creator_mode
+
+    @property
+    def creator_mode_available(self) -> bool:
+        return self._camera_save_path is not None or self._creator_objects_path is not None
 
     @property
     def dynamic_lights(self):
@@ -80,6 +180,11 @@ class Player(Entity):
     @property
     def status_text(self) -> str:
         text = self._location_text()
+        if self._creator_mode:
+            camera_count = len(self._authored_camera_zones)
+            text += ("\n" if text else "") + (
+                f"CREATOR  |  {camera_count} CAMERAS  |  {len(self._creator_objects)} OBJECTS"
+            )
         if self.inventory.key_names:
             text += ("\n" if text else "") + "KEYS: " + ", ".join(self.inventory.key_names)
         if self.enemy_status:
@@ -108,17 +213,67 @@ class Player(Entity):
     def update(self, delta_time: float, inputs: InputState) -> None:
         self._sprinting = inputs.sprint
         self._look_back = inputs.look_back
+        self._camera_blink_elapsed += delta_time
+        if inputs.toggle_camera_editor and (
+            self._camera_save_path is not None or self._creator_objects_path is not None
+        ):
+            if self._creator_mode and self._selected_camera_index is not None:
+                self._leave_camera_edit()
+            self._creator_mode = not self._creator_mode
+            self._camera_editor_message = ""
+            if self._creator_mode:
+                self._enter_creator_mode()
+        if self._creator_mode:
+            if self._selected_camera_index is None:
+                self._update_creator_camera(delta_time, inputs)
+                if inputs.interact:
+                    self._select_camera_for_edit()
+            elif inputs.interact:
+                self._leave_camera_edit()
+            else:
+                self._update_selected_camera(delta_time, inputs)
+            if self._selected_camera_index is None:
+                if inputs.add_camera:
+                    self._place_fixed_camera()
+                if inputs.add_object:
+                    self._place_creator_object()
+                if inputs.cycle_creator_material:
+                    self._creator_material_index = (
+                        self._creator_material_index + 1
+                    ) % len(self._creator_materials)
+                    self._camera_editor_message = (
+                        f"MATERIAL: {self._creator_materials[self._creator_material_index]}"
+                    )
+                if inputs.delete_camera:
+                    self._delete_nearest_editor_item()
+            self.flashlight.update(self.camera, toggle=inputs.toggle_flashlight)
+            return
+
+        previous_position = self.body.position
+        active_camera = self._active_fixed_camera()
+        movement_yaw = None
+        if active_camera is not None:
+            direction = glm.vec3(active_camera.target) - glm.vec3(active_camera.position)
+            movement_yaw = math.atan2(direction.z, direction.x)
         self.controller.update(
             delta_time, inputs.forward, inputs.right, inputs.mouse_delta,
             sprint=inputs.sprint, jump=inputs.jump,
             crouch=inputs.crouch,
             zoom=inputs.zoom,
+            movement_yaw=movement_yaw,
         )
+        displacement = self.body.position - previous_position
+        if math.hypot(displacement.x, displacement.z) > 1e-6:
+            self._movement_yaw = math.atan2(displacement.z, displacement.x)
         self._sync_transform()
         self._sync_third_person_camera()
+        self._sync_fixed_camera()
         self._sync_interaction_camera()
-        self.flashlight.update(self.camera, toggle=inputs.toggle_flashlight)
-        self._interactions.update(delta_time, self._interaction_camera, inputs.interact)
+        self.flashlight.update(self._interaction_camera, toggle=inputs.toggle_flashlight)
+        self._interactions.update(
+            delta_time, self.camera, inputs.interact,
+            reach_origin=tuple(self._interaction_camera.position),
+        )
         if self._level is not None and self._level.goal_position is not None:
             self._exit_found = self._exit_found or math.dist(
                 tuple(self.body.position), self._level.goal_position,
@@ -172,10 +327,10 @@ class Player(Entity):
         )
 
     def _sync_transform(self):
-        # Локальное направление вперёд у сущности -Z; наклон взгляда не наклоняет тело.
+        # Локальное направление вперёд у сущности -Z; смотрим по фактическому движению.
         self.transform = Transform(
             position=tuple(self.body.position),
-            rotation=(0.0, (-self.controller.yaw_degrees - 90.0) % 360.0, 0.0),
+            rotation=(0.0, (-math.degrees(self._movement_yaw) - 90.0) % 360.0, 0.0),
         )
 
     def _sync_third_person_camera(self):
@@ -207,13 +362,287 @@ class Player(Entity):
         self.camera.position = focus + camera_offset
         self.camera.target = self.camera.position + look_direction * settings.PLAYER_CAMERA_DISTANCE * 2
 
+    def _sync_fixed_camera(self):
+        if self._level is None or self._creator_mode:
+            return
+        zone = self._active_fixed_camera()
+        if zone is None:
+            return
+
+        self.camera.position = self._camera_view_position(zone) if zone in self._authored_camera_zones \
+            else glm.vec3(zone.position)
+        self.camera.target = glm.vec3(zone.target)
+
+    def _active_fixed_camera(self):
+        if self._level is None or self._creator_mode:
+            return None
+        position = tuple(self._player_eye_position())
+        active = self._active_camera_zone
+        if active in self._camera_zones and self._fixed_camera_framing_score(active, position) is not None:
+            return active
+
+        visible_zones = tuple(
+            (camera, self._fixed_camera_framing_score(camera, position))
+            for camera in self._camera_zones
+        )
+        visible_zones = tuple((camera, score) for camera, score in visible_zones if score is not None)
+        if visible_zones:
+            zone = min(
+                visible_zones,
+                key=lambda item: (
+                    not item[0].contains(position),
+                    item[1],
+                    self._camera_zone_distance(item[0], position),
+                ),
+            )[0]
+        else:
+            zone = next((camera for camera in self._camera_zones if camera.contains(position)), None)
+            if zone is None and self._camera_zones:
+                zone = min(self._camera_zones, key=lambda camera: self._camera_zone_distance(camera, position))
+        self._active_camera_zone = zone
+        return zone
+
+    @staticmethod
+    def _fixed_camera_framing_score(zone: FixedCameraZone, point) -> float | None:
+        camera_position = glm.vec3(zone.position)
+        forward = glm.normalize(glm.vec3(zone.target) - camera_position)
+        world_up = glm.vec3(0, 1, 0)
+        right = glm.cross(forward, world_up)
+        if glm.length(right) < 1e-6:
+            return None
+        right = glm.normalize(right)
+        up = glm.normalize(glm.cross(right, forward))
+        relative = glm.vec3(point) - camera_position
+        depth = glm.dot(relative, forward)
+        if depth <= settings.CAMERA_NEAR or depth >= settings.CAMERA_FAR:
+            return None
+        vertical_tangent = math.tan(math.radians(settings.CAMERA_FOV_DEGREES) / 2)
+        horizontal_tangent = vertical_tangent * settings.RENDER_SIZE[0] / settings.RENDER_SIZE[1]
+        horizontal = glm.dot(relative, right) / (depth * horizontal_tangent)
+        vertical = glm.dot(relative, up) / (depth * vertical_tangent)
+        if abs(horizontal) > 1 or abs(vertical) > 1:
+            return None
+        return horizontal * horizontal + vertical * vertical
+
+    @staticmethod
+    def _camera_zone_distance(zone: FixedCameraZone, position) -> float:
+        center = tuple((low + high) / 2 for low, high in zip(zone.minimum, zone.maximum))
+        return math.dist(position, center)
+
+    @staticmethod
+    def _camera_view_position(zone: FixedCameraZone):
+        direction = glm.normalize(glm.vec3(zone.target) - glm.vec3(zone.position))
+        return glm.vec3(zone.position) + direction * 0.45
+
+    def _enter_creator_mode(self):
+        self._creator_mode = True
+        self._creator_yaw = math.radians(self.controller.yaw_degrees)
+        self._creator_pitch = math.radians(self.controller.pitch_degrees)
+        self.camera.position = self.body.eye_position(settings.PLAYER_EYE_HEIGHT)
+        self._update_creator_view()
+        self._camera_editor_message = ""
+
+    def _update_creator_camera(self, delta_time: float, inputs: InputState):
+        sensitivity = math.radians(settings.MOUSE_SENSITIVITY)
+        dx, dy = inputs.mouse_delta
+        self._creator_yaw = (self._creator_yaw + dx * sensitivity) % math.tau
+        self._creator_pitch = max(
+            -math.radians(89), min(math.radians(89), self._creator_pitch - dy * sensitivity),
+        )
+        forward = self._creator_direction()
+        right = glm.normalize(glm.cross(forward, self.camera.up))
+        movement = forward * inputs.forward + right * inputs.right
+        movement += self.camera.up * (float(inputs.creator_up) - float(inputs.crouch))
+        if glm.length(movement) > 0:
+            movement = glm.normalize(movement)
+        speed = 16.0 if inputs.sprint else 6.0
+        self.camera.position += movement * speed * min(delta_time, 0.1)
+        self._update_creator_view()
+        self._interaction_camera.position = glm.vec3(self.camera.position)
+        self._interaction_camera.target = glm.vec3(self.camera.target)
+
+    def _creator_direction(self):
+        return glm.vec3(
+            math.cos(self._creator_yaw) * math.cos(self._creator_pitch),
+            math.sin(self._creator_pitch),
+            math.sin(self._creator_yaw) * math.cos(self._creator_pitch),
+        )
+
+    def _update_creator_view(self):
+        self.camera.target = self.camera.position + self._creator_direction()
+
+    def _select_camera_for_edit(self):
+        if self._camera_save_path is None:
+            self._camera_editor_message = "CAMERAS CANNOT BE SAVED ON THIS LEVEL"
+            return
+        direction = glm.normalize(self.camera.target - self.camera.position)
+        origin = self.camera.position
+        candidates = []
+        for index, zone in enumerate(self._authored_camera_zones):
+            offset = glm.vec3(zone.position) - origin
+            distance_along_view = glm.dot(offset, direction)
+            if distance_along_view < 0 or distance_along_view > settings.CAMERA_FAR:
+                continue
+            closest = origin + direction * distance_along_view
+            miss_distance = glm.length(glm.vec3(zone.position) - closest)
+            if miss_distance <= 0.7:
+                candidates.append((distance_along_view, index, zone))
+        if not candidates:
+            self._camera_editor_message = "AIM AT A CAMERA AND PRESS E"
+            return
+        _, index, zone = min(candidates, key=lambda candidate: candidate[0])
+        self._selected_camera_index = index
+        self._saved_creator_view = (
+            glm.vec3(self.camera.position), self._creator_yaw, self._creator_pitch,
+        )
+        self._selected_camera_yaw, self._selected_camera_pitch = self._camera_angles(zone)
+        self.camera.position = self._camera_view_position(zone)
+        self.camera.target = glm.vec3(zone.target)
+        self._camera_editor_message = f"EDITING CAMERA {index + 1} | WASD AIM, E DONE"
+
+    @staticmethod
+    def _camera_angles(zone: FixedCameraZone):
+        direction = glm.normalize(glm.vec3(zone.target) - glm.vec3(zone.position))
+        yaw = math.atan2(direction.z, direction.x)
+        pitch = math.asin(max(-1.0, min(1.0, direction.y)))
+        return yaw, pitch
+
+    def _update_selected_camera(self, delta_time: float, inputs: InputState):
+        index = self._selected_camera_index
+        if index is None:
+            return
+        turn = math.radians(55) * min(delta_time, 0.1)
+        self._selected_camera_yaw += inputs.right * turn
+        self._selected_camera_pitch = max(
+            -math.radians(80),
+            min(math.radians(80), self._selected_camera_pitch + inputs.forward * turn),
+        )
+        zone = self._authored_camera_zones[index]
+        direction = glm.vec3(
+            math.cos(self._selected_camera_yaw) * math.cos(self._selected_camera_pitch),
+            math.sin(self._selected_camera_pitch),
+            math.sin(self._selected_camera_yaw) * math.cos(self._selected_camera_pitch),
+        )
+        target = glm.vec3(zone.position) + direction * glm.length(
+            glm.vec3(zone.target) - glm.vec3(zone.position),
+        )
+        updated = replace(zone, target=tuple(target))
+        cameras = (
+            self._authored_camera_zones[:index] + (updated,)
+            + self._authored_camera_zones[index + 1:]
+        )
+        self._authored_camera_zones = cameras
+        self._camera_zones = cameras
+        save_fixed_cameras(self._camera_save_path, cameras)
+        self._camera_marker_phase = None
+        self.camera.position = self._camera_view_position(updated)
+        self.camera.target = glm.vec3(updated.target)
+        self._camera_editor_message = f"EDITING CAMERA {index + 1} | WASD AIM, E DONE"
+
+    def _leave_camera_edit(self):
+        self._selected_camera_index = None
+        if self._saved_creator_view is not None:
+            position, self._creator_yaw, self._creator_pitch = self._saved_creator_view
+            self.camera.position = position
+            self._update_creator_view()
+            self._saved_creator_view = None
+        self._camera_editor_message = "CAMERA SAVED"
+
+    def _editor_colliders(self):
+        return self.body.world.colliders + tuple(box.collider for box in self._creator_objects)
+
+    def _place_fixed_camera(self):
+        if self._camera_save_path is None:
+            return
+        colliders = self._editor_colliders()
+        origin = tuple(self.camera.position)
+        direction = tuple(self.camera.target - self.camera.position)
+        hit = cast_ray(origin, direction, colliders, settings.CAMERA_FAR)
+        if hit is None:
+            self._camera_editor_message = "AIM AT A WALL TO PLACE"
+            return
+        normal = camera_wall_normal(hit.position, colliders[hit.index])
+        if normal is None:
+            self._camera_editor_message = "CAMERAS CAN ONLY MOUNT ON WALLS"
+            return
+
+        camera_position = glm.vec3(hit.position) + glm.vec3(normal) * 0.16
+        camera_target = camera_position + glm.vec3(normal) * 8.0
+        zone_center = glm.vec3(hit.position) + glm.vec3(normal) * 1.5
+        zone_floor = hit.position[1] - settings.PLAYER_EYE_HEIGHT
+        camera = FixedCameraZone(
+            minimum=(zone_center.x - 2.5, zone_floor - 0.25, zone_center.z - 2.5),
+            maximum=(zone_center.x + 2.5, zone_floor + settings.PLAYER_HEIGHT + 0.5,
+                     zone_center.z + 2.5),
+            position=tuple(camera_position),
+            target=tuple(camera_target),
+        )
+        updated = self._authored_camera_zones + (camera,)
+        save_fixed_cameras(self._camera_save_path, updated)
+        self._authored_camera_zones = updated
+        self._camera_zones = updated
+        self._camera_zones_authored = True
+        self._camera_marker_phase = None
+        self._camera_editor_message = "CAMERA MOUNTED ON WALL"
+
+    def _place_creator_object(self):
+        if self._creator_objects_path is None:
+            return
+        colliders = self._editor_colliders()
+        hit = cast_ray(
+            tuple(self.camera.position), tuple(self.camera.target - self.camera.position),
+            colliders, settings.CAMERA_FAR,
+        )
+        if hit is None:
+            self._camera_editor_message = "AIM AT A SURFACE TO PLACE OBJECT"
+            return
+        normal = camera_wall_normal(hit.position, colliders[hit.index]) or (0.0, 1.0, 0.0)
+        size = (0.6, 0.6, 0.6)
+        position = tuple(value + direction * 0.31 for value, direction in zip(hit.position, normal))
+        yaw = math.degrees(math.atan2(-normal[0], -normal[2]))
+        placed = Box(
+            position, size, material=self._creator_materials[self._creator_material_index],
+            yaw_degrees=yaw,
+        )
+        updated = self._creator_objects + (placed,)
+        save_creator_objects(self._creator_objects_path, updated)
+        self._creator_objects = updated
+        self._camera_editor_message = f"PLACED {placed.material.upper()} BLOCK"
+
+    def _delete_nearest_editor_item(self):
+        x, y, z = self.camera.position
+        candidates = []
+        if self._authored_camera_zones:
+            candidates.extend(
+                (math.dist((x, y, z), camera.position), "camera", index)
+                for index, camera in enumerate(self._authored_camera_zones)
+            )
+        candidates.extend(
+            (math.dist((x, y, z), box.position), "object", index)
+            for index, box in enumerate(self._creator_objects)
+        )
+        if not candidates:
+            return
+        _, kind, index = min(candidates)
+        if kind == "camera" and self._camera_save_path is not None:
+            self._authored_camera_zones = (
+                self._authored_camera_zones[:index] + self._authored_camera_zones[index + 1:]
+            )
+            self._camera_zones = (
+                self._authored_camera_zones if self._camera_zones_authored
+                else self._automatic_camera_zones
+            )
+            save_fixed_cameras(self._camera_save_path, self._authored_camera_zones)
+            self._camera_marker_phase = None
+        elif kind == "object" and self._creator_objects_path is not None:
+            self._creator_objects = self._creator_objects[:index] + self._creator_objects[index + 1:]
+            save_creator_objects(self._creator_objects_path, self._creator_objects)
+        else:
+            return
+        self._camera_editor_message = f"REMOVED {kind.upper()}"
+
     def _sync_interaction_camera(self):
-        height_range = self.body.standing_height - self.body.crouch_height
-        stance = ((self.body.height - self.body.crouch_height) / height_range
-                  if height_range > 0 else 1.0)
-        eye_height = (settings.PLAYER_CROUCH_EYE_HEIGHT
-                      + (settings.PLAYER_EYE_HEIGHT - settings.PLAYER_CROUCH_EYE_HEIGHT) * stance)
-        position = self.body.eye_position(eye_height)
+        position = self._player_eye_position()
         yaw = math.radians(self.controller.yaw_degrees) + (math.pi if self._look_back else 0.0)
         pitch = math.radians(self.controller.pitch_degrees)
         direction = glm.vec3(
@@ -224,8 +653,16 @@ class Player(Entity):
         self._interaction_camera.position = position
         self._interaction_camera.target = position + direction
 
+    def _player_eye_position(self):
+        height_range = self.body.standing_height - self.body.crouch_height
+        stance = ((self.body.height - self.body.crouch_height) / height_range
+                  if height_range > 0 else 1.0)
+        eye_height = (settings.PLAYER_CROUCH_EYE_HEIGHT
+                      + (settings.PLAYER_EYE_HEIGHT - settings.PLAYER_CROUCH_EYE_HEIGHT) * stance)
+        return self.body.eye_position(eye_height)
 
-def create_player(level: Level, world: CollisionWorld3D) -> Player:
+
+def create_player(level: Level, world: CollisionWorld3D, creator_mode: bool = False) -> Player:
     x, y, z = level.spawn_position
     body = CharacterBody(
         position=(x, y - settings.PLAYER_EYE_HEIGHT, z), world=world,
@@ -257,4 +694,4 @@ def create_player(level: Level, world: CollisionWorld3D) -> Player:
             scale=(settings.PLAYER_MODEL_SCALE,) * 3,
         ),
     )
-    return Player(body, camera, controller, model, level=level)
+    return Player(body, camera, controller, model, level=level, creator_mode=creator_mode)

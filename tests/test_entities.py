@@ -34,16 +34,31 @@ class EntityTests(unittest.TestCase):
         self.assertAlmostEqual(player.body.position.y, 1.5, places=5)
         self.assertTrue(player.body.grounded)
 
-    def test_body_heading_follows_camera_yaw_and_ignores_pitch(self):
+    def test_stationary_body_does_not_turn_with_camera_yaw(self):
         player = create_player(self.level, self.world)
+        original_rotation = player.transform.rotation
         player.update(0, InputState(mouse_delta=(750, 500)))
-        forward = glm.vec3(player.transform.matrix * glm.vec4(0, 0, -1, 0))
-        view = player.camera.target - player.camera.position
-        flat_view = glm.normalize(glm.vec3(view.x, 0, view.z))
-        self.assertLess(glm.length(forward - flat_view), 1e-5)
+        self.assertEqual(player.transform.rotation, original_rotation)
         self.assertAlmostEqual(player.transform.rotation[0], 0)
         self.assertAlmostEqual(player.transform.rotation[2], 0)
-        self.assertLess(view.y, -0.5)
+
+    def test_model_faces_actual_movement_direction_and_keeps_heading_when_idle(self):
+        player = create_player(self.level, self.world)
+        for inputs in (
+            InputState(forward=1),
+            InputState(right=1),
+            InputState(forward=-1),
+            InputState(forward=1, right=1),
+        ):
+            previous_position = player.body.position
+            player.update(1 / 60, inputs)
+            displacement = player.body.position - previous_position
+            movement = glm.normalize(glm.vec3(displacement.x, 0, displacement.z))
+            facing = glm.vec3(player.transform.matrix * glm.vec4(0, 0, -1, 0))
+            self.assertLess(glm.length(facing - movement), 1e-5)
+            rotation = player.transform.rotation
+            player.update(1 / 60, InputState(mouse_delta=(200, 100)))
+            self.assertEqual(player.transform.rotation, rotation)
 
     def test_third_person_camera_tracks_player_while_interaction_aim_stays_at_eye(self):
         player = create_player(self.level, self.world)

@@ -61,12 +61,29 @@ class InteractionTests(unittest.TestCase):
         controller.update(0, self.camera)
         self.assertIs(controller.focused, wide)
 
+    def test_interaction_targets_are_visible_in_frame_without_center_aim(self):
+        side_crate = replace(self.crate, position=(1, 1, -2))
+        controller = self.controller((side_crate,))
+        controller.update(0, self.camera, pressed=True)
+        self.assertIs(controller.focused, side_crate)
+        self.assertIn(side_crate.interaction.message, controller.text)
+
+        wall = Box((0, 1.5, -1), (2, 3, 0.2))
+        controller = self.controller((side_crate, wall))
+        controller.update(0, self.camera, pressed=True)
+        self.assertIsNone(controller.focused)
+
+        offscreen_crate = replace(self.crate, position=(2.5, 1, -2))
+        controller = self.controller((offscreen_crate,))
+        controller.update(0, self.camera, pressed=True)
+        self.assertIsNone(controller.focused)
+
     def test_player_uses_updated_view_and_decorations_block_interaction(self):
         level = Level((10, 10), 1, (self.crate,), (0, 1.6, 0), (0, 1.6, -1), ((80, 80, 80),) * 2)
         player = create_player(level, CollisionWorld3D((self.crate.collider,), level.floor_bounds))
         player.update(0, InputState(interact=True))
         self.assertIn(self.crate.interaction.message, player.aim_text)
-        player.update(3, InputState(mouse_delta=(750, 0), interact=True))
+        player.update(3, InputState(mouse_delta=(1500, 0), interact=True))
         self.assertEqual(player.aim_text, "")
         wall = Box((0, 1, -1), (2, 2, 0.1))
         level = replace(level, decorations=(wall,))

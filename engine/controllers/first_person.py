@@ -102,6 +102,7 @@ class FirstPersonController:
         jump: bool = False,
         crouch: bool = False,
         zoom: bool = False,
+        movement_yaw: float | None = None,
     ):
         if delta_time < 0:
             raise ValueError("Delta time must be nonnegative")
@@ -122,8 +123,9 @@ class FirstPersonController:
             min(self._pitch_limit, self._pitch - dy * sensitivity),
         )
 
-        # Ходьба остаётся в плоскости XZ независимо от вертикального обзора.
-        forward = glm.vec3(math.cos(self._yaw), 0.0, math.sin(self._yaw))
+        # Fixed views can supply a camera-relative walking direction without changing look controls.
+        walk_yaw = self._yaw if movement_yaw is None else movement_yaw
+        forward = glm.vec3(math.cos(walk_yaw), 0.0, math.sin(walk_yaw))
         right = glm.cross(forward, self._camera.up)
         movement = forward * forward_axis + right * right_axis
         if glm.length(movement) > 0:

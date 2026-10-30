@@ -1,11 +1,15 @@
-from pathlib import Path
+import math
 from dataclasses import replace
+from pathlib import Path
 
 from config import settings
 from engine.scene.box import Box
+from engine.scene.camera import FixedCameraZone
 from engine.scene.level import Level
 from engine.scene.lighting import Lighting, PointLight
 from game.levels.basement import build_basement_room
+from game.levels.cameras import camera_layout_path, load_fixed_cameras
+from game.levels.creator import creator_objects_path, load_creator_objects
 from game.levels.crawl import build_crawl_passage
 from game.levels.navigation import build_maze_navigation
 from game.levels.maze_layout import MazeLayout, StairLink, load_maze_layout
@@ -17,6 +21,9 @@ def maze_layout_path() -> Path:
 
 def create_maze_level() -> Level:
     layout = load_maze_layout(maze_layout_path())
+    authored_cameras = load_fixed_cameras(camera_layout_path())
+    automatic_cameras = _build_fixed_cameras(layout)
+    creator_objects = load_creator_objects(creator_objects_path())
     boxes = []
     cell = layout.cell_size
     thickness = layout.slab_thickness
@@ -107,14 +114,71 @@ def create_maze_level() -> Level:
         floor_heights=(-layout.basement.depth, 0.0, layout.floor_height) if underground else (0.0, layout.floor_height),
         goal_position=layout.goal_position, snow_enabled=False,
         lighting=lighting,
-        decorations=tuple(decorations),
+        decorations=tuple(decorations) + creator_objects,
         objects=layout.objects,
         navigation=build_maze_navigation(layout),
         base_height=-layout.basement.depth if underground else 0.0,
         floor_labels=("B1", "1", "2") if underground else (),
         floor_hints=("Lamp hall. Stairs lead back up.", "The staircases need the upper-floor key.",
                      "The balcony door needs its own key.") if underground else (),
+        fixed_cameras=(authored_cameras or ()) + automatic_cameras,
+        camera_save_path=camera_layout_path(),
+        fixed_cameras_authored=authored_cameras is not None,
+        authored_fixed_cameras=authored_cameras or (),
+        creator_objects=creator_objects,
+        creator_objects_path=creator_objects_path(),
     )
+
+
+def _build_fixed_cameras(layout: MazeLayout) -> tuple[FixedCameraZone, ...]:
+    cameras = []
+    stair_nodes = {node for link in layout.stairs for node in layout.stair_nodes(link)}
+    if layout.basement is not None:
+        stair_nodes.add(layout.basement.entry)
+
+    for floor, rows in enumerate(layout.floors):
+        for row, cells in enumerate(rows):
+            for column, cell in enumerate(cells):
+                node = floor, row, column
+                if cell != "." or node in stair_nodes or node == layout.exit:
+                    continue
+                camera_node = next(
+                    (neighbor for neighbor in layout.neighbors(node) if neighbor[0] == floor),
+                    None,
+                )
+                if camera_node is None:
+                    continue
+
+                x, y, z = layout.position(node)
+                camera_x, _, camera_z = layout.position(camera_node)
+                half_cell = layout.cell_size / 2
+                cameras.append(FixedCameraZone(
+                    minimum=(x - half_cell, y - 0.15, z - half_cell),
+                    maximum=(x + half_cell, y + layout.floor_height * 0.75, z + half_cell),
+                    position=(camera_x, y + 2.35, camera_z),
+                    target=(x, y + 1.0, z),
+                ))
+
+    if layout.basement is not None:
+        spec = layout.basement
+        bottom, ceiling = -spec.depth, -layout.slab_thickness
+        columns = math.ceil(layout.width / layout.cell_size)
+        rows = math.ceil(layout.depth / layout.cell_size)
+        sector_width, sector_depth = layout.width / columns, layout.depth / rows
+        for row in range(rows):
+            for column in range(columns):
+                x = -layout.width / 2 + (column + 0.5) * sector_width
+                z = -layout.depth / 2 + (row + 0.5) * sector_depth
+                camera_position = (x + sector_width * 0.12, ceiling - 0.25, z + sector_depth * 0.12)
+                cameras.append(FixedCameraZone(
+                    minimum=(-layout.width / 2 + column * sector_width, bottom - 0.1,
+                             -layout.depth / 2 + row * sector_depth),
+                    maximum=(-layout.width / 2 + (column + 1) * sector_width, ceiling,
+                             -layout.depth / 2 + (row + 1) * sector_depth),
+                    position=camera_position,
+                    target=(x, bottom + 1.0, z),
+                ))
+    return tuple(cameras)
 
 
 def _power_lamps(lighting, decorations, pattern):

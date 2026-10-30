@@ -22,9 +22,15 @@ class Box:
     emission_light: int | None = None
     yaw_degrees: float = 0.0
     local_texture: bool = False
+    color: tuple[float, float, float] | None = None
 
     def __post_init__(self):
         validate_rgb(self.emission)
+        if self.color is not None and (
+            len(self.color) != 3 or any(not math.isfinite(channel) or not 0 <= channel <= 1
+                                        for channel in self.color)
+        ):
+            raise ValueError("Box color channels must be finite values from 0 to 1")
         if not math.isfinite(self.yaw_degrees):
             raise ValueError("Box yaw must be finite")
         if any(length <= 0 for length in self.size):

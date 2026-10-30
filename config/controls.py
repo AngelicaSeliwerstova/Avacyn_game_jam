@@ -20,4 +20,10 @@ INPUT_BINDINGS = InputBindings(
     zoom_mouse_button=3,  # Удержание правой кнопки мыши.
     toggle_flashlight=pygame.K_f,
     look_back=pygame.K_q,
+    toggle_camera_editor=pygame.K_F6,
+    add_camera=pygame.K_F7,
+    delete_camera=pygame.K_DELETE,
+    add_object=pygame.K_F9,
+    cycle_creator_material=pygame.K_F8,
+    creator_up=pygame.K_SPACE,
 )

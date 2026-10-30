@@ -18,6 +18,11 @@ class KeyboardMouse:
         self._interact_held = False
         self._flashlight_queued = False
         self._flashlight_held = False
+        self._camera_editor_queued = False
+        self._camera_add_queued = False
+        self._camera_delete_queued = False
+        self._object_add_queued = False
+        self._creator_material_queued = False
         self._set_capture(self._focused)
 
     def _set_capture(self, captured: bool):
@@ -40,6 +45,11 @@ class KeyboardMouse:
             captured and self._bindings.toggle_flashlight is not None
             and pygame.key.get_pressed()[self._bindings.toggle_flashlight]
         )
+        self._camera_editor_queued = False
+        self._camera_add_queued = False
+        self._camera_delete_queued = False
+        self._object_add_queued = False
+        self._creator_material_queued = False
         # Первый отсчёт после захвата может содержать смещение курсора ОС.
         self._discard_mouse_delta = True
 
@@ -72,6 +82,18 @@ class KeyboardMouse:
                     and not getattr(event, "repeat", False)):
                 self._jump_queued = True
             self._jump_held = True
+        elif event.type == pygame.KEYDOWN and not getattr(event, "repeat", False):
+            if self._focused and self._captured:
+                if event.key == self._bindings.toggle_camera_editor:
+                    self._camera_editor_queued = True
+                elif event.key == self._bindings.add_camera:
+                    self._camera_add_queued = True
+                elif event.key == self._bindings.delete_camera:
+                    self._camera_delete_queued = True
+                elif event.key == self._bindings.add_object:
+                    self._object_add_queued = True
+                elif event.key == self._bindings.cycle_creator_material:
+                    self._creator_material_queued = True
         elif (
             event.type == pygame.MOUSEBUTTONDOWN
             and event.button == self._bindings.capture_mouse_button
@@ -102,10 +124,22 @@ class KeyboardMouse:
             toggle_flashlight=self._flashlight_queued,
             look_back=(self._bindings.look_back is not None
                        and bool(keys[self._bindings.look_back])),
+            toggle_camera_editor=self._camera_editor_queued,
+            add_camera=self._camera_add_queued,
+            delete_camera=self._camera_delete_queued,
+            add_object=self._object_add_queued,
+            cycle_creator_material=self._creator_material_queued,
+            creator_up=(self._bindings.creator_up is not None
+                        and bool(keys[self._bindings.creator_up])),
         )
         self._jump_queued = False
         self._interact_queued = False
         self._flashlight_queued = False
+        self._camera_editor_queued = False
+        self._camera_add_queued = False
+        self._camera_delete_queued = False
+        self._object_add_queued = False
+        self._creator_material_queued = False
         return state
 
     @property
