@@ -89,6 +89,7 @@ class SpotLight:
     outer_angle: float = 24.0
     enabled: bool = True
     shadows: bool = True
+    flicker: LightFlicker | None = None
 
     def __post_init__(self):
         self.validate()
@@ -101,5 +102,10 @@ class SpotLight:
         validate_rgb(self.color)
         if (not math.isfinite(self.intensity) or self.intensity < 0
                 or not math.isfinite(self.radius) or self.radius <= 0.1
-                or not 0 <= self.inner_angle < self.outer_angle < 89):
+                or not 0 <= self.inner_angle < self.outer_angle < 89
+                or (self.flicker is not None and not isinstance(self.flicker, LightFlicker))):
             raise ValueError("Spotlight needs nonnegative intensity, radius > 0.1 and 0 <= inner < outer < 89")
+
+
+def static_point_light(light: SpotLight) -> PointLight:
+    return PointLight(light.position, light.color, light.intensity, light.radius, light.flicker)

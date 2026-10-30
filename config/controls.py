@@ -28,4 +28,5 @@ INPUT_BINDINGS = InputBindings(
     creator_up=pygame.K_SPACE,
     add_creator_light=pygame.K_F10,
     recalculate_shadows=pygame.K_F12,
+    cycle_creator_light_flicker=pygame.K_F4,
 )

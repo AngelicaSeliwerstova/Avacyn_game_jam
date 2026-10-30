@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from engine.scene.lighting import SpotLight
+from engine.scene.lighting import LightFlicker, SpotLight
 
 
 def creator_lights_path() -> Path:
@@ -19,6 +19,9 @@ def load_creator_lights(path: Path) -> tuple[SpotLight, ...]:
         if not isinstance(value, dict):
             raise ValueError(f"Light {index + 1} must be an object: {path}")
         try:
+            flicker_data = value.get("flicker")
+            if flicker_data is not None and not isinstance(flicker_data, dict):
+                raise ValueError("flicker must be an object or null")
             result.append(SpotLight(
                 position=tuple(value["position"]),
                 direction=tuple(value.get("direction", (0.0, -1.0, 0.0))),
@@ -28,6 +31,7 @@ def load_creator_lights(path: Path) -> tuple[SpotLight, ...]:
                 inner_angle=value.get("inner_angle", 30.0),
                 outer_angle=value.get("outer_angle", 55.0),
                 shadows=value.get("shadows", True),
+                flicker=LightFlicker(**flicker_data) if flicker_data is not None else None,
             ))
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError(f"Invalid light {index + 1} in {path}: {error}") from error
@@ -46,6 +50,12 @@ def save_creator_lights(path: Path, lights: tuple[SpotLight, ...]) -> None:
                 "inner_angle": light.inner_angle,
                 "outer_angle": light.outer_angle,
                 "shadows": light.shadows,
+                "flicker": None if light.flicker is None else {
+                    "interval": light.flicker.interval,
+                    "duration": light.flicker.duration,
+                    "minimum": light.flicker.minimum,
+                    "seed": light.flicker.seed,
+                },
             }
             for light in lights
         ],

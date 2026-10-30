@@ -23,3 +23,4 @@ class InputState:
     creator_up: bool = False
     add_creator_light: bool = False
     recalculate_shadows: bool = False
+    cycle_creator_light_flicker: bool = False

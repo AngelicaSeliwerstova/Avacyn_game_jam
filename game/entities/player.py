@@ -15,7 +15,7 @@ from engine.scene.box import Box
 from engine.scene.camera import Camera, FixedCameraZone
 from engine.scene.entity import Entity
 from engine.scene.level import Level
-from engine.scene.lighting import MAX_DYNAMIC_SPOT_LIGHTS, SpotLight
+from engine.scene.lighting import LightFlicker, MAX_POINT_LIGHTS, SpotLight
 from engine.scene.model import ModelComponent
 from engine.scene.transform import Transform
 from engine.scene.object import ObjectState
@@ -34,6 +34,18 @@ class Player(Entity):
     _CREATOR_ENTRY_HEIGHT = 0.5
     _CAMERA_ZONE_HYSTERESIS = 0.2
     _CAMERA_TRANSITION_DURATION = 0.22
+    _CREATOR_LIGHT_COLORS = (
+        ("WARM", (1.0, 0.68, 0.35)),
+        ("NEUTRAL", (1.0, 0.94, 0.78)),
+        ("COLD", (0.45, 0.72, 1.0)),
+        ("RED", (1.0, 0.18, 0.12)),
+        ("GREEN", (0.22, 1.0, 0.4)),
+    )
+    _CREATOR_LIGHT_FLICKER = (
+        ("OFF", None),
+        ("SOFT", LightFlicker(interval=6.0, duration=0.8, minimum=0.5, seed=1)),
+        ("ERRATIC", LightFlicker(interval=3.2, duration=1.0, minimum=0.08, seed=2)),
+    )
 
     def __init__(self, body: CharacterBody, camera: Camera,
                  controller: FirstPersonController, model: ModelComponent, level: Level | None = None,
@@ -83,8 +95,9 @@ class Player(Entity):
             load_creator_lights(self._creator_lights_path)
             if self._creator_lights_path is not None else ()
         )
-        if len(self._creator_lights) + 1 > MAX_DYNAMIC_SPOT_LIGHTS:
-            raise ValueError(f"Creator lights exceed the limit of {MAX_DYNAMIC_SPOT_LIGHTS - 1}")
+        base_light_count = len(level.lighting.lights) if level is not None and level.lighting else 0
+        if len(self._creator_lights) + base_light_count > MAX_POINT_LIGHTS:
+            raise ValueError(f"Creator lights exceed the level limit of {MAX_POINT_LIGHTS} static lights")
         self.body.world.set_creator_colliders(self._creator_objects)
         self._creator_materials = ("rust", "concrete", "plaster", "brick")
         self._creator_material_index = 0
@@ -159,6 +172,8 @@ class Player(Entity):
             f"{len(self._creator_lights)} lamps\n\n"
             "F7\nPlace wall camera\n\n"
             "F8\nChange block material\n\n"
+            "Aim lamp + F8\nChange lamp color\n\n"
+            "Aim lamp + F4\nChange flicker\n\n"
             "F9\nPlace block\n\n"
             "F10\nPlace lamp\n\n"
             "F12\nRecalculate shadows\n\n"
@@ -193,13 +208,15 @@ class Player(Entity):
     @property
     def creator_light_boxes(self):
         boxes = []
-        for light in self._creator_lights:
+        base_light_count = len(self._level.lighting.lights) if self._level and self._level.lighting else 0
+        for index, light in enumerate(self._creator_lights):
             x, y, z = light.position
             ceiling = y + 0.24
             boxes.append(Box((x, y + 0.17, z), (1.12, 0.12, 0.52), material="rust"))
             boxes.append(Box(
                 (x, y + 0.10, z), (0.92, 0.04, 0.32),
                 emission=tuple(channel * 1.8 for channel in light.color),
+                emission_light=base_light_count + index,
             ))
             suspension = ceiling - (y + 0.23)
             if suspension > 0.05:
@@ -298,12 +315,22 @@ class Player(Entity):
                 if inputs.recalculate_shadows:
                     self._camera_editor_message = "RECALCULATING SHADOWS"
                 if inputs.cycle_creator_material:
-                    self._creator_material_index = (
-                        self._creator_material_index + 1
-                    ) % len(self._creator_materials)
-                    self._camera_editor_message = (
-                        f"MATERIAL: {self._creator_materials[self._creator_material_index]}"
-                    )
+                    lamp_index = self._aimed_creator_lamp_index()
+                    if lamp_index is None:
+                        self._creator_material_index = (
+                            self._creator_material_index + 1
+                        ) % len(self._creator_materials)
+                        self._camera_editor_message = (
+                            f"MATERIAL: {self._creator_materials[self._creator_material_index]}"
+                        )
+                    else:
+                        self._cycle_creator_light_color(lamp_index)
+                if inputs.cycle_creator_light_flicker:
+                    lamp_index = self._aimed_creator_lamp_index()
+                    if lamp_index is None:
+                        self._camera_editor_message = "AIM AT A LAMP TO CHANGE FLICKER"
+                    else:
+                        self._cycle_creator_light_flicker(lamp_index)
                 if inputs.delete_camera:
                     self._delete_nearest_editor_item()
             self.flashlight.update(self.camera, toggle=inputs.toggle_flashlight)
@@ -747,9 +774,10 @@ class Player(Entity):
         if self._creator_lights_path is None:
             self._camera_editor_message = "LAMPS CANNOT BE SAVED ON THIS LEVEL"
             return
-        if len(self._creator_lights) >= MAX_DYNAMIC_SPOT_LIGHTS - 1:
+        base_light_count = len(self._level.lighting.lights) if self._level.lighting else 0
+        if len(self._creator_lights) >= MAX_POINT_LIGHTS - base_light_count:
             self._camera_editor_message = (
-                f"MAXIMUM {MAX_DYNAMIC_SPOT_LIGHTS - 1} CREATOR LAMPS REACHED"
+                f"MAXIMUM {MAX_POINT_LIGHTS - base_light_count} CREATOR LAMPS REACHED"
             )
             return
 
@@ -783,6 +811,58 @@ class Player(Entity):
         save_creator_lights(self._creator_lights_path, updated)
         self._creator_lights = updated
         self._camera_editor_message = f"PLACED WARM LAMP {len(updated)}"
+
+    def _aimed_creator_lamp_index(self):
+        if not self._creator_lights:
+            return None
+        origin = glm.vec3(self.camera.position)
+        direction = glm.normalize(self.camera.target - self.camera.position)
+        blocker = cast_ray(
+            tuple(origin), tuple(direction), self.body.world.colliders, settings.CAMERA_FAR,
+        )
+        aimed = []
+        for index, light in enumerate(self._creator_lights):
+            position = glm.vec3(light.position[0], light.position[1] + 0.12, light.position[2])
+            offset = position - origin
+            distance = glm.dot(offset, direction)
+            if distance <= 0 or distance > settings.CAMERA_FAR:
+                continue
+            miss = glm.length(offset - direction * distance)
+            if (miss <= 0.7
+                    and (blocker is None or distance - 0.7 <= blocker.distance + 0.05)):
+                aimed.append((distance, index))
+        return min(aimed)[1] if aimed else None
+
+    def _update_creator_light(self, index, **changes):
+        if self._creator_lights_path is None:
+            return
+        lamp = replace(self._creator_lights[index], **changes)
+        updated = self._creator_lights[:index] + (lamp,) + self._creator_lights[index + 1:]
+        save_creator_lights(self._creator_lights_path, updated)
+        self._creator_lights = updated
+
+    def _cycle_creator_light_color(self, index):
+        light = self._creator_lights[index]
+        current = next(
+            (i for i, (_, color) in enumerate(self._CREATOR_LIGHT_COLORS) if color == light.color),
+            -1,
+        )
+        name, color = self._CREATOR_LIGHT_COLORS[(current + 1) % len(self._CREATOR_LIGHT_COLORS)]
+        self._update_creator_light(index, color=color)
+        self._camera_editor_message = f"LAMP COLOR: {name}"
+
+    def _cycle_creator_light_flicker(self, index):
+        light = self._creator_lights[index]
+        current = next(
+            (i for i, (_, flicker) in enumerate(self._CREATOR_LIGHT_FLICKER)
+             if flicker == light.flicker),
+            -1,
+        )
+        name, flicker = self._CREATOR_LIGHT_FLICKER[
+            (current + 1) % len(self._CREATOR_LIGHT_FLICKER)
+        ]
+        self._update_creator_light(index, flicker=flicker)
+        self._camera_editor_message = f"LAMP FLICKER: {name}"
 
     def _delete_nearest_editor_item(self):
         origin = tuple(self.camera.position)

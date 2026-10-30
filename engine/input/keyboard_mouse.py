@@ -24,6 +24,7 @@ class KeyboardMouse:
         self._object_add_queued = False
         self._creator_material_queued = False
         self._creator_light_queued = False
+        self._creator_light_flicker_queued = False
         self._recalculate_shadows_queued = False
         self._set_capture(self._focused)
 
@@ -53,6 +54,7 @@ class KeyboardMouse:
         self._object_add_queued = False
         self._creator_material_queued = False
         self._creator_light_queued = False
+        self._creator_light_flicker_queued = False
         self._recalculate_shadows_queued = False
         # Первый отсчёт после захвата может содержать смещение курсора ОС.
         self._discard_mouse_delta = True
@@ -100,6 +102,8 @@ class KeyboardMouse:
                     self._creator_material_queued = True
                 elif event.key == self._bindings.add_creator_light:
                     self._creator_light_queued = True
+                elif event.key == self._bindings.cycle_creator_light_flicker:
+                    self._creator_light_flicker_queued = True
                 elif event.key == self._bindings.recalculate_shadows:
                     self._recalculate_shadows_queued = True
         elif (
@@ -141,6 +145,7 @@ class KeyboardMouse:
                         and bool(keys[self._bindings.creator_up])),
             add_creator_light=self._creator_light_queued,
             recalculate_shadows=self._recalculate_shadows_queued,
+            cycle_creator_light_flicker=self._creator_light_flicker_queued,
         )
         self._jump_queued = False
         self._interact_queued = False
@@ -151,6 +156,7 @@ class KeyboardMouse:
         self._object_add_queued = False
         self._creator_material_queued = False
         self._creator_light_queued = False
+        self._creator_light_flicker_queued = False
         self._recalculate_shadows_queued = False
         return state
 

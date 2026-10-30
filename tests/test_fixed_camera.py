@@ -13,14 +13,62 @@ from engine.input.state import InputState
 from engine.scene.box import Box
 from engine.scene.camera import FixedCameraZone
 from engine.scene.level import Level
+from engine.scene.lighting import SpotLight
 from game.levels.cameras import camera_model_boxes, load_fixed_cameras, save_fixed_cameras
 from game.levels.creator import load_creator_objects
-from game.levels.creator_lights import load_creator_lights
+from game.levels.creator_lights import load_creator_lights, save_creator_lights
 from game.entities.player import create_player
 from game.levels import create_level
 
 
 class FixedCameraTests(unittest.TestCase):
+    def test_creator_lamps_are_not_limited_by_dynamic_spotlight_slots(self):
+        lights = tuple(
+            SpotLight((index, 2.0, 0.0), (0.0, -1.0, 0.0))
+            for index in range(16)
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "maze_lights.json"
+            save_creator_lights(path, lights)
+            level = Level(
+                (20, 20), 1, (), (0, settings.PLAYER_EYE_HEIGHT, 0),
+                (0, settings.PLAYER_EYE_HEIGHT, -1), ((80, 80, 80),) * 2,
+                creator_lights_path=path,
+            )
+            player = create_player(level, CollisionWorld3D((), level.floor_bounds))
+
+            self.assertEqual(len(player.creator_lights), 16)
+            self.assertEqual(len(player.dynamic_lights), 1)
+
+    def test_creator_changes_aimed_lamp_color_and_flicker_and_saves_them(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "maze_lights.json"
+            save_creator_lights(
+                path, (SpotLight((0.0, 2.0, -2.0), (0.0, -1.0, 0.0)),),
+            )
+            level = Level(
+                (20, 20), 1, (), (0, settings.PLAYER_EYE_HEIGHT, 0),
+                (0, settings.PLAYER_EYE_HEIGHT, -1), ((80, 80, 80),) * 2,
+                creator_lights_path=path,
+            )
+            player = create_player(level, CollisionWorld3D((), level.floor_bounds))
+            player.update(0, InputState(toggle_camera_editor=True))
+            player.camera.position = glm.vec3(0, 1.6, 0)
+            player._creator_yaw = -math.pi / 2
+            player._creator_pitch = 0.0
+            player._update_creator_view()
+
+            player.update(0, InputState(cycle_creator_material=True))
+            self.assertEqual(player.creator_lights[0].color, player._CREATOR_LIGHT_COLORS[0][1])
+            self.assertIn("LAMP COLOR: WARM", player.aim_text)
+            self.assertEqual(load_creator_lights(path)[0].color, player.creator_lights[0].color)
+
+            player.update(0, InputState(cycle_creator_light_flicker=True))
+            expected_flicker = player._CREATOR_LIGHT_FLICKER[1][1]
+            self.assertEqual(player.creator_lights[0].flicker, expected_flicker)
+            self.assertEqual(load_creator_lights(path)[0].flicker, expected_flicker)
+            self.assertEqual(player.creator_light_boxes[1].emission_light, 0)
+
     def test_camera_zone_checks_its_bounds_and_rejects_invalid_dimensions(self):
         zone = FixedCameraZone(
             minimum=(0, 0, 0), maximum=(2, 2, 2),

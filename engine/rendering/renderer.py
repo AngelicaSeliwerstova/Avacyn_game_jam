@@ -1,3 +1,4 @@
+from dataclasses import replace
 from pathlib import Path
 
 import moderngl
@@ -23,7 +24,7 @@ from engine.rendering.visibility import ViewFrustum, distance_to_box_squared
 from engine.scene.box import Box
 from engine.scene.camera import Camera
 from engine.scene.level import Level
-from engine.scene.lighting import SpotLight
+from engine.scene.lighting import Lighting, SpotLight, static_point_light
 from engine.scene.model import ModelComponent
 from engine.scene.transform import Transform
 from engine.scene.session import Dialog
@@ -72,6 +73,7 @@ class Renderer:
         self._postprocess_index = next((i for i, (_, style) in enumerate(postprocess_presets) if style == postprocess), -1)
         self._lighting = None
         self._dynamic_lighting = None
+        self._base_level = level
         self._base_dynamic_lights = tuple(dynamic_lights)
         self._creator_lights = ()
         self._dynamic_shadow_resolution = dynamic_shadow_resolution
@@ -187,12 +189,24 @@ class Renderer:
     def set_creator_lights(self, lights: tuple[SpotLight, ...]):
         if lights == self._creator_lights:
             return
-        updated = self._base_dynamic_lights + lights
-        replacement = DynamicLighting(
-            self.context, self._program, updated, self._dynamic_shadow_resolution,
+        creator_points = tuple(static_point_light(light) for light in lights)
+        base_lighting = self._base_level.lighting
+        if creator_points:
+            if base_lighting is None:
+                combined_lighting = Lighting((0.0, 0.0, 0.0), creator_points)
+            else:
+                combined_lighting = replace(
+                    base_lighting, lights=base_lighting.lights + creator_points,
+                )
+            light_level = replace(self._base_level, lighting=combined_lighting)
+        else:
+            light_level = self._base_level
+        replacement = LevelLighting(
+            self.context, self._program, light_level, self.options.light_cell_size,
+            extra_shadow_boxes=self._creator_object_boxes + self._creator_light_boxes,
         )
-        self._dynamic_lighting.release()
-        self._dynamic_lighting = replacement
+        self._lighting.release()
+        self._lighting = replacement
         self._creator_lights = lights
 
     def set_creator_light_boxes(self, boxes: tuple[Box, ...]):
@@ -232,8 +246,8 @@ class Renderer:
                camera_transition_strength: float = 0.0):
         self.set_camera_markers(camera_markers)
         self.set_creator_objects(creator_objects)
-        self.set_creator_lights(creator_lights)
         self.set_creator_light_boxes(creator_light_boxes)
+        self.set_creator_lights(creator_lights)
         boxes = self._level.object_boxes
         if boxes != self._object_boxes:
             self._lighting.sync_objects(self._level.static_shadow_boxes)
@@ -342,7 +356,8 @@ class Renderer:
 
     @property
     def debug_lines(self) -> tuple[str, ...]:
-        lights = len(self._level.lighting.lights) if self._level.lighting is not None else 0
+        lights = (len(self._level.lighting.lights) if self._level.lighting is not None else 0)
+        lights += len(self._creator_lights)
         particles = self._snow.particle_count if self._snow is not None else 0
         local = f" (local <= {self._lighting.grid.max_lights})" if (
             self.options.local_lights and self._lighting.grid is not None

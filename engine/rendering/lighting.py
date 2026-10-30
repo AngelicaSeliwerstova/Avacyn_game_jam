@@ -21,9 +21,10 @@ FACE_VIEWS = (
 
 
 class LevelLighting:
-    """Запекание теней, локальное обновление геометрии и мерцание ламп."""
+    """Запекание статических теней, локальное обновление геометрии и мерцание."""
 
-    def __init__(self, context: moderngl.Context, program: moderngl.Program, level: Level, cell_size: float = 4.0):
+    def __init__(self, context: moderngl.Context, program: moderngl.Program, level: Level,
+                 cell_size: float = 4.0, extra_shadow_boxes=()):
         self._context = context
         self._scene_program = program
         self._grid_texture = None
@@ -89,15 +90,7 @@ class LevelLighting:
                 fragment_shader=(shaders / "shadow.frag").read_text(encoding="utf-8"),
             )
             self._cube = CubeMesh(context, self._program, position_only=True)
-            self._bake(level, resolution)
-            # При наличии объектов сохраняем ресурсы для локального обновления теней.
-            if not level.objects:
-                self._cube.release()
-                self._cube = None
-                self._program.release()
-                self._program = None
-                self._framebuffer.release()
-                self._framebuffer = None
+            self._bake(level, resolution, extra_shadow_boxes)
             self.grid = build_light_grid(level, cell_size, context.info["GL_MAX_TEXTURE_SIZE"])
             if self.grid is not None:
                 self._grid_texture = context.texture(self.grid.texture_size, 1, self.grid.indices, dtype="i4")
@@ -109,9 +102,9 @@ class LevelLighting:
             self.release()
             raise
 
-    def _bake(self, level, resolution):
+    def _bake(self, level, resolution, extra_shadow_boxes=()):
         self._render_lights(range(len(level.lighting.lights)), resolution,
-                            self._object_boxes)
+                            self._object_boxes + tuple(extra_shadow_boxes))
 
     def sync_objects(self, boxes):
         previous = self._object_boxes
