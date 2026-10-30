@@ -23,7 +23,10 @@ from engine.rendering.visibility import ViewFrustum, distance_to_box_squared
 from engine.scene.camera import Camera
 from engine.scene.level import Level
 from engine.scene.lighting import SpotLight
+from engine.scene.model import ModelComponent
+from engine.scene.transform import Transform
 from engine.scene.session import Dialog
+from engine.rendering.gltf_model import GLTFModel
 
 
 class Renderer:
@@ -46,6 +49,7 @@ class Renderer:
         dynamic_lights: tuple[SpotLight, ...] = (),
         dynamic_shadow_resolution: int = 512,
         postprocess_presets: tuple[tuple[str, PostProcessSettings], ...] = (),
+        player_model: ModelComponent | None = None,
     ):
         major, minor = opengl_version
         self.context = moderngl.create_context(require=major * 100 + minor * 10)
@@ -55,6 +59,7 @@ class Renderer:
         self._render_target = None
         self._presenter = None
         self._snow = None
+        self._player_model = None
         self._hud = None
         self._debug_hud = None
         self._aim_hud = None
@@ -69,6 +74,7 @@ class Renderer:
         self._wall_texture = None
         self._fallback_texture = None
         self._textures = textures
+        self._player_model_component = player_model
         self._texture_cache = {}
         self._materials = {}
         self._camera = camera
@@ -82,6 +88,7 @@ class Renderer:
         self._submitted_objects = len(self._objects)
         self._submitted_triangles = 0
         self._draw_calls = 0
+        self._model_draw_calls = 0
         self._depth_draw_calls = 0
 
         try:
@@ -100,6 +107,13 @@ class Renderer:
             self._update_projection(render_size)
             self._program["surface_texture"].value = 0
             self._fallback_texture = self.context.texture((1, 1), 3, b"\xff\xff\xff")
+            if player_model is not None and player_model.source_path is not None:
+                if not player_model.source_path.is_file():
+                    raise FileNotFoundError(f"Player model does not exist: {player_model.source_path}")
+                self._player_model = GLTFModel(
+                    self.context, self._program, player_model.source_path, self._fallback_texture,
+                )
+                self._program["skin_matrices"].value = 10
             if textures is not None:
                 if textures.floor is not None:
                     self._floor_texture = self._load_texture(textures.floor)
@@ -133,9 +147,11 @@ class Renderer:
             self.release()
             raise
 
-    def update(self, delta_time: float):
+    def update(self, delta_time: float, model_animation_speed: float = 1.0):
         """Продвигает время визуальных эффектов отдельно от повторной отрисовки."""
         self._lighting.update(delta_time, enabled=self.options.light_flicker)
+        if self._player_model is not None:
+            self._player_model.update(delta_time, speed=model_animation_speed)
 
     def cycle_postprocess(self):
         if self._postprocess is None or not self._postprocess_presets:
@@ -146,7 +162,8 @@ class Renderer:
 
     def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = "",
                *, aim_text: str | None = None, dialog: Dialog | None = None,
-               debug_paths: tuple[DebugPath, ...] = ()):
+               debug_paths: tuple[DebugPath, ...] = (),
+               player_transform: Transform | None = None):
         boxes = self._level.object_boxes
         if boxes != self._object_boxes:
             self._lighting.sync_objects(self._level.static_shadow_boxes)
@@ -167,6 +184,12 @@ class Renderer:
         objects = [item for item in self._objects if not self.options.frustum_culling
                    or frustum.intersects(item[0].position, item[2])]
         self._current_material = None
+        self._program["use_uv"].value = False
+        self._program["use_skinning"].value = False
+        self._program["material_color_enabled"].value = False
+        self._program["material_alpha_mode"].value = 0
+        self._program["material_alpha"].value = 1.0
+        self._program["material_alpha_cutoff"].value = 0.5
         draw_floor = not self.options.frustum_culling or frustum.intersects(
             (0, self._level.base_height, 0), (self._level.floor_size[0] / 2, 0, self._level.floor_size[1] / 2),
         )
@@ -188,15 +211,26 @@ class Renderer:
                 self._cube.render()
             if draw_floor and self.options.depth_prepass:
                 self._draw_floor()
+            model_draw_calls = 0
+            model_triangles = 0
+            if self._player_model is not None and player_transform is not None:
+                # The world depth prepass does not include the skinned character.
+                self._render_target.framebuffer.depth_mask = True
+                model_draw_calls, model_triangles = self._player_model.render(
+                    self._player_model_component.world_matrix(player_transform),
+                    self._camera.position,
+                )
         finally:
             self._render_target.framebuffer.depth_mask = True
             self.context.depth_func = "<"
-        self._submitted_objects = len(objects)
-        self._draw_calls = len(objects) + int(draw_floor)
-        self._depth_draw_calls = self._draw_calls if self.options.depth_prepass else 0
+        self._submitted_objects = len(objects) + int(model_draw_calls > 0)
+        self._draw_calls = len(objects) + int(draw_floor) + model_draw_calls
+        self._model_draw_calls = model_draw_calls
+        self._depth_draw_calls = (len(objects) + int(draw_floor)) if self.options.depth_prepass else 0
         self._submitted_triangles = len(objects) * self._cube.triangle_count + (
             self._floor.triangle_count if draw_floor else 0
-        )
+        ) + model_triangles
+        self._current_material = None
         if self._snow is not None:
             self._snow.render(self._camera)
         if self._postprocess is not None:
@@ -235,7 +269,8 @@ class Renderer:
         ) else ""
         look = (self._postprocess_presets[self._postprocess_index][0].upper()
                 if self._postprocess_index >= 0 else "CUSTOM") if self._postprocess is not None else "OFF"
-        return (f"SCENE: {self._submitted_triangles} tris | {self._draw_calls}/{len(self._objects) + 1} draws",
+        return (f"SCENE: {self._submitted_triangles} tris | {self._draw_calls}/"
+                f"{len(self._objects) + 1 + self._model_draw_calls} draws",
                 f"ZPASS: {self._depth_draw_calls} | LIGHTS: {lights}{local}"
                 f" | SPOT: {self._dynamic_lighting.active_count}",
                 f"LOOK: {look} | F5: NEXT",
@@ -261,6 +296,8 @@ class Renderer:
         target = self._render_target.framebuffer
         target.color_mask = (False, False, False, False)
         self._program["depth_only"].value = True
+        self._program["use_uv"].value = False
+        self._program["use_skinning"].value = False
         try:
             position = tuple(self._camera.position)
             for _, model, _ in sorted(objects, key=lambda item: distance_to_box_squared(
@@ -321,6 +358,9 @@ class Renderer:
         if self._hud is not None:
             self._hud.release()
             self._hud = None
+        if self._player_model is not None:
+            self._player_model.release()
+            self._player_model = None
         for texture in self._texture_cache.values():
             texture.release()
         self._texture_cache.clear()

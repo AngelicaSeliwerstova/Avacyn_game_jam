@@ -147,12 +147,15 @@ JUMP_HEIGHT = 0.9              # Высота прыжка над текущей
 PHYSICS_STEP = 1 / 120          # Фиксированный шаг физики в секундах.
 STAIR_CAMERA_SMOOTHING = 12.0   # Больше значение - быстрее камера догоняет тело.
 
-# Заготовка модели персонажа. Путь относительно resources/models, например "player/player.glb".
-# Пока это описание ресурса; чтение GLB и отрисовка модели ещё не подключены.
-PLAYER_MODEL = None
-PLAYER_MODEL_OFFSET = (0.0, 0.0, 0.0)
-PLAYER_MODEL_ROTATION = (0.0, 0.0, 0.0)
-PLAYER_MODEL_SCALE = 1.0
+# Модель игрока в GLB 2.0; путь относительно resources/models.
+PLAYER_MODEL = "player/girl_chestnut_black_stockings.glb"
+PLAYER_MODEL_OFFSET = (0.0, -0.04, 0.0)
+PLAYER_MODEL_ROTATION = (0.0, 180.0, 0.0)
+PLAYER_MODEL_SCALE = 1.14
+PLAYER_CAMERA_DISTANCE = 3.5
+PLAYER_CAMERA_HEIGHT = 0.1
+PLAYER_CAMERA_WALL_MARGIN = 0.2
+PLAYER_CAMERA_SHOULDER_OFFSET = 0.4
 
 # Старт кубовой сцены. Старт коридора хранится в TMX-карте.
 CAMERA_POSITION = (3.0, PLAYER_EYE_HEIGHT, 4.0)
@@ -162,16 +165,6 @@ CAMERA_ZOOM_FOV_DEGREES = 35.0  # Меньше угол - сильнее при�
 CAMERA_ZOOM_SPEED = 12.0       # Скорость плавного перехода, 1/с.
 CAMERA_NEAR = 0.1         # Ближняя граница видимости.
 CAMERA_FAR = 100.0        # Дальняя граница видимости.
-
-# Камера сзади персонажа. False возвращает вид от первого лица.
-THIRD_PERSON_ENABLED = True
-THIRD_PERSON_DISTANCE = 3.2
-THIRD_PERSON_HEIGHT = 0.65      # Над точкой взгляда персонажа.
-THIRD_PERSON_LOOK_AHEAD = 4.0
-THIRD_PERSON_CAMERA_RADIUS = 0.18
-THIRD_PERSON_CAMERA_RECOVERY = 8.0
-THIRD_PERSON_FLASHLIGHT_OFFSET = (0.30, -0.10, 0.24)
-PLAYER_PLACEHOLDER_ENABLED = True
 
 # Управление от первого лица.
 MOVE_SPEED = 3.5                  # Мировых единиц в секунду.

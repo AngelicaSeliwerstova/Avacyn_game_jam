@@ -20,6 +20,8 @@ class ControlledEntity(Protocol):
     """Интерфейс управляемой сущности для игрового цикла движка."""
 
     camera: Camera
+    transform: Transform
+    model: ModelComponent | None
 
     @property
     def status_text(self) -> str: ...

@@ -108,6 +108,7 @@ class Application:
                 fog=self._fog,
                 dynamic_lights=self._dynamic_lights,
                 dynamic_shadow_resolution=self._dynamic_shadow_resolution,
+                player_model=self._controlled_entity.model,
             )
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)
@@ -135,11 +136,17 @@ class Application:
                     if self._session.dialog is None:
                         if self._snow is not None:
                             self._snow.update(delta_time)
-                        renderer.update(delta_time)
+                        renderer.update(
+                            delta_time,
+                            model_animation_speed=getattr(
+                                self._controlled_entity, "model_animation_speed", 1.0,
+                            ),
+                        )
                 updated = perf_counter() if profiling else 0.0
                 renderer.render(window.size, hud_text=self._controlled_entity.status_text,
                                 debug_text=self._debug.text, aim_text=self._controlled_entity.aim_text,
                                 dialog=self._session.dialog,
+                                player_transform=self._controlled_entity.transform,
                                 debug_paths=self._debug_paths() if self._debug.enabled and self._debug_paths else ())
                 rendered = perf_counter() if profiling else 0.0
                 window.present()

@@ -8,6 +8,10 @@ in vec3 world_normal;
 
 uniform sampler2D surface_texture;
 uniform bool textured;
+uniform bool material_color_enabled;
+uniform int material_alpha_mode;
+uniform float material_alpha;
+uniform float material_alpha_cutoff;
 uniform float texture_world_size;
 uniform vec3 emission;
 uniform bool lighting_enabled;
@@ -103,12 +107,20 @@ void main() {
         fragment_color = vec4(0.0);
         return;
     }
+    vec4 surface = textured ? texture(surface_texture, texture_uv / texture_world_size) : vec4(1.0);
+    float alpha = surface.a * material_alpha;
+    if (material_alpha_mode == 1 && alpha < material_alpha_cutoff) discard;
     float fog = fog_enabled ? smoothstep(fog_start, fog_end, length(world_point - camera_position)) : 0.0;
     if (fog >= 1.0) {
-        fragment_color = vec4(fog_color, 1.0);
+        fragment_color = vec4(fog_color, material_alpha_mode == 2 ? alpha : 1.0);
         return;
     }
-    vec3 albedo = textured ? texture(surface_texture, texture_uv / texture_world_size).rgb : vertex_color;
+    vec3 albedo = textured ? surface.rgb : vec3(1.0);
+    if (material_color_enabled) {
+        albedo *= vertex_color;
+    } else if (!textured) {
+        albedo = vertex_color;
+    }
     vec3 color = albedo;
     if (textured) {
         if (!lighting_enabled) color *= surface_shade;
@@ -144,5 +156,6 @@ void main() {
         color *= illumination;
     }
     if (dynamic_light_count > 0) color += albedo * dynamic_illumination(normalize(world_normal));
-    fragment_color = vec4(mix(color + emission, fog_color, fog), 1.0);
+    fragment_color = vec4(mix(color + emission, fog_color, fog),
+                          material_alpha_mode == 2 ? alpha : 1.0);
 }

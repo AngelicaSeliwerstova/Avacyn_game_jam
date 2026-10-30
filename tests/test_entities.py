@@ -10,6 +10,7 @@ from config import settings
 from engine.collision.world3d import CollisionWorld3D
 from engine.input.state import InputState
 from engine.scene.entity import Entity
+from engine.scene.box import Box
 from engine.scene.model import ModelComponent
 from engine.scene.transform import Transform
 from game.entities.player import create_player
@@ -43,6 +44,54 @@ class EntityTests(unittest.TestCase):
         self.assertAlmostEqual(player.transform.rotation[0], 0)
         self.assertAlmostEqual(player.transform.rotation[2], 0)
         self.assertLess(view.y, -0.5)
+
+    def test_third_person_camera_tracks_player_while_interaction_aim_stays_at_eye(self):
+        player = create_player(self.level, self.world)
+        player.update(0, InputState(forward=1))
+        self.assertNotEqual(player.camera.position, player._interaction_camera.position)
+        self.assertLess(
+            glm.length(player._interaction_camera.position - player.camera.position), 5.0,
+        )
+        self.assertLess(
+            glm.length(player._interaction_camera.position - player.camera.target), 5.0,
+        )
+
+    def test_third_person_camera_stops_before_wall_behind_player(self):
+        wall = Box((0, 1.5, 7.5), (4, 3, 0.2))
+        world = CollisionWorld3D(
+            (*tuple(box.collider for box in self.level.boxes), wall.collider),
+            self.level.floor_bounds,
+        )
+        player = create_player(self.level, world)
+        open_player = create_player(self.level, self.world)
+        wall_front = wall.collider.footprint.min_z
+        self.assertGreater(open_player.camera.position.z, wall_front)
+        self.assertLessEqual(
+            player.camera.position.z,
+            wall_front - settings.PLAYER_CAMERA_WALL_MARGIN + 1e-3,
+        )
+        self.assertGreater(player.camera.position.z, player.body.position.z)
+
+    def test_look_back_turns_camera_without_turning_character_and_stops_at_wall(self):
+        wall = Box((0, 1.5, 4.5), (4, 3, 0.2))
+        world = CollisionWorld3D(
+            (*tuple(box.collider for box in self.level.boxes), wall.collider),
+            self.level.floor_bounds,
+        )
+        player = create_player(self.level, world)
+        heading = glm.vec3(player.transform.matrix * glm.vec4(0, 0, -1, 0))
+        normal_camera = glm.vec3(player.camera.position)
+        player.update(0, InputState(look_back=True))
+        view = glm.normalize(glm.vec3(player.camera.target - player.camera.position) * glm.vec3(1, 0, 1))
+        interaction = glm.normalize(glm.vec3(player._interaction_camera.target - player._interaction_camera.position)
+                                    * glm.vec3(1, 0, 1))
+        self.assertLess(glm.dot(heading, view), -0.99)
+        self.assertLess(glm.dot(heading, interaction), -0.99)
+        self.assertEqual(glm.vec3(player.transform.matrix * glm.vec4(0, 0, -1, 0)), heading)
+        self.assertLess(player.camera.position.z, player.body.position.z)
+        self.assertGreaterEqual(player.camera.position.z, wall.collider.footprint.max_z + 0.19)
+        player.update(0, InputState())
+        self.assertLess(glm.length(player.camera.position - normal_camera), 1e-5)
 
     def test_model_local_transform_is_composed_with_owner_transform(self):
         owner = Transform(position=(10, 0, 0), rotation=(0, 90, 0))

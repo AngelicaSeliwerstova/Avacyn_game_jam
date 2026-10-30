@@ -19,4 +19,5 @@ INPUT_BINDINGS = InputBindings(
     interact=pygame.K_e,
     zoom_mouse_button=3,  # Удержание правой кнопки мыши.
     toggle_flashlight=pygame.K_f,
+    look_back=pygame.K_q,
 )

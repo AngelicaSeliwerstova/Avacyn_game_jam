@@ -25,6 +25,7 @@ class KeyboardMouseTests(unittest.TestCase):
             crouch_keys=(pygame.K_LCTRL, pygame.K_RCTRL),
             interact=pygame.K_e,
             zoom_mouse_button=3,
+            look_back=pygame.K_q,
         )
         self.input = KeyboardMouse(self.bindings)
 
@@ -88,6 +89,16 @@ class KeyboardMouseTests(unittest.TestCase):
             self.assertTrue(self.input.read().sprint)
             self.keys[key] = False
             self.assertFalse(self.input.read().sprint)
+
+    def test_q_looks_back_only_while_held_and_captured(self):
+        self.keys[pygame.K_q] = True
+        self.assertTrue(self.input.read().look_back)
+        self.assertTrue(self.input.read().look_back)
+        self.keys[pygame.K_q] = False
+        self.assertFalse(self.input.read().look_back)
+        self.keys[pygame.K_q] = True
+        self.input.handle_event(pygame.event.Event(pygame.WINDOWFOCUSLOST))
+        self.assertFalse(self.input.read().look_back)
 
     def test_jump_is_a_single_press_even_with_key_repeat(self):
         self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE))

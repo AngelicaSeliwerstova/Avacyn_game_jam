@@ -1,5 +1,3 @@
-from dataclasses import replace
-
 from config import controls, settings
 from engine.collision.world3d import CollisionWorld3D
 from engine.core.application import Application
@@ -25,8 +23,6 @@ def run_session():
     player = create_player(level, collision_world)
     session = GameSession(level, player)
     enemies = EnemySystem(level, player, on_caught=session.lose)
-    if player.visual is not None:
-        level = replace(level, objects=level.objects + (player.visual.scene_object,))
     snow = None
     if settings.SNOW_ENABLED and level.snow_enabled:
         snow = Snowfall(
