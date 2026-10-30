@@ -38,12 +38,18 @@ class Level:
     authored_fixed_cameras: tuple[FixedCameraZone, ...] | None = None
     creator_objects: tuple[Box, ...] = ()
     creator_objects_path: Path | None = None
+    creator_lights_path: Path | None = None
+    creator_room_height: float | None = None
 
     def __post_init__(self):
         if len({obj.name for obj in self.objects}) != len(self.objects):
             raise ValueError("Scene object names must be unique within a level")
         if not math.isfinite(self.base_height):
             raise ValueError("Level base height must be finite")
+        if self.creator_room_height is not None and (
+            not math.isfinite(self.creator_room_height) or self.creator_room_height <= 0
+        ):
+            raise ValueError("Creator room height must be finite and positive")
         if not self.floor_heights or any(not math.isfinite(y) for y in self.floor_heights):
             raise ValueError("Level floor heights must be finite and nonempty")
         if any(items and len(items) != len(self.floor_heights) for items in (self.floor_labels, self.floor_hints)):

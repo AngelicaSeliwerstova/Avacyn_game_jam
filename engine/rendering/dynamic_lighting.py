@@ -126,6 +126,9 @@ class DynamicLighting:
         if self._texture is not None:
             self._texture.use(location=5)
 
+    def recalculate_shadows(self):
+        self._shadow_key = None
+
     def release(self):
         for name in ("_cube", "_program", "_framebuffer", "_texture"):
             resource = getattr(self, name)

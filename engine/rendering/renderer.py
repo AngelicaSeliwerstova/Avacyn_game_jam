@@ -72,6 +72,9 @@ class Renderer:
         self._postprocess_index = next((i for i, (_, style) in enumerate(postprocess_presets) if style == postprocess), -1)
         self._lighting = None
         self._dynamic_lighting = None
+        self._base_dynamic_lights = tuple(dynamic_lights)
+        self._creator_lights = ()
+        self._dynamic_shadow_resolution = dynamic_shadow_resolution
         self._floor_texture = None
         self._wall_texture = None
         self._fallback_texture = None
@@ -93,6 +96,8 @@ class Renderer:
         self._camera_marker_objects = ()
         self._creator_object_boxes = ()
         self._creator_objects = ()
+        self._creator_light_boxes = ()
+        self._creator_light_objects = ()
         self._objects = self._static_objects + self._prepare_objects(self._object_boxes)
         self._submitted_objects = len(self._objects)
         self._submitted_triangles = 0
@@ -140,7 +145,7 @@ class Renderer:
                 colors=level.floor_colors, height=level.base_height,
             )
             self._lighting = LevelLighting(self.context, self._program, level, self.options.light_cell_size)
-            self._dynamic_lighting = DynamicLighting(self.context, self._program, dynamic_lights,
+            self._dynamic_lighting = DynamicLighting(self.context, self._program, self._base_dynamic_lights,
                                                       dynamic_shadow_resolution)
             self._render_target = RenderTarget(self.context, render_size)
             if postprocess is not None:
@@ -160,6 +165,8 @@ class Renderer:
     def update(self, delta_time: float, model_animation_speed: float = 1.0):
         """Продвигает время визуальных эффектов отдельно от повторной отрисовки."""
         self._lighting.update(delta_time, enabled=self.options.light_flicker)
+        if self._postprocess is not None:
+            self._postprocess.update(delta_time)
         if self._player_model is not None:
             self._player_model.update(delta_time, speed=model_animation_speed)
 
@@ -177,9 +184,33 @@ class Renderer:
         self._creator_objects = self._prepare_objects(boxes)
         self._rebuild_objects()
 
+    def set_creator_lights(self, lights: tuple[SpotLight, ...]):
+        if lights == self._creator_lights:
+            return
+        updated = self._base_dynamic_lights + lights
+        replacement = DynamicLighting(
+            self.context, self._program, updated, self._dynamic_shadow_resolution,
+        )
+        self._dynamic_lighting.release()
+        self._dynamic_lighting = replacement
+        self._creator_lights = lights
+
+    def set_creator_light_boxes(self, boxes: tuple[Box, ...]):
+        if boxes == self._creator_light_boxes:
+            return
+        self._creator_light_boxes = boxes
+        self._creator_light_objects = self._prepare_objects(boxes)
+        self._rebuild_objects()
+
+    def recalculate_shadows(self):
+        extra_boxes = self._creator_object_boxes + self._creator_light_boxes
+        self._lighting.recalculate_shadows(extra_boxes)
+        self._dynamic_lighting.recalculate_shadows()
+
     def _rebuild_objects(self):
         self._objects = (self._static_objects + self._prepare_objects(self._object_boxes)
-                         + self._creator_objects + self._camera_marker_objects)
+                         + self._creator_objects + self._creator_light_objects
+                         + self._camera_marker_objects)
 
     def cycle_postprocess(self):
         if self._postprocess is None or not self._postprocess_presets:
@@ -194,9 +225,15 @@ class Renderer:
                player_transform: Transform | None = None,
                camera_markers: tuple[Box, ...] = (),
                creator_objects: tuple[Box, ...] = (),
-               creator_help_text: tuple[str, str] | None = None):
+               creator_lights: tuple[SpotLight, ...] = (),
+               creator_light_boxes: tuple[Box, ...] = (),
+               creator_help_text: tuple[str, str] | None = None,
+               camera_effect_strength: float = 0.0,
+               camera_transition_strength: float = 0.0):
         self.set_camera_markers(camera_markers)
         self.set_creator_objects(creator_objects)
+        self.set_creator_lights(creator_lights)
+        self.set_creator_light_boxes(creator_light_boxes)
         boxes = self._level.object_boxes
         if boxes != self._object_boxes:
             self._lighting.sync_objects(self._level.static_shadow_boxes)
@@ -271,7 +308,11 @@ class Renderer:
         if self._snow is not None:
             self._snow.render(self._camera)
         if self._postprocess is not None:
-            self._postprocess.apply(self._render_target.color)
+            self._postprocess.apply(
+                self._render_target.color,
+                camera_effect_strength=camera_effect_strength,
+                transition_strength=camera_transition_strength,
+            )
         target = self.output_target
         if dialog is None:
             if debug_paths:

@@ -4,7 +4,7 @@ from pathlib import Path
 import moderngl
 import pygame
 
-from engine.rendering.presentation import horizontal_side_bars
+from engine.rendering.presentation import horizontal_side_bars, integer_viewport
 
 
 @dataclass(frozen=True)
@@ -46,7 +46,8 @@ class TextOverlay:
             raise
 
     def draw(self, text: str, render_size: tuple[int, int], *, anchor: str = "top_left",
-             max_width: int | None = None, fill_width: bool = False):
+             max_width: int | None = None, fill_width: bool = False,
+             anchor_bounds: tuple[int, int, int, int] | None = None):
         if not text:
             return
         if text != self._text or max_width != self._wrap_width or fill_width != self._fill_width:
@@ -76,7 +77,7 @@ class TextOverlay:
             self._text = text
             self._wrap_width = max_width
             self._fill_width = fill_width
-        self._draw_texture(render_size, anchor)
+        self._draw_texture(render_size, anchor, anchor_bounds)
 
     def _upload_surface(self, surface: pygame.Surface):
         if self._texture is not None:
@@ -86,23 +87,28 @@ class TextOverlay:
         )
         self._texture.filter = moderngl.NEAREST, moderngl.NEAREST
 
-    def _draw_texture(self, render_size: tuple[int, int], anchor: str):
+    def _draw_texture(self, render_size: tuple[int, int], anchor: str,
+                      anchor_bounds: tuple[int, int, int, int] | None = None):
         width, height = self._texture.size
         margin = self._style.margin
+        x, y, bounds_width, bounds_height = (
+            anchor_bounds if anchor_bounds is not None
+            else (0, 0, render_size[0], render_size[1])
+        )
         if anchor == "top_left":
-            position = (margin, render_size[1] - height - margin)
+            position = (x + margin, y + bounds_height - height - margin)
         elif anchor == "bottom_right":
-            position = (render_size[0] - width - margin, margin)
+            position = (x + bounds_width - width - margin, y + margin)
         elif anchor == "bottom_center":
-            position = ((render_size[0] - width) // 2, margin)
+            position = (x + (bounds_width - width) // 2, y + margin)
         elif anchor == "center":
-            position = ((render_size[0] - width) // 2, (render_size[1] - height) // 2)
+            position = (x + (bounds_width - width) // 2, y + (bounds_height - height) // 2)
         elif anchor == "center_left":
-            position = (margin, (render_size[1] - height) // 2)
+            position = (x + margin, y + (bounds_height - height) // 2)
         elif anchor == "center_right":
-            position = (render_size[0] - width - margin, (render_size[1] - height) // 2)
+            position = (x + bounds_width - width - margin, y + (bounds_height - height) // 2)
         elif anchor == "top_right":
-            position = (render_size[0] - width - margin, render_size[1] - height - margin)
+            position = (x + bounds_width - width - margin, y + bounds_height - height - margin)
         else:
             raise ValueError(f"Unknown text anchor: {anchor}")
         self._context.viewport = (*position, width, height)
@@ -215,6 +221,20 @@ class CreatorSidebarOverlay:
             self._right.draw(
                 text[1], window_size, anchor="center_right",
                 max_width=right_width - margin * 2, fill_width=True,
+            )
+        if left_width < self.MINIMUM_BAR_WIDTH and right_width < self.MINIMUM_BAR_WIDTH:
+            panel_width = min(180, max(1, (render_size[0] - margin * 3) // 2))
+            viewport_x, viewport_y, viewport_width, viewport_height = integer_viewport(
+                window_size, render_size,
+            )
+            viewport = (viewport_x, viewport_y, viewport_width, viewport_height)
+            self._left.draw(
+                text[0], window_size, anchor="center_left",
+                max_width=panel_width, fill_width=True, anchor_bounds=viewport,
+            )
+            self._right.draw(
+                text[1], window_size, anchor="center_right",
+                max_width=panel_width, fill_width=True, anchor_bounds=viewport,
             )
 
     def release(self):

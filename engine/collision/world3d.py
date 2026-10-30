@@ -19,6 +19,7 @@ class CollisionWorld3D:
         if not math.isfinite(ground_height):
             raise ValueError("Ground height must be finite")
         self._static_colliders = tuple(colliders)
+        self._creator_colliders = ()
         self._objects = objects
         self._object_states = None
         self._colliders = self._static_colliders
@@ -30,9 +31,14 @@ class CollisionWorld3D:
         states = tuple(obj.current_state for obj in self._objects)
         if states != self._object_states:
             self._colliders = self._static_colliders + tuple(
-                box.collider for state in states if state.collidable for box in state.boxes)
+                self._creator_colliders
+            ) + tuple(box.collider for state in states if state.collidable for box in state.boxes)
             self._object_states = states
         return self._colliders
+
+    def set_creator_colliders(self, boxes) -> None:
+        self._creator_colliders = tuple(box.collider for box in boxes)
+        self._object_states = None
 
     def _horizontal_world(self, feet: float, height: float) -> CollisionWorld:
         return CollisionWorld((

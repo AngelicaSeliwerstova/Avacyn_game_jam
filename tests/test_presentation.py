@@ -1,5 +1,7 @@
 import unittest
+from unittest.mock import Mock
 
+from engine.rendering.hud import CreatorSidebarOverlay
 from engine.rendering.presentation import horizontal_side_bars, integer_viewport
 
 
@@ -37,3 +39,20 @@ class PresentationTests(unittest.TestCase):
         self.assertEqual(horizontal_side_bars((1920, 1080), (640, 480)), (320, 320))
         self.assertEqual(horizontal_side_bars((1280, 960), (640, 480)), (0, 0))
         self.assertEqual(horizontal_side_bars((600, 900), (320, 240)), (140, 140))
+
+    def test_creator_controls_fall_back_inside_the_game_view_when_sidebars_are_missing(self):
+        overlay = CreatorSidebarOverlay.__new__(CreatorSidebarOverlay)
+        overlay._margin = 8
+        overlay._left = Mock()
+        overlay._right = Mock()
+
+        overlay.draw((1280, 960), (640, 480), ("CREATOR", "SCENE"))
+
+        overlay._left.draw.assert_called_once_with(
+            "CREATOR", (1280, 960), anchor="center_left", max_width=180,
+            fill_width=True, anchor_bounds=(0, 0, 1280, 960),
+        )
+        overlay._right.draw.assert_called_once_with(
+            "SCENE", (1280, 960), anchor="center_right", max_width=180,
+            fill_width=True, anchor_bounds=(0, 0, 1280, 960),
+        )

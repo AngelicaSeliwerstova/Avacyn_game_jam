@@ -23,6 +23,8 @@ class KeyboardMouse:
         self._camera_delete_queued = False
         self._object_add_queued = False
         self._creator_material_queued = False
+        self._creator_light_queued = False
+        self._recalculate_shadows_queued = False
         self._set_capture(self._focused)
 
     def _set_capture(self, captured: bool):
@@ -50,6 +52,8 @@ class KeyboardMouse:
         self._camera_delete_queued = False
         self._object_add_queued = False
         self._creator_material_queued = False
+        self._creator_light_queued = False
+        self._recalculate_shadows_queued = False
         # Первый отсчёт после захвата может содержать смещение курсора ОС.
         self._discard_mouse_delta = True
 
@@ -94,6 +98,10 @@ class KeyboardMouse:
                     self._object_add_queued = True
                 elif event.key == self._bindings.cycle_creator_material:
                     self._creator_material_queued = True
+                elif event.key == self._bindings.add_creator_light:
+                    self._creator_light_queued = True
+                elif event.key == self._bindings.recalculate_shadows:
+                    self._recalculate_shadows_queued = True
         elif (
             event.type == pygame.MOUSEBUTTONDOWN
             and event.button == self._bindings.capture_mouse_button
@@ -131,6 +139,8 @@ class KeyboardMouse:
             cycle_creator_material=self._creator_material_queued,
             creator_up=(self._bindings.creator_up is not None
                         and bool(keys[self._bindings.creator_up])),
+            add_creator_light=self._creator_light_queued,
+            recalculate_shadows=self._recalculate_shadows_queued,
         )
         self._jump_queued = False
         self._interact_queued = False
@@ -140,6 +150,8 @@ class KeyboardMouse:
         self._camera_delete_queued = False
         self._object_add_queued = False
         self._creator_material_queued = False
+        self._creator_light_queued = False
+        self._recalculate_shadows_queued = False
         return state
 
     @property

@@ -134,6 +134,9 @@ class Application:
                         for obj in self._level.objects:
                             obj.update(delta_time)
                     self._controlled_entity.update(delta_time, inputs)
+                    if (inputs.recalculate_shadows
+                            and getattr(self._controlled_entity, "creator_mode", False)):
+                        renderer.recalculate_shadows()
                     if not creator_was_active and not creator_is_being_toggled:
                         for system in self._systems:
                             system.update(delta_time)
@@ -157,13 +160,22 @@ class Application:
                                 dialog=self._session.dialog,
                                 camera_markers=getattr(self._controlled_entity, "camera_marker_boxes", ()),
                                 creator_objects=getattr(self._controlled_entity, "creator_object_boxes", ()),
+                                creator_lights=getattr(self._controlled_entity, "creator_lights", ()),
+                                creator_light_boxes=getattr(
+                                    self._controlled_entity, "creator_light_boxes", (),
+                                ),
                                 creator_help_text=getattr(
                                     self._controlled_entity, "creator_help_text", None,
                                 ),
-                                player_transform=(
-                                    None if getattr(self._controlled_entity, "creator_mode", False)
-                                    else self._controlled_entity.transform
+                                camera_effect_strength=(
+                                    1.0 if getattr(
+                                        self._controlled_entity, "fixed_camera_effect_active", False,
+                                    ) else 0.0
                                 ),
+                                camera_transition_strength=getattr(
+                                    self._controlled_entity, "camera_transition_strength", 0.0,
+                                ),
+                                player_transform=self._controlled_entity.transform,
                                 debug_paths=self._debug_paths() if self._debug.enabled and self._debug_paths else ())
                 rendered = perf_counter() if profiling else 0.0
                 window.present()

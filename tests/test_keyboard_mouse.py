@@ -148,9 +148,11 @@ class KeyboardMouseTests(unittest.TestCase):
             toggle_camera_editor=pygame.K_F6, add_camera=pygame.K_F7,
             delete_camera=pygame.K_DELETE, add_object=pygame.K_F9,
             cycle_creator_material=pygame.K_F8, creator_up=pygame.K_SPACE,
+            add_creator_light=pygame.K_F10, recalculate_shadows=pygame.K_F12,
         )
         device = KeyboardMouse(bindings)
-        for key in (pygame.K_F6, pygame.K_F7, pygame.K_DELETE, pygame.K_F9, pygame.K_F8):
+        for key in (pygame.K_F6, pygame.K_F7, pygame.K_DELETE, pygame.K_F9,
+                    pygame.K_F8, pygame.K_F10, pygame.K_F12):
             device.handle_event(pygame.event.Event(pygame.KEYDOWN, key=key))
         state = device.read()
         self.assertTrue(state.toggle_camera_editor)
@@ -158,6 +160,8 @@ class KeyboardMouseTests(unittest.TestCase):
         self.assertTrue(state.delete_camera)
         self.assertTrue(state.add_object)
         self.assertTrue(state.cycle_creator_material)
+        self.assertTrue(state.add_creator_light)
+        self.assertTrue(state.recalculate_shadows)
         self.assertEqual(device.read(), InputState())
         self.keys[pygame.K_SPACE] = True
         self.assertTrue(device.read().creator_up)

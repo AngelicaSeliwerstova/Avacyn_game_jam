@@ -27,6 +27,8 @@ class InputBindings:
     add_object: int | None = None
     cycle_creator_material: int | None = None
     creator_up: int | None = None
+    add_creator_light: int | None = None
+    recalculate_shadows: int | None = None
 
     def __post_init__(self):
         if self.zoom_mouse_button is not None and self.zoom_mouse_button not in range(1, 6):

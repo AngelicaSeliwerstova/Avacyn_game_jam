@@ -38,8 +38,11 @@ class LevelLighting:
         self._scales = []
         self._level = level
         self._object_boxes = level.static_shadow_boxes
+        static_decorations = level.decorations
+        if level.creator_objects:
+            static_decorations = static_decorations[:-len(level.creator_objects)]
         self._static_geometry = tuple((box, box.model_matrix.to_bytes(), box.bounds_half_size)
-                                      for box in level.boxes + level.decorations)
+                                      for box in level.boxes + static_decorations)
         lighting = level.lighting
         program["lighting_enabled"].value = lighting is not None
         program["shadow_atlas"].value = 2
@@ -122,6 +125,16 @@ class LevelLighting:
         if affected:
             self._render_lights(affected, self._level.lighting.shadow_resolution,
                                 boxes)
+
+    def recalculate_shadows(self, extra_boxes=()):
+        if self._framebuffer is None:
+            return
+        boxes = self._object_boxes + tuple(extra_boxes)
+        self._render_lights(
+            range(len(self._level.lighting.lights)),
+            self._level.lighting.shadow_resolution,
+            boxes,
+        )
 
     def _render_lights(self, indices, resolution, boxes):
         self._framebuffer.use()

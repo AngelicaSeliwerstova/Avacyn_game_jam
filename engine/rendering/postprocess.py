@@ -46,6 +46,7 @@ class PostProcessor:
     def __init__(self, context: moderngl.Context, size: tuple[int, int], settings: PostProcessSettings):
         self._context = context
         self._settings = settings
+        self._elapsed = 0.0
         self.output = None
         self._bloom_a = None
         self._bloom_b = None
@@ -87,12 +88,21 @@ class PostProcessor:
         self._programs["bloom_extract"]["threshold"].value = settings.bloom_threshold
         self._settings = settings
 
+    def update(self, delta_time: float):
+        if not math.isfinite(delta_time) or delta_time < 0:
+            raise ValueError("Postprocess delta time must be finite and nonnegative")
+        self._elapsed += delta_time
+
     def _draw(self, name: str, target: RenderTarget):
         target.framebuffer.use()
         self._context.viewport = (0, 0, *target.size)
         self._vertices[name].render(mode=moderngl.TRIANGLES, vertices=3)
 
-    def apply(self, source: moderngl.Texture) -> RenderTarget:
+    def apply(self, source: moderngl.Texture, *, camera_effect_strength: float = 0.0,
+              transition_strength: float = 0.0) -> RenderTarget:
+        for value in (camera_effect_strength, transition_strength):
+            if not math.isfinite(value) or not 0 <= value <= 1:
+                raise ValueError("Camera effect strengths must be finite and from 0 to 1")
         self._context.scissor = None
         self._context.disable(moderngl.DEPTH_TEST | moderngl.BLEND)
         source.use(location=0)
@@ -107,6 +117,10 @@ class PostProcessor:
         self._draw("bloom_blur", self._bloom_a)
         source.use(location=0)
         self._bloom_a.color.use(location=1)
+        grade = self._programs["color_grade"]
+        grade["camera_effect_strength"].value = camera_effect_strength
+        grade["transition_strength"].value = transition_strength
+        grade["effect_time"].value = self._elapsed
         self._draw("color_grade", self.output)
         return self.output
 
