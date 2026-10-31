@@ -16,7 +16,7 @@ class EnemySystem:
     def __init__(self, level, player, on_caught=None):
         self.player = player
         self._level = level
-        self._static_colliders = tuple(box.collider for box in level.boxes)
+        self._static_colliders = tuple(box.collider for box in level.collision_boxes)
         self._on_caught = on_caught
         self._caught = False
         self.enemies = tuple(obj.entity for obj in level.objects if isinstance(obj.entity, Enemy))
@@ -24,7 +24,7 @@ class EnemySystem:
         self._hud_timer = 0.0
         for enemy in self.enemies:
             world = CollisionWorld3D(
-                (box.collider for box in level.boxes), level.floor_bounds, level.base_height,
+                (box.collider for box in level.collision_boxes), level.floor_bounds, level.base_height,
                 objects=tuple(obj for obj in level.objects if obj is not enemy.scene_object) + (self._player_obstacle,),
             )
             enemy.bind(world, level)

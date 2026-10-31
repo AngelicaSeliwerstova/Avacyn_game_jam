@@ -144,6 +144,15 @@ class Player(Entity):
     def aim_text(self) -> str:
         if self._creator_mode:
             return f"CREATOR | {self._camera_editor_message}" if self._camera_editor_message else ""
+        if self._level is not None:
+            position = self.body.position
+            for barrier in self._level.invisible_barriers:
+                collider = barrier.collider
+                if (barrier.interaction is not None
+                        and collider.bottom < position.y + self.body.height
+                        and collider.top > position.y
+                        and collider.footprint.intersects_circle(position.x, position.z, 1.1)):
+                    return barrier.interaction.message
         return self._interactions.text
 
     @property

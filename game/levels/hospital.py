@@ -97,7 +97,7 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
     for x in (-14, -7, 0, 7, 14):
         wall("z", x, -14, -6)
     partition("x", -6, -21, 21, OFFICE_DOORS, "office", ROOM_NAMES)
-    partition("x", -2, -21, -5, (-13,), "corridor_stair")
+    partition("x", -2, -21, -5, (-18.5,), "corridor_stair")
     # Справа коридор свободно соединяется с зоной ожидания, без торчащей перегородки.
     # Центральная зона открыта из коридора до холла; служебные комнаты компактные.
     partition("z", -5, -2, 14, (10.5,), "stair_lounge", ("Лестничный зал",))
@@ -205,15 +205,9 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
         radius = (stair.inner_radius + stair.outer_radius) / 2
         gate = Box(stair.point(angle, radius, 1.25),
                    (stair.outer_radius - stair.inner_radius, 2.5, 0.12),
-                   material="metal_grate", yaw_degrees=-angle,
-                   interaction=Interaction("Верхние этажи", "Проход на верхние этажи закрыт."))
-        boxes.append(gate)
-        for post_radius in (stair.inner_radius, stair.outer_radius):
-            boxes.append(Box(stair.point(angle, post_radius, 1.35), (0.14, 2.7, 0.2),
-                             material="metal_scratched_dark", yaw_degrees=-angle))
-        boxes.append(Box(stair.point(angle, radius, 2.7),
-                         (stair.outer_radius - stair.inner_radius + 0.15, 0.12, 0.2),
-                         material="metal_scratched_dark", yaw_degrees=-angle))
+                   yaw_degrees=-angle,
+                   interaction=Interaction("Верхние этажи", "Пока туда нельзя."))
+        level = replace(level, invisible_barriers=level.invisible_barriers + (gate,))
         # Верх обычных стен окрашен ровно, без трещин и облупившейся штукатурки.
         boxes = [replace(box, color=(0.82, 0.81, 0.74))
                  if box.material == "plaster" and box.size[1] > 1.2 else box for box in boxes]

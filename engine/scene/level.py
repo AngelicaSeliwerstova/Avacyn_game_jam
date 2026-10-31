@@ -41,6 +41,7 @@ class Level:
     creator_lights_path: Path | None = None
     creator_room_height: float | None = None
     visual_style: str = "default"
+    invisible_barriers: tuple[Box, ...] = ()
 
     def __post_init__(self):
         if len({obj.name for obj in self.objects}) != len(self.objects):
@@ -66,6 +67,11 @@ class Level:
             for color in self.floor_colors
         ):
             raise ValueError("Floor needs two RGB colors with channels from 0 to 255")
+
+    @property
+    def collision_boxes(self) -> tuple[Box, ...]:
+        """Visible geometry and invisible passage blockers; rendering uses boxes only."""
+        return self.boxes + self.invisible_barriers
 
     @property
     def object_boxes(self) -> tuple[Box, ...]:

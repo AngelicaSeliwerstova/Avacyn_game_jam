@@ -4,10 +4,43 @@ import glm
 
 from game.campaign import Campaign
 from game.levels import create_level
-from test_hospital import walk
+from test_hospital import make_body, walk
+from game.levels.spiral import SpiralStair
 
 
 class WorldTransitionTests(unittest.TestCase):
+    def test_stair_barrier_is_invisible_blocks_movement_and_warns_on_approach(self):
+        scene = Campaign().load_level("peaceful")
+        level, player = scene.level, scene.player
+        self.assertEqual(len(level.invisible_barriers), 1)
+        barrier = level.invisible_barriers[0]
+        self.assertNotIn(barrier, level.boxes + level.decorations + level.all_object_boxes)
+        self.assertIn(barrier.collider, player.body.world.colliders)
+        stair = SpiralStair()
+        radius = (stair.inner_radius + stair.outer_radius) / 2
+        player.body = make_body(player.body.world, stair.point(47, radius))
+        self.assertEqual(player.aim_text, "Пока туда нельзя.")
+        # Walk towards the first rising steps: the barrier cannot be stepped over.
+        for _ in range(90):
+            player.body.update(1 / 60, glm.vec3(1.5, 0, -2.6))
+        self.assertGreater(player.body.position.z, barrier.position[2] - 0.5)
+        self.assertAlmostEqual(player.body.position.y, 0)
+        player.body = make_body(player.body.world, (-18.5, 0, -3.5))
+        self.assertNotIn("Пока туда нельзя", player.aim_text)
+        self.assertEqual(create_level("start").invisible_barriers, ())
+
+    def test_shifted_stair_door_opens_into_clear_space_in_both_worlds(self):
+        for name in ("peaceful", "start"):
+            scene = Campaign().load_level(name)
+            for obj in scene.level.objects:
+                if "open" in obj.states:
+                    obj.set_state("open")
+                    obj.update(1)
+            for height in scene.level.floor_heights:
+                scene.player.body = make_body(scene.player.body.world, (-18.5, height, -4.5))
+                walk(self, scene.player.body, ((-18.5, height, 0.5),))
+                self.assertAlmostEqual(scene.player.body.position.y, height, places=4)
+
     def test_peaceful_world_copies_first_floor_rooms(self):
         peaceful, hospital = create_level("peaceful"), create_level("start")
         self.assertEqual(peaceful.floor_size, hospital.floor_size)

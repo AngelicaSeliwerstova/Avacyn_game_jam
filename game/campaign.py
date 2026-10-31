@@ -31,7 +31,7 @@ class Campaign:
     def load_level(self, name: str) -> RuntimeScene:
         level = create_level(name)
         world = CollisionWorld3D(
-            colliders=(box.collider for box in level.boxes),
+            colliders=(box.collider for box in level.collision_boxes),
             bounds=level.floor_bounds, ground_height=level.base_height,
             objects=level.objects,
         )
