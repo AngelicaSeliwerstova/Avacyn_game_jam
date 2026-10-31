@@ -1,5 +1,6 @@
 from dataclasses import replace
 from pathlib import Path
+from time import perf_counter
 
 import moderngl
 import glm
@@ -56,6 +57,8 @@ class Renderer:
         player_model: ModelComponent | None = None,
         context: moderngl.Context | None = None,
     ):
+        self.profile_enabled = False
+        self.frame_timings = {}
         major, minor = opengl_version
         self.context = context if context is not None else moderngl.create_context(require=major * 100 + minor * 10)
         self._program = None
@@ -250,6 +253,9 @@ class Renderer:
                creator_help_text: tuple[str, str] | None = None,
                camera_effect_strength: float = 0.0,
                camera_transition_strength: float = 0.0):
+        if self.profile_enabled:
+            self.frame_timings = {}
+            self._profile_started = perf_counter()
         self.set_camera_markers(camera_markers)
         self.set_creator_objects(creator_objects)
         self.set_creator_light_boxes(creator_light_boxes)
@@ -259,7 +265,9 @@ class Renderer:
             self._lighting.sync_objects(self._level.static_shadow_boxes)
             self._object_boxes = boxes
             self._rebuild_objects()
+        self._profile_mark("scene_sync")
         self._dynamic_lighting.render_shadows(self._objects)
+        self._profile_mark("dynamic_shadows")
         self._render_target.framebuffer.use()
         self.context.viewport = (0, 0, *self._render_target.size)
         self.context.enable(moderngl.DEPTH_TEST)
@@ -283,12 +291,14 @@ class Renderer:
         draw_floor = not self.options.frustum_culling or frustum.intersects(
             (0, self._level.base_height, 0), (self._level.floor_size[0] / 2, 0, self._level.floor_size[1] / 2),
         )
+        self._profile_mark("visibility_setup")
         if self.options.depth_prepass:
             self._draw_depth(objects, draw_floor)
             self.context.depth_func = "<="
             self._render_target.framebuffer.depth_mask = False
             # При равной глубине сохраняем прежний приоритет копланарных поверхностей.
             objects.reverse()
+        self._profile_mark("depth_prepass")
         if draw_floor and not self.options.depth_prepass:
             self._draw_floor()
         try:
@@ -317,6 +327,7 @@ class Renderer:
         finally:
             self._render_target.framebuffer.depth_mask = True
             self.context.depth_func = "<"
+        self._profile_mark("world_character")
         self._submitted_objects = len(objects) + int(model_draw_calls > 0)
         self._draw_calls = len(objects) + int(draw_floor) + model_draw_calls
         self._model_draw_calls = model_draw_calls
@@ -333,6 +344,7 @@ class Renderer:
                 camera_effect_strength=camera_effect_strength,
                 transition_strength=camera_transition_strength,
             )
+        self._profile_mark("effects_particles")
         target = self.output_target
         if dialog is None and inventory is None:
             if debug_paths:
@@ -349,9 +361,17 @@ class Renderer:
             self._dialog.draw(dialog, target.size, window_size)
         else:
             self._inventory.draw(inventory, target.size)
+        self._profile_mark("hud")
         self._presenter.present(target.color, self.context.screen, window_size)
         if creator_help_text is not None and dialog is None and inventory is None:
             self._creator_sidebar.draw(window_size, target.size, creator_help_text)
+        self._profile_mark("compose")
+
+    def _profile_mark(self, name):
+        if self.profile_enabled:
+            now = perf_counter()
+            self.frame_timings[name] = now - self._profile_started
+            self._profile_started = now
 
     @property
     def output_target(self) -> RenderTarget:

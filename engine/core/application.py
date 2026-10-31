@@ -1,10 +1,12 @@
 import pygame
 from time import perf_counter
 from collections.abc import Callable
+from pathlib import Path
 
 from engine.core.window import Window
 from engine.debug.panel import DebugSettings, DeveloperPanel
 from engine.debug.geometry import DebugPath
+from engine.debug.frame_log import SlowFrameLog
 from engine.input.bindings import InputBindings
 from engine.input.keyboard_mouse import KeyboardMouse
 from engine.particles.snow import Snowfall
@@ -52,6 +54,7 @@ class Application:
         debug_paths: Callable[[], tuple[DebugPath, ...]] | None = None,
         postprocess_presets: tuple[tuple[str, PostProcessSettings], ...] = (),
         scene_loader: Callable[[str], RuntimeScene] | None = None,
+        debug_mode: bool = False,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -70,6 +73,8 @@ class Application:
         self._postprocess_presets = postprocess_presets
         self._debug_settings = debug or DebugSettings()
         self._debug = DeveloperPanel(self._debug_settings)
+        self._debug_mode = debug_mode
+        self._debug.enabled = debug_mode
         self._render_options = render_options
         self._fog = fog
         self._dynamic_lights = dynamic_lights
@@ -87,8 +92,12 @@ class Application:
         pygame.init()
         renderer = None
         input_device = None
+        frame_log = None
 
         try:
+            if self._debug_mode:
+                frame_log = SlowFrameLog(Path(__file__).resolve().parents[2] / "logs")
+                print(f"Performance log: {frame_log.path}")
             window = Window(
                 size=self._window_size,
                 title=self._window_title,
@@ -102,6 +111,7 @@ class Application:
             self._running = True
 
             while self._running:
+                frame_started = perf_counter() if self._debug_mode else 0.0
                 # Clock возвращает миллисекунды, контроллер работает с секундами.
                 delta_time = clock.tick(self._fps_limit) / 1000.0
                 self._handle_events(input_device, window, renderer)
@@ -109,8 +119,10 @@ class Application:
                     break
 
                 inputs = input_device.read()
-                profiling = self._debug.enabled
+                profiling = self._debug_mode
                 started = perf_counter() if profiling else 0.0
+                renderer.profile_enabled = profiling
+                objects_updated = player_updated = systems_updated = animation_updated = started
                 if not self._simulation_paused:
                     creator_was_active = getattr(self._controlled_entity, "creator_mode", False)
                     creator_is_being_toggled = (
@@ -120,10 +132,12 @@ class Application:
                     if not creator_was_active and not creator_is_being_toggled:
                         for obj in self._level.objects:
                             obj.update(delta_time)
+                    objects_updated = perf_counter() if profiling else 0.0
                     self._controlled_entity.update(delta_time, inputs)
                     if (inputs.recalculate_shadows
                             and getattr(self._controlled_entity, "creator_mode", False)):
                         renderer.recalculate_shadows()
+                    player_updated = perf_counter() if profiling else 0.0
                     if not creator_was_active and not creator_is_being_toggled:
                         for system in self._systems:
                             system.update(delta_time)
@@ -132,6 +146,7 @@ class Application:
                             if self._session.dialog is not None:
                                 input_device.release()
                                 break
+                    systems_updated = perf_counter() if profiling else 0.0
                     if self._session.dialog is None:
                         if self._snow is not None and not getattr(
                             self._controlled_entity, "creator_mode", False,
@@ -143,6 +158,7 @@ class Application:
                                 self._controlled_entity, "model_animation_speed", 1.0,
                             ),
                         )
+                    animation_updated = perf_counter() if profiling else 0.0
                 if self._session.next_level is not None:
                     renderer = self._change_level(renderer, window)
                     input_device.reset_after_loading()
@@ -175,9 +191,29 @@ class Application:
                                 debug_paths=self._debug_paths() if self._debug.enabled and self._debug_paths else ())
                 rendered = perf_counter() if profiling else 0.0
                 window.present()
+                if frame_log is not None:
+                    presented = perf_counter()
+                    frame_log.record(presented - frame_started, {
+                        "pacing_input": started - frame_started,
+                        "objects_doors": objects_updated - started,
+                        "player_camera_collision": player_updated - objects_updated,
+                        "systems_enemies_session": systems_updated - player_updated,
+                        "animation_particles": animation_updated - systems_updated,
+                        **renderer.frame_timings,
+                        "present": presented - rendered,
+                    }, lambda: {"scene": self._level.visual_style,
+                                "update_total_ms": round((updated - started) * 1000, 3),
+                                "render_total_ms": round((rendered - updated) * 1000, 3),
+                                "position": tuple(self._controlled_entity.transform.position),
+                                "camera": tuple(self._controlled_entity.camera.position),
+                                "paused": self._simulation_paused,
+                                "creator": getattr(self._controlled_entity, "creator_mode", False),
+                                "details": self._debug_lines(renderer, input_device, window)})
                 self._debug.update(delta_time, updated - started, rendered - updated,
                                    lambda: self._debug_lines(renderer, input_device, window))
         finally:
+            if frame_log is not None:
+                frame_log.close()
             self._running = False
             # GPU-ресурсы освобождаем, пока OpenGL-окно ещё существует.
             try:
@@ -261,7 +297,7 @@ class Application:
                 self._running = False
                 break
             elif (event.type == pygame.KEYDOWN and event.key == self._input_bindings.toggle_debug
-                  and not getattr(event, "repeat", False)):
+                  and self._debug_mode and not getattr(event, "repeat", False)):
                 self._debug.toggle()
             elif (event.type == pygame.KEYDOWN and event.key == self._input_bindings.cycle_postprocess
                   and renderer is not None and not self._simulation_paused and not getattr(event, "repeat", False)):

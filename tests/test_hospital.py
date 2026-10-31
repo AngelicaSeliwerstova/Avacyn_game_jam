@@ -36,6 +36,26 @@ def walk(test, body, points, fps=60):
 
 
 class HospitalTests(unittest.TestCase):
+    def test_stair_handrails_do_not_intersect_gallery_handrails(self):
+        stair = SpiralStair()
+        caps = [b for b in stair.build() if b.size[1] < 0.2
+                and math.hypot(b.position[0] + 13, b.position[2] - 4) > 4]
+        for angle in range(360):
+            x, _, z = stair.point(angle, stair.gallery_radius - 0.13)
+            self.assertFalse(any(b.footprint.intersects_circle(x, z, 0.005) for b in caps), angle)
+
+    def test_gallery_guards_last_steps_and_top_bridge_inner_edge(self):
+        level = create_level("start")
+        world = CollisionWorld3D((b.collider for b in level.boxes), level.floor_bounds)
+        stair = SpiralStair()
+        for flight in range(stair.flights):
+            for step in range(stair.steps - 7, stair.steps):
+                top = stair.step_height(flight * stair.steps + step)
+                point = stair.point(90 - (step + 0.5) * 360 / stair.steps, stair.gallery_radius, top)
+                self.assertTrue(world.is_blocked(glm.vec3(point), 0.1, 1.8))
+        for x in (-12.8, -12, -11, -10, -9):
+            self.assertTrue(world.is_blocked(glm.vec3(x, 9.6, 5.46), 0.1, 1.8))
+
     def test_overlapping_gallery_floor_uses_one_material(self):
         level = create_level("start")
         for height in (4.8, 9.6):
@@ -65,7 +85,7 @@ class HospitalTests(unittest.TestCase):
             for angle in range(0, 360, 3):
                 if 17 < angle < 78:
                     continue
-                point = glm.vec3(stair.point(angle, 4.34, height + 0.35))
+                point = glm.vec3(stair.point(angle, stair.gallery_radius, height + 0.35))
                 self.assertTrue(world.is_blocked(point, 0.02, 0.1), (angle, height))
 
     def test_plan_has_six_offices_and_correct_scale(self):

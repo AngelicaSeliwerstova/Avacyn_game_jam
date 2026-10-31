@@ -11,8 +11,7 @@ RENDER_SIZE = (640, 480)
 # Максимальная частота кадров.
 FPS_LIMIT = 60
 
-# F3 показывает диагностику. Частота обновления текста указана в секундах.
-DEBUG_ENABLED = False
+# --debug включает диагностику, F3 скрывает панель. Интервал указан в секундах.
 DEBUG_REFRESH_INTERVAL = 0.25
 DEBUG_FONT_SIZE = 12
 DEBUG_FONT = "SourceSans3-Regular.ttf"

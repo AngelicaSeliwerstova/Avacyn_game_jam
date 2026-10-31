@@ -1,4 +1,7 @@
 import unittest
+import json
+from pathlib import Path
+import tempfile
 from unittest.mock import Mock, patch
 
 import pygame
@@ -8,6 +11,7 @@ from engine.collision.world3d import CollisionWorld3D
 from engine.core.application import Application
 from engine.debug.panel import DebugSettings, DeveloperPanel
 from engine.debug.profiler import FrameProfiler
+from engine.debug.frame_log import SlowFrameLog
 from engine.input.state import InputState
 from engine.scene.box import Box
 from engine.scene.level import Level
@@ -47,18 +51,54 @@ class DebugTests(unittest.TestCase):
 
     def test_f3_toggles_without_repeats_or_releasing_mouse(self):
         app = Application((640, 480), (320, 240), "test", 60, (0, 0, 0), (3, 3), False,
-                          Mock(), controls.INPUT_BINDINGS, Mock())
+                          Mock(), controls.INPUT_BINDINGS, Mock(), debug_mode=True)
+        self.assertTrue(app._debug.enabled)
         device, window = Mock(), Mock()
         key = controls.INPUT_BINDINGS.toggle_debug
         events = [pygame.event.Event(pygame.KEYDOWN, key=key),
                   pygame.event.Event(pygame.KEYDOWN, key=key, repeat=True)]
         with patch("pygame.event.get", return_value=events):
             app._handle_events(device, window)
-        self.assertTrue(app._debug.enabled)
+        self.assertFalse(app._debug.enabled)
         device.release.assert_not_called()
         with patch("pygame.event.get", return_value=events[:1]):
             app._handle_events(device, window)
+        self.assertTrue(app._debug.enabled)
+
+    def test_debug_panel_cannot_be_enabled_without_flag(self):
+        app = Application((640, 480), (320, 240), "test", 60, (0, 0, 0), (3, 3), False,
+                          Mock(), controls.INPUT_BINDINGS, Mock(), debug=DebugSettings(enabled=True))
+        with patch("pygame.event.get", return_value=[pygame.event.Event(
+                pygame.KEYDOWN, key=controls.INPUT_BINDINGS.toggle_debug)]):
+            app._handle_events(Mock(), Mock())
         self.assertFalse(app._debug.enabled)
+
+    def test_slow_frame_log_records_only_frames_below_threshold(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = SlowFrameLog(Path(directory))
+            details = Mock(return_value={"details": ["FEET XYZ: 1 2 3"]})
+            for duration in (1 / 60, 1 / 45, 0):
+                log.record(duration, {"update": 0.003}, details)
+            details.assert_not_called()
+            log.record(1 / 30, {"update": 0.004, "world_character": 0.020}, details)
+            log.close()
+            records = [json.loads(line) for line in log.path.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([r["event"] for r in records], ["session_start", "slow_frame", "session_end"])
+            slow = records[1]
+            self.assertEqual(slow["fps"], 30)
+            self.assertEqual(slow["frame"], 4)
+            self.assertEqual(slow["largest_stage"], "world_character")
+            self.assertEqual(slow["timings_ms"]["world_character"], 20)
+            self.assertIn("time", slow)
+            self.assertIn("elapsed_s", slow)
+            self.assertEqual(slow["details"], ["FEET XYZ: 1 2 3"])
+
+    def test_command_line_passes_explicit_debug_mode(self):
+        from main import main
+        for flags, enabled in (([], False), (["--debug"], True)):
+            with patch("sys.argv", ["main.py", *flags]), patch("main.run_session", return_value="quit") as run:
+                main()
+            run.assert_called_once_with(creator_mode=False, debug_mode=enabled)
 
     def test_player_status_tracks_real_motion_and_not_held_buttons(self):
         level = Level((10, 10), 1, (Box((0, 1.5, -2), (4, 3, 1)),),

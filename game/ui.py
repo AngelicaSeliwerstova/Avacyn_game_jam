@@ -19,7 +19,7 @@ def create_hud_style() -> HudStyle:
 
 def create_debug_settings() -> DebugSettings:
     return DebugSettings(
-        enabled=settings.DEBUG_ENABLED, refresh_interval=settings.DEBUG_REFRESH_INTERVAL,
+        refresh_interval=settings.DEBUG_REFRESH_INTERVAL,
         font_size=settings.DEBUG_FONT_SIZE, margin=settings.DEBUG_MARGIN,
         font_path=FONT_ROOT / settings.DEBUG_FONT, antialias=settings.HUD_FONT_ANTIALIAS,
     )

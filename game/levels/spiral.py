@@ -29,6 +29,15 @@ class SpiralStair:
     def total_height(self):
         return self.height * self.flights
 
+    @property
+    def gallery_radius(self):
+        # Keep gallery walls outside the stair handrail, including rotated corners.
+        return self.outer_radius + 0.32
+
+    @property
+    def gallery_drop(self):
+        return 1.1
+
     def step_height(self, index):
         flight, step = divmod(index, self.steps)
         return flight * self.height + max(0, step + 1 - self.landing_steps) * (
@@ -81,11 +90,23 @@ class SpiralStair:
             # Сплошной внутренний парапет подчёркивает открытый лестничный колодец.
             parapet(step, self.inner_radius - 0.09, "plaster")
             # Нижний вход оставляем свободным с внешней стороны первых ступеней.
-            if step % self.steps >= self.landing_steps:
+            remaining = self.steps - 1 - step % self.steps
+            merge_height = remaining * self.height / (self.steps - self.landing_steps)
+            if step % self.steps >= self.landing_steps and merge_height > self.gallery_drop:
                 parapet(step, self.outer_radius + 0.025, "plaster")
         # Верхний выход идёт по касательной вправо; под ним свободно начало марша.
         cx, cz = self.center
         for flight in range(1, self.flights + 1):
             boxes.append(Box((cx + 3.0, flight * self.height - 0.12, cz + 2.9),
                              (6.0, 0.24, 2.65), material="concrete"))
+        # The final flight ends here: protect the exposed inner edge of its bridge.
+        # Intermediate landings remain open so the next flight stays accessible.
+        start = cx
+        end = cx + math.sqrt(self.gallery_radius ** 2 - (self.inner_radius - 0.09) ** 2)
+        z = cz + self.inner_radius - 0.09
+        boxes.append(Box(((start + end) / 2, self.total_height + 0.53, z),
+                         (end - start, 1.1, 0.2), material="plaster"))
+        boxes.append(Box(((start + end) / 2, self.total_height + 0.99, z),
+                         (end - start + 0.08, 0.16, 0.26), material="rust",
+                         color=(0.25, 0.24, 0.22)))
         return tuple(boxes)

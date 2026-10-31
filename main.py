@@ -9,7 +9,7 @@ from game.ui import create_debug_settings, create_hud_style
 from game.campaign import Campaign
 
 
-def run_session(creator_mode: bool = False):
+def run_session(creator_mode: bool = False, debug_mode: bool = False):
     campaign = Campaign(creator_mode=creator_mode)
     scene = campaign.load_level(settings.LEVEL_NAME)
     app = Application(
@@ -34,6 +34,7 @@ def run_session(creator_mode: bool = False):
         systems=scene.systems,
         session=scene.session,
         debug=create_debug_settings(),
+        debug_mode=debug_mode,
         debug_paths=scene.debug_paths,
         scene_loader=campaign.load_level,
         render_options=RenderOptions(settings.FRUSTUM_CULLING, settings.DEPTH_PREPASS,
@@ -51,8 +52,10 @@ def main():
         "--creator", action="store_true",
         help="start directly in the free-fly level creator",
     )
+    parser.add_argument("--debug", action="store_true",
+                        help="enable developer panel and log frames slower than 45 FPS")
     args = parser.parse_args()
-    while run_session(creator_mode=args.creator) == "restart":
+    while run_session(creator_mode=args.creator, debug_mode=args.debug) == "restart":
         pass
 
 

@@ -54,9 +54,10 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
                                  material=material_map.get("concrete", "concrete"),
                                  yaw_degrees=-angle))
             if not 20 < angle < 75:
-                radius = 4.34
+                radius = stair.gallery_radius
                 depth = 2 * (radius + 0.12) * math.tan(math.pi / 64) + 0.04
-                all_boxes.append(Box(stair.point(angle, radius, top + 0.5), (0.2, 1.04, depth),
+                all_boxes.append(Box(stair.point(angle, radius, top + (1.0 - stair.gallery_drop) / 2),
+                                     (0.2, 1.0 + stair.gallery_drop, depth),
                                      material=material_map.get("plaster", "plaster"), yaw_degrees=-angle))
                 all_boxes.append(Box(stair.point(angle, radius, top + 1.04), (0.26, 0.12, depth),
                                      material=material_map.get("rust", "rust"),
