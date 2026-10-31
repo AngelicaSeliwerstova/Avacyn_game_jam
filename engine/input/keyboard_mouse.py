@@ -168,3 +168,7 @@ class KeyboardMouse:
 
     def release(self):
         self._set_capture(False)
+
+    def reset_after_loading(self):
+        """Сбрасывает накопленное движение мыши и разовые действия после загрузки."""
+        self._set_capture(self._captured and self._focused)

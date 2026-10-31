@@ -20,3 +20,4 @@ class Session:
     """Открытый диалог приостанавливает симуляцию и получает ввод вместо игрока."""
 
     dialog: Dialog | None = None
+    next_level: str | None = None

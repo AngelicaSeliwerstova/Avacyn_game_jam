@@ -24,11 +24,14 @@ class GameSession(Session):
             )
 
     def update(self, delta_time):
-        if self.dialog is not None or self.player is None:
+        if self.dialog is not None or self.next_level is not None or self.player is None:
             return
         for goal in self.goals:
             if goal.reached(self.player.body.position, self.player.inventory):
-                self.dialog = Dialog("Ты выбрался", "", self._buttons())
+                if goal.next_level is not None:
+                    self.next_level = goal.next_level
+                else:
+                    self.dialog = Dialog("Ты выбрался", "", self._buttons())
                 return
         self._update_hint()
 
@@ -40,4 +43,4 @@ class GameSession(Session):
             if not self.player.inventory.has_key(key):
                 self.player.objective_status = f"Find: {self._key_names.get(key, key)}."
                 return
-        self.player.objective_status = "Unlock the balcony door and escape."
+        self.player.objective_status = "Reach the exit."

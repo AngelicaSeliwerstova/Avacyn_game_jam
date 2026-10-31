@@ -49,7 +49,7 @@ class Player(Entity):
 
     def __init__(self, body: CharacterBody, camera: Camera,
                  controller: FirstPersonController, model: ModelComponent, level: Level | None = None,
-                 creator_mode: bool = False):
+                 creator_mode: bool = False, inventory: Inventory | None = None):
         super().__init__(name="player", model=model)
         self.body = body
         self.camera = camera
@@ -107,7 +107,7 @@ class Player(Entity):
         self._camera_marker_phase = None
         self._camera_marker_cache = ()
         self.flashlight = Flashlight(camera)
-        self.inventory = Inventory()
+        self.inventory = inventory if inventory is not None else Inventory()
         self.enemy_status = ""
         self.objective_status = ""
         self.enemy_debug_lines: tuple[str, ...] = ()
@@ -931,7 +931,8 @@ class Player(Entity):
         return self.body.eye_position(eye_height)
 
 
-def create_player(level: Level, world: CollisionWorld3D, creator_mode: bool = False) -> Player:
+def create_player(level: Level, world: CollisionWorld3D, creator_mode: bool = False,
+                  inventory: Inventory | None = None) -> Player:
     x, y, z = level.spawn_position
     body = CharacterBody(
         position=(x, y - settings.PLAYER_EYE_HEIGHT, z), world=world,
@@ -963,4 +964,5 @@ def create_player(level: Level, world: CollisionWorld3D, creator_mode: bool = Fa
             scale=(settings.PLAYER_MODEL_SCALE,) * 3,
         ),
     )
-    return Player(body, camera, controller, model, level=level, creator_mode=creator_mode)
+    return Player(body, camera, controller, model, level=level, creator_mode=creator_mode,
+                  inventory=inventory)

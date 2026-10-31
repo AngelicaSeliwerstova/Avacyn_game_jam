@@ -18,6 +18,7 @@ from engine.rendering.fog import FogSettings
 from engine.scene.entity import ControlledEntity, SimulationSystem
 from engine.scene.level import Level
 from engine.scene.lighting import SpotLight
+from engine.scene.runtime import RuntimeScene
 from engine.scene.session import Session
 
 
@@ -49,6 +50,7 @@ class Application:
         session: Session | None = None,
         debug_paths: Callable[[], tuple[DebugPath, ...]] | None = None,
         postprocess_presets: tuple[tuple[str, PostProcessSettings], ...] = (),
+        scene_loader: Callable[[str], RuntimeScene] | None = None,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -74,6 +76,7 @@ class Application:
         self._systems = systems
         self._session = session if session is not None else Session()
         self._debug_paths = debug_paths
+        self._scene_loader = scene_loader
         self._result = "quit"
         self._running = False
 
@@ -90,26 +93,7 @@ class Application:
                 vsync=self._vsync,
                 minimum_size=self._render_size,
             )
-            renderer = Renderer(
-                render_size=self._render_size,
-                background_color=self._background_color,
-                opengl_version=self._opengl_version,
-                camera=self._controlled_entity.camera,
-                level=self._level,
-                snow=self._snow,
-                textures=self._textures,
-                hud_style=self._hud_style,
-                postprocess=self._postprocess,
-                postprocess_presets=self._postprocess_presets,
-                debug_style=HudStyle(self._debug_settings.font_size, self._debug_settings.margin,
-                                     font_path=self._debug_settings.font_path,
-                                     antialias=self._debug_settings.antialias),
-                options=self._render_options,
-                fog=self._fog,
-                dynamic_lights=self._dynamic_lights,
-                dynamic_shadow_resolution=self._dynamic_shadow_resolution,
-                player_model=self._controlled_entity.model,
-            )
+            renderer = self._create_renderer()
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)
             self._running = True
@@ -140,6 +124,8 @@ class Application:
                     if not creator_was_active and not creator_is_being_toggled:
                         for system in self._systems:
                             system.update(delta_time)
+                            if self._session.next_level is not None:
+                                break
                             if self._session.dialog is not None:
                                 input_device.release()
                                 break
@@ -154,6 +140,12 @@ class Application:
                                 self._controlled_entity, "model_animation_speed", 1.0,
                             ),
                         )
+                if self._session.next_level is not None:
+                    renderer = self._change_level(renderer, window)
+                    input_device.reset_after_loading()
+                    # Loading time must not become the next physics step.
+                    clock.tick()
+                    continue
                 updated = perf_counter() if profiling else 0.0
                 renderer.render(window.size, hud_text=self._controlled_entity.status_text,
                                 debug_text=self._debug.text, aim_text=self._controlled_entity.aim_text,
@@ -194,6 +186,49 @@ class Application:
             finally:
                 pygame.quit()
         return self._result
+
+    def _create_renderer(self, context=None):
+        return Renderer(
+            render_size=self._render_size,
+            background_color=self._background_color,
+            opengl_version=self._opengl_version,
+            camera=self._controlled_entity.camera,
+            level=self._level,
+            snow=self._snow,
+            textures=self._textures,
+            hud_style=self._hud_style,
+            postprocess=self._postprocess,
+            postprocess_presets=self._postprocess_presets,
+            debug_style=HudStyle(self._debug_settings.font_size, self._debug_settings.margin,
+                                 font_path=self._debug_settings.font_path,
+                                 antialias=self._debug_settings.antialias),
+            options=self._render_options,
+            fog=self._fog,
+            dynamic_lights=self._dynamic_lights,
+            dynamic_shadow_resolution=self._dynamic_shadow_resolution,
+            player_model=self._controlled_entity.model,
+            context=context,
+        )
+
+    def _change_level(self, renderer: Renderer, window: Window) -> Renderer:
+        if self._scene_loader is None:
+            raise RuntimeError("A level transition requires a scene loader")
+        # Keep the existing SDL window and context, showing black during loading.
+        renderer.context.screen.use()
+        renderer.context.viewport = (0, 0, *window.size)
+        renderer.context.clear(0, 0, 0, 1)
+        window.present()
+        scene = self._scene_loader(self._session.next_level)
+        context = renderer.context
+        renderer.release(release_context=False)
+        self._level = scene.level
+        self._controlled_entity = scene.player
+        self._session = scene.session
+        self._systems = scene.systems
+        self._snow = scene.snow
+        self._debug_paths = scene.debug_paths
+        self._dynamic_lights = scene.player.dynamic_lights
+        return self._create_renderer(context=context)
 
     def _handle_events(self, input_device: KeyboardMouse, window: Window, renderer: Renderer | None = None):
         for event in pygame.event.get():

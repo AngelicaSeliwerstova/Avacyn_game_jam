@@ -40,7 +40,8 @@ def build_objects(definitions, layout) -> tuple[SceneObject, ...]:
             objects.append(enemy.scene_object)
         elif data["type"] == "exit":
             goal = EscapeGoal(data["id"], transform=Transform(position=position),
-                              radius=data.get("radius", 1.0), required_keys=tuple(data.get("required_keys", ())))
+                              radius=data.get("radius", 1.0), required_keys=tuple(data.get("required_keys", ())),
+                              next_level=data.get("next_level"))
             objects.append(SceneObject(data["id"], {"default": ObjectState()}, entity=goal))
         else:
             raise ValueError(f"Unknown map object type: {data['type']}")

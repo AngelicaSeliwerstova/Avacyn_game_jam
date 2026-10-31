@@ -52,9 +52,10 @@ class Renderer:
         dynamic_shadow_resolution: int = 512,
         postprocess_presets: tuple[tuple[str, PostProcessSettings], ...] = (),
         player_model: ModelComponent | None = None,
+        context: moderngl.Context | None = None,
     ):
         major, minor = opengl_version
-        self.context = moderngl.create_context(require=major * 100 + minor * 10)
+        self.context = context if context is not None else moderngl.create_context(require=major * 100 + minor * 10)
         self._program = None
         self._cube = None
         self._floor = None
@@ -428,7 +429,7 @@ class Renderer:
         else:
             texture.use(location=0)
 
-    def release(self):
+    def release(self, release_context: bool = True):
         if self._debug_lines is not None:
             self._debug_lines.release()
             self._debug_lines = None
@@ -487,5 +488,6 @@ class Renderer:
             self._program.release()
             self._program = None
         if self.context is not None:
-            self.context.release()
+            if release_context:
+                self.context.release()
             self.context = None

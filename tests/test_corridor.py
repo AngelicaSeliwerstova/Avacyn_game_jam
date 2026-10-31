@@ -1,4 +1,5 @@
 import os
+from dataclasses import replace
 from pathlib import Path
 import tempfile
 import unittest
@@ -83,7 +84,11 @@ class CorridorTests(unittest.TestCase):
                 level = create_level("corridor")
             finally:
                 os.chdir(original_directory)
-        self.assertEqual(level, self.level)
+        self.assertEqual(replace(level, objects=()), replace(self.level, objects=()))
+        self.assertEqual(
+            [(obj.name, obj.entity, dict(obj.states)) for obj in level.objects],
+            [(obj.name, obj.entity, dict(obj.states)) for obj in self.level.objects],
+        )
 
     def test_spawn_inside_wall_is_rejected(self):
         tree = ElementTree.parse(MAP_PATH)

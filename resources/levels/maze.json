@@ -130,7 +130,8 @@
       "node": [1, 0, 19],
       "offset": [0.0, 0.0, -4.5],
       "radius": 1.0,
-      "required_keys": ["upper_floor", "balcony"]
+      "required_keys": ["upper_floor", "balcony"],
+      "next_level": "corridor"
     },
     {
       "id": "basement_snail",

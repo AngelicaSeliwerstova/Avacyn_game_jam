@@ -45,6 +45,17 @@ class KeyboardMouseTests(unittest.TestCase):
         self.motion.return_value = (7, -2)
         self.assertEqual(self.input.read().mouse_delta, (7, -2))
 
+    def test_loading_discards_mouse_motion_and_queued_interaction(self):
+        self.input.read()
+        self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+        self.motion.return_value = (500, 300)
+        self.input.reset_after_loading()
+        self.assertEqual(self.input.read(), InputState())
+        self.grab.assert_called_with(True)
+        self.input.release()
+        self.input.reset_after_loading()
+        self.grab.assert_called_with(False)
+
     def test_escape_stops_input_until_click_and_discards_resume_delta(self):
         self.keys[pygame.K_w] = True
         self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
