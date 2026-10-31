@@ -9,9 +9,9 @@ from game.ui import create_debug_settings, create_hud_style
 from game.campaign import Campaign
 
 
-def run_session(creator_mode: bool = False, debug_mode: bool = False):
+def run_session(creator_mode: bool = False, debug_mode: bool = False, level_name: str | None = None):
     campaign = Campaign(creator_mode=creator_mode)
-    scene = campaign.load_level(settings.LEVEL_NAME)
+    scene = campaign.load_level(settings.LEVEL_NAME if level_name is None else level_name)
     app = Application(
         window_size=settings.WINDOW_SIZE,
         render_size=settings.RENDER_SIZE,
@@ -54,8 +54,10 @@ def main():
     )
     parser.add_argument("--debug", action="store_true",
                         help="enable developer panel and log frames slower than 45 FPS")
+    parser.add_argument("--level", default=settings.LEVEL_NAME,
+                        help="starting map name from resources/levels (e.g. start or peaceful)")
     args = parser.parse_args()
-    while run_session(creator_mode=args.creator, debug_mode=args.debug) == "restart":
+    while run_session(creator_mode=args.creator, debug_mode=args.debug, level_name=args.level) == "restart":
         pass
 
 

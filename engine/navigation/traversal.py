@@ -1,10 +1,7 @@
 from dataclasses import dataclass
 import math
 
-from engine.collision.aabb import AABB
-from engine.collision.aabb3d import AABB3D
 from engine.collision.obb import OBB
-from engine.raycasting.aabb import cast_ray
 
 
 @dataclass(frozen=True)
@@ -25,7 +22,7 @@ class NavigationTraversal:
     def __init__(self, colliders, objects, bounds, profile: TraversalProfile):
         self.radius, self.height, self.step_height = profile.radius, profile.height, profile.step_height
         self._bounds, self._objects = bounds, objects
-        self._static = tuple(self._expand(collider) for collider in colliders)
+        self._static = tuple(colliders)
         self._states = None
         self._dynamic = ()
         self._static_cache = {}
@@ -36,32 +33,71 @@ class NavigationTraversal:
         states = tuple(obj.current_state for obj in self._objects)
         if states != self._states:
             self._states = states
-            self._dynamic = tuple(self._expand(box.collider) for state in states if state.collidable for box in state.boxes)
+            self._dynamic = tuple(box.collider for state in states if state.collidable for box in state.boxes)
             self._revision += 1
         return self._revision
 
-    def _expand(self, collider):
-        f = collider.footprint
-        if isinstance(f, OBB):
-            footprint = OBB(f.x, f.z, f.half_width + self.radius, f.half_depth + self.radius, f.yaw_degrees)
+    @staticmethod
+    def _hits_rectangle(a, b, min_x, max_x, min_z, max_z):
+        entry, exit = 0.0, 1.0
+        for start, end, low, high in ((a[0], b[0], min_x, max_x),
+                                      (a[1], b[1], min_z, max_z)):
+            delta = end - start
+            if abs(delta) < 1e-12:
+                if start < low or start > high:
+                    return False
+            else:
+                t1, t2 = (low - start) / delta, (high - start) / delta
+                entry, exit = max(entry, min(t1, t2)), min(exit, max(t1, t2))
+                if entry > exit:
+                    return False
+        return True
+
+    def _hits_footprint(self, a, b, footprint):
+        if isinstance(footprint, OBB):
+            a, b = footprint.local_point(*a), footprint.local_point(*b)
+            min_x, max_x = -footprint.half_width, footprint.half_width
+            min_z, max_z = -footprint.half_depth, footprint.half_depth
         else:
-            footprint = AABB(f.min_x - self.radius, f.min_z - self.radius,
-                             f.max_x + self.radius, f.max_z + self.radius)
-        # Верхняя отметка исходного блока нужна для пропуска пола и ступеней.
-        expanded = AABB3D(footprint, collider.bottom - self.height / 2 + 1e-5,
-                          collider.top + self.height / 2 - 1e-5)
-        return collider.bottom, collider.top, expanded
+            min_x, max_x = footprint.min_x, footprint.max_x
+            min_z, max_z = footprint.min_z, footprint.max_z
+        # A swept circular body makes two strips and four rounded corners.
+        # A single expanded rectangle traps valid positions near door corners.
+        radius = max(0.0, self.radius - 1e-6)
+        if (self._hits_rectangle(a, b, min_x - radius, max_x + radius, min_z, max_z)
+                or self._hits_rectangle(a, b, min_x, max_x, min_z - radius, max_z + radius)):
+            return True
+        dx, dz = b[0] - a[0], b[1] - a[1]
+        length_squared = dx * dx + dz * dz
+        for x in (min_x, max_x):
+            for z in (min_z, max_z):
+                t = (max(0.0, min(1.0, ((x - a[0]) * dx + (z - a[1]) * dz) / length_squared))
+                     if length_squared > 1e-12 else 0.0)
+                if (a[0] + t * dx - x) ** 2 + (a[1] + t * dz - z) ** 2 < radius * radius:
+                    return True
+        return False
 
     def _clear(self, a, b, colliders):
         low, high = min(a[1], b[1]), max(a[1], b[1]) + self.height
-        candidates = (c for bottom, top, c in colliders
-                      if top > low + self.step_height + 1e-5 and bottom < high - 1e-5
-                      and c.footprint.min_x <= max(a[0], b[0]) and c.footprint.max_x >= min(a[0], b[0])
-                      and c.footprint.min_z <= max(a[2], b[2]) and c.footprint.max_z >= min(a[2], b[2]))
-        origin = (a[0], a[1] + self.height / 2, a[2])
-        delta = tuple(y - x for x, y in zip(a, b))
-        distance = math.hypot(*delta)
-        return cast_ray(origin, delta if distance > 1e-8 else (0, 1, 0), candidates, distance) is None
+        for collider in colliders:
+            f = collider.footprint
+            if (collider.top <= low + self.step_height + 1e-5 or collider.bottom >= high - 1e-5
+                    or f.min_x - self.radius > max(a[0], b[0]) or f.max_x + self.radius < min(a[0], b[0])
+                    or f.min_z - self.radius > max(a[2], b[2]) or f.max_z + self.radius < min(a[2], b[2])):
+                continue
+            entry, exit = 0.0, 1.0
+            dy = b[1] - a[1]
+            if abs(dy) > 1e-12:
+                t1 = (collider.bottom - self.height + 1e-5 - a[1]) / dy
+                t2 = (collider.top - 1e-5 - a[1]) / dy
+                entry, exit = max(entry, min(t1, t2)), min(exit, max(t1, t2))
+                if entry > exit:
+                    continue
+            start = (a[0] + entry * (b[0] - a[0]), a[2] + entry * (b[2] - a[2]))
+            end = (a[0] + exit * (b[0] - a[0]), a[2] + exit * (b[2] - a[2]))
+            if self._hits_footprint(start, end, f):
+                return False
+        return True
 
     def can_walk(self, a, b, terrain=False, *, cache=True):
         a, b = tuple(a), tuple(b)

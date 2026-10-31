@@ -1,20 +1,36 @@
 # Avacyn Game Jam
 
 Игра на Python, Pygame и ModernGL. Начинаем в `peaceful`: мирной копии первого
-этажа больницы 43×29 метров. В глубине кабинета врача загружается `start` —
-трёхэтажная версия больницы с винтовой лестницей. Инвентарь переносится между мирами.
+этажа больницы 43×29 метров. После разговора с человеком в кабинете врача загружается
+`start` — трёхэтажная версия больницы с винтовой лестницей. Инвентарь переносится между мирами.
 
 ## Запуск
 
+Проверенное окружение — Python 3.12. Из PowerShell в папке проекта:
+
 ```powershell
-python -m pip install -r requirements.txt
-python main.py
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe main.py
 ```
+
+Для создания окружения команда `python` должна указывать на Python 3.12.
+Если `.venv` уже подготовлена, достаточно последней команды; активация не нужна.
+
+Для проверки союзника сразу в трёхэтажной больнице, с отображением маршрута:
+
+```powershell
+.\.venv\Scripts\python.exe main.py --level start --debug
+```
+
+F3 переключает панель диагностики и линии маршрутов. Союзник следует за игроком;
+двери нужно открывать на E. Обычный запуск начинает с `peaceful`: поговорите
+с человеком в дальнем кабинете врача на E и завершите диалог для перехода в `start`.
 
 Для запуска сразу в редакторе:
 
 ```powershell
-python main.py --creator
+.\.venv\Scripts\python.exe main.py --creator
 ```
 
 ## Структура
@@ -36,13 +52,20 @@ python main.py --creator
   для физики создаётся только внутри тестов и недоступна в игре.
 
 Старые игровые и отладочные карты удалены. Для новой локации создайте отдельный
-JSON-файл в `resources/levels/`. Выбор стартовой карты — `LEVEL_NAME` в
-`config/settings.py`.
+JSON-файл в `resources/levels/`. Выбор стартовой карты — `--level <имя>`;
+по умолчанию используется `LEVEL_NAME` в `config/settings.py`.
 
 [Карты и переходы](docs/LEVELS.md) · [Управление и Creator](docs/CONTROLS.md)
 
 ## Проверки
 
 ```powershell
-python -m unittest discover -s tests
+.\.venv\Scripts\python.exe -m unittest discover -s tests
+```
+
+Только навигация и сопровождение:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_navigation.py"
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_companions.py"
 ```

@@ -1,11 +1,12 @@
 from dataclasses import replace
 import math
 import unittest
+from unittest.mock import Mock
 
 import glm
 
 from engine.collision.world3d import CollisionWorld3D
-from engine.navigation.graph import NavigationGraph
+from engine.navigation.graph import NavigationGraph, PathResult
 from engine.scene.box import Box
 from engine.scene.level import Level
 from game.campaign import Campaign
@@ -27,6 +28,58 @@ def fixture(boxes=(), graph=None, objects=(), position=(-4, 0, 0)):
 
 
 class CompanionTests(unittest.TestCase):
+    def test_pending_search_is_retargeted_after_player_moves(self):
+        ally, player, system = fixture()
+        pending = Mock(done=False)
+        ally._path_search = pending
+        ally._planned_goal = (0, 0, 4)
+        ally._planned_revision = ally._navigation.revision
+        system.update(1 / 60)
+        pending.advance.assert_not_called()
+        self.assertIsNone(ally._path_search)
+        self.assertEqual(ally._planned_goal, tuple(player.body.position))
+
+    def test_does_not_stop_short_of_old_goal_when_player_is_behind_wall(self):
+        wall = Box((0, 1.5, 0), (0.5, 3, 4))
+        ally, player, system = fixture((wall,), position=(-1, 0, 1))
+        ally._path = [(-1, 0, 2)]
+        ally.path_complete = True
+        ally._planned_goal = tuple(player.body.position)
+        ally._planned_revision = ally._navigation.revision
+        ally._path_timer = 1
+        system.update(1 / 60)
+        self.assertGreater(ally.body.position.z, 1)
+
+    def test_completed_search_does_not_send_moving_companion_backwards(self):
+        ally, player, system = fixture(position=(-1, 0, 3))
+        ally._path = [(3, 0, 3), (4, 0, 0)]
+        ally._planned_goal = tuple(player.body.position)
+        ally._planned_revision = ally._navigation.revision
+        ally._path_timer = 1
+        ally._path_search = Mock(done=True, result=PathResult(
+            ((-3, 0, 3), (3, 0, 3), (4, 0, 0)), True))
+        before = ally.body.position.x
+        system.update(1 / 60)
+        self.assertGreater(ally.body.position.x, before)
+
+    def test_hospital_companion_can_leave_open_door_corner(self):
+        scene = Campaign().load_level("start")
+        system = next(s for s in scene.systems if isinstance(s, CompanionSystem))
+        ally = system.companions[0]
+        for obj in scene.level.objects:
+            if "open" in obj.states:
+                obj.set_state("open")
+                obj.update(1)
+        ally.body = make_body(ally.body.world, (11.675, 9.6, 1.813303))
+        goal = (17.5, 0, 2)
+        scene.player.body = make_body(scene.player.body.world, goal)
+        for _ in range(1800):
+            system.update(1 / 30)
+            if math.dist(tuple(ally.body.position), goal) < 1.5:
+                break
+        else:
+            self.fail(f"Companion stuck near open door: {tuple(ally.body.position)}")
+
     def test_player_can_walk_through_companion_without_removing_it_from_scene(self):
         scene = Campaign().load_level("start")
         ally = scene.session.companions[0]

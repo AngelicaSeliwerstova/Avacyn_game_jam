@@ -119,6 +119,7 @@ class Companion(Entity):
         if (distance_to_player <= threshold and abs(position[1] - target[1]) < 0.05
                 and self._navigation.can_walk(position, target, cache=False)):
             self._path.clear()
+            self._path_search = None
             self.state = CompanionState.WAITING
             self.body.update(delta_time, glm.vec3(0))
             self._sync_pose()
@@ -127,8 +128,8 @@ class Companion(Entity):
         changed = self._navigation.revision != self._planned_revision
         arrived_far = not self._path and self.path_complete and math.dist(position, target) > self.tuning.stop_distance
         if (self._path_timer <= 0
-                and (changed or (self._path_search is None
-                                 and (moved or arrived_far or self._blocked_time > 0.4 or not self._path)))):
+                and (changed or moved or (self._path_search is None
+                                         and (arrived_far or self._blocked_time > 0.4 or not self._path)))):
             self._replan(position, target)
         if self._path_search is not None:
             self._path_search.advance(max_expansions=32, max_seconds=0.002)
@@ -136,6 +137,7 @@ class Companion(Entity):
                 result = self._path_search.result
                 self._path, self.path_complete = list(result.points), result.complete
                 self._path_search = None
+                self._smooth(position)
 
         advanced = False
         while self._path and self._near(position, self._path[0], 0.14):
@@ -148,13 +150,14 @@ class Companion(Entity):
         if self._path:
             goal = self._path[0]
             final = self.path_complete and len(self._path) == 1
-            if final and abs(position[1] - target[1]) < 0.01 and self._navigation.can_walk(position, target, cache=False):
+            following_target = (final and abs(position[1] - target[1]) < 0.01
+                                and self._navigation.can_walk(position, target, cache=False))
+            if following_target:
                 goal = target
             delta = glm.vec3(goal) - self.body.position
             delta.y = 0
             distance = glm.length(delta)
-            same_height = abs(position[1] - target[1]) < 0.05
-            stopping = self.tuning.stop_distance if final and same_height else 0.08
+            stopping = self.tuning.stop_distance if following_target else 0.08
             if distance > stopping and delta_time > 0:
                 self._yaw = math.degrees(math.atan2(-delta.x, -delta.z))
                 velocity = delta / distance * min(self.tuning.speed, (distance - stopping) / delta_time)
@@ -190,6 +193,8 @@ class Companion(Entity):
             self._smooth(position)
         elif self._graph is not None:
             self._path_search = self._graph.start_path_search(position, target, self._navigation)
+        else:
+            self._path, self.path_complete = [], False
 
     def _smooth(self, position):
         furthest = 0

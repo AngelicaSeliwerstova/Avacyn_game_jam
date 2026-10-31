@@ -118,7 +118,7 @@ class NavigationGraph:
         candidates = sorted((math.dist(position, p), i) for i, p in enumerate(self.points)
                             if abs(p[1] - position[1]) <= traversal.step_height + 1e-4)
         result = {}
-        for distance, i in candidates[:12]:
+        for distance, i in candidates:
             if distance > self.connection_distance:
                 break
             p = self.points[i]
@@ -127,6 +127,8 @@ class NavigationGraph:
                 continue
             if traversal.can_walk(position, p, terrain, cache=False):
                 result[i] = distance
+                if len(result) == 12:
+                    break
         return result
 
     def start_path_search(self, start, goal, traversal) -> PathSearch:
