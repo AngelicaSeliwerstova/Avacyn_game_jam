@@ -1,0 +1,17 @@
+{
+  "floor_size": [24.0, 24.0],
+  "floor_material": "concrete",
+  "room_height": 3.3,
+  "spawn_position": [0.0, 1.6, 6.0],
+  "spawn_target": [0.0, 1.6, 5.0],
+  "snow_enabled": false,
+  "lighting": {"ambient": [0.3, 0.3, 0.3], "lights": []},
+  "boxes": [
+    {"position": [-12.0, 1.65, 0.0], "size": [0.3, 3.3, 24.3], "material": "concrete"},
+    {"position": [12.0, 1.65, 0.0], "size": [0.3, 3.3, 24.3], "material": "concrete"},
+    {"position": [0.0, 1.65, -12.0], "size": [24.3, 3.3, 0.3], "material": "concrete"},
+    {"position": [0.0, 1.65, 12.0], "size": [24.3, 3.3, 0.3], "material": "concrete"},
+    {"position": [0.0, 3.45, 0.0], "size": [24.3, 0.3, 24.3], "material": "concrete"}
+  ],
+  "objects": []
+}

@@ -11,21 +11,15 @@ from game.entities.enemy import Enemy, EnemySettings
 from game.entities.escape import EscapeGoal
 
 
-def build_objects(definitions, layout) -> tuple[SceneObject, ...]:
+def build_objects(definitions) -> tuple[SceneObject, ...]:
     """Объекты и сущности из карты."""
     objects = []
     for data in definitions:
         if data["type"] == "enemy" and not settings.ENEMIES_ENABLED:
             continue
-        if "node" in data:
-            node = tuple(data["node"])
-            if not layout.is_open(node):
-                raise ValueError(f"Object must be in an open maze cell: {node}")
-            base_position = layout.position(node)
-        else:
-            base_position = tuple(data["position"])
-            if len(base_position) != 3 or not all(math.isfinite(v) for v in base_position):
-                raise ValueError("Object position needs three finite coordinates")
+        base_position = tuple(data["position"])
+        if len(base_position) != 3 or not all(math.isfinite(v) for v in base_position):
+            raise ValueError("Object position needs three finite coordinates")
         offset = data.get("offset", (0, 0, 0))
         if len(offset) != 3 or any(not math.isfinite(v) for v in offset):
             raise ValueError("Object offset needs three finite coordinates")
@@ -33,7 +27,7 @@ def build_objects(definitions, layout) -> tuple[SceneObject, ...]:
         if data["type"] == "key":
             objects.extend(_key(data, position))
         elif data["type"] == "door":
-            objects.extend(_door(data, position, layout))
+            objects.extend(_door(data, position))
         elif data["type"] == "enemy":
             enemy = Enemy(data["id"], position,
                           tuning=EnemySettings(**data.get("settings", {})))
@@ -80,13 +74,15 @@ def _key(data, position):
     )
 
 
-def _door(data, position, layout):
+def _door(data, position):
     width = data.get("width", 1.8)
     height = data.get("height", 2.35)
     thickness = data.get("thickness", 0.18)
-    if (any(not math.isfinite(v) or v <= 0 for v in (width, height, thickness))
-            or width >= layout.cell_size or height >= layout.wall_height):
-        raise ValueError("Door must fit inside its maze cell")
+    opening_width = data.get("opening_width", 3.0)
+    wall_height = data.get("wall_height", 3.3)
+    if (any(not math.isfinite(v) or v <= 0 for v in (width, height, thickness, opening_width, wall_height))
+            or width >= opening_width or height >= wall_height):
+        raise ValueError("Door must fit inside its opening")
     axis = data.get("axis", "x")  # Ось ширины; другая горизонтальная ось - толщина.
     if axis not in ("x", "z"):
         raise ValueError("Door width axis must be x or z")
@@ -100,13 +96,13 @@ def _door(data, position, layout):
         size = (w, h, d) if axis == "x" else (d, h, w)
         return Box(point, size, material=material)
 
-    side = (layout.cell_size - width) / 2
+    side = (opening_width - width) / 2
     overlap = 0.02  # Торцы рамы уходят в стену, без совпадающих видимых плоскостей.
-    frame = tuple(box(sign * (width + side + overlap) / 2, layout.wall_height / 2, 0,
-                      side + overlap, layout.wall_height + 2 * overlap, thickness + 0.1, "concrete")
+    frame = tuple(box(sign * (width + side + overlap) / 2, wall_height / 2, 0,
+                      side + overlap, wall_height + 2 * overlap, thickness + 0.1, "concrete")
                   for sign in (-1, 1))
-    frame += (box(0, (height + layout.wall_height + overlap) / 2, 0,
-                  width, layout.wall_height - height + overlap, thickness + 0.1, "concrete"),)
+    frame += (box(0, (height + wall_height + overlap) / 2, 0,
+                  width, wall_height - height + overlap, thickness + 0.1, "concrete"),)
     panel = (box(0, height / 2, 0, width - 0.04, height - 0.04, thickness),)
     # Ручки с обеих сторон видны независимо от стороны подхода.
     panel += tuple(box(width * 0.3, 1.05, sign * (thickness / 2 + 0.04),

@@ -1,7 +1,4 @@
 from dataclasses import replace
-import json
-from pathlib import Path
-import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -11,9 +8,6 @@ from engine.scene.box import Box
 from engine.scene.level import Level
 from engine.scene.lighting import LightFlicker, Lighting, PointLight
 from game.effects import create_fog_settings
-from game.levels import create_level
-from game.levels.maze import maze_layout_path
-from game.levels.maze_layout import load_maze_layout
 
 
 class AtmosphereTests(unittest.TestCase):
@@ -59,45 +53,6 @@ class AtmosphereTests(unittest.TestCase):
         for elapsed in (-1, float("nan"), float("inf")):
             with self.assertRaises(ValueError):
                 a.brightness(elapsed)
-
-    def test_powered_lamps_flicker_and_each_panel_references_its_source(self):
-        level = create_level("maze")
-        animated = [light for light in level.lighting.lights if light.flicker is not None]
-        self.assertEqual(len(animated), 114)
-        off_panels = [box for box in level.decorations
-                      if box.material is None and box.emission_light is None and box.emission == (0, 0, 0)]
-        self.assertEqual(len(off_panels), 164)
-        panels = [box for box in level.decorations if box.emission_light is not None]
-        self.assertEqual(len(panels), len(level.lighting.lights))
-        self.assertEqual({panel.emission_light for panel in panels}, set(range(len(level.lighting.lights))))
-        for panel in panels:
-            light = level.lighting.lights[panel.emission_light]
-            self.assertAlmostEqual(panel.position[0], light.position[0])
-            self.assertAlmostEqual(panel.position[2], light.position[2])
-            self.assertEqual(panel.emission, tuple(c * 1.8 for c in light.color))
-
-    def test_legacy_maps_and_preset_overrides(self):
-        data = json.loads(maze_layout_path().read_text(encoding="utf-8"))
-        for lamp in data["lighting"]["lamps"]:
-            lamp.pop("flicker", None)
-        data["basement"].pop("flicker")
-        data["basement"].pop("flickering_lamps")
-        with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / "map.json"
-            path.write_text(json.dumps(data), encoding="utf-8")
-            layout = load_maze_layout(path)
-            self.assertFalse(any(light.flicker for light in layout.lighting.lights))
-            self.assertFalse(any(light.flicker for light in layout.basement.lights(layout)))
-            data["lighting"]["presets"]["cold"]["flicker"] = {"minimum": 0.5}
-            data["lighting"]["lamps"][0]["flicker"] = None
-            path.write_text(json.dumps(data), encoding="utf-8")
-            layout = load_maze_layout(path)
-            self.assertIsNone(layout.lighting.lights[0].flicker)
-            self.assertTrue(any(light.flicker for light in layout.lighting.lights))
-            data["basement"]["flickering_lamps"] = [225]
-            path.write_text(json.dumps(data), encoding="utf-8")
-            with self.assertRaises(ValueError):
-                load_maze_layout(path)
 
     def test_invalid_panel_links_are_rejected(self):
         with self.assertRaises(ValueError):

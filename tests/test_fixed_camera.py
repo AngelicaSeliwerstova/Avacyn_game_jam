@@ -28,7 +28,7 @@ class FixedCameraTests(unittest.TestCase):
             for index in range(16)
         )
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "maze_lights.json"
+            path = Path(directory) / "location_lights.json"
             save_creator_lights(path, lights)
             level = Level(
                 (20, 20), 1, (), (0, settings.PLAYER_EYE_HEIGHT, 0),
@@ -42,7 +42,7 @@ class FixedCameraTests(unittest.TestCase):
 
     def test_creator_changes_aimed_lamp_color_and_flicker_and_saves_them(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "maze_lights.json"
+            path = Path(directory) / "location_lights.json"
             save_creator_lights(
                 path, (SpotLight((0.0, 2.0, -2.0), (0.0, -1.0, 0.0)),),
             )
@@ -368,7 +368,7 @@ class FixedCameraTests(unittest.TestCase):
         self.assertEqual(on[7].color, (0.012, 0.035, 0.045))
         self.assertGreater(on[0].position[2], on[5].position[2])
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "maze_cameras.json"
+            path = Path(directory) / "location_cameras.json"
             self.assertIsNone(load_fixed_cameras(path))
             save_fixed_cameras(path, (zone,))
             self.assertEqual(load_fixed_cameras(path), (zone,))
@@ -380,7 +380,7 @@ class FixedCameraTests(unittest.TestCase):
         level = Level((10, 10), 1, (wall,), (0, 1.6, 0), (0, 1.6, -1), ((80, 80, 80),) * 2)
         world = CollisionWorld3D((wall.collider,), level.floor_bounds)
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "maze_cameras.json"
+            path = Path(directory) / "location_cameras.json"
             editable_level = replace(level, camera_save_path=path)
             player = create_player(editable_level, world)
 
@@ -415,13 +415,13 @@ class FixedCameraTests(unittest.TestCase):
             self.assertEqual(load_fixed_cameras(path), ())
             self.assertEqual(player.camera_marker_boxes, ())
 
-    def test_maze_contains_only_authored_cameras(self):
+    def test_start_contains_only_authored_cameras(self):
         authored = FixedCameraZone(
             minimum=(-1, -1, -1), maximum=(1, 3, 1),
             position=(0, 2, 0), target=(0, 2, -4),
         )
-        with patch("game.levels.maze.load_fixed_cameras", return_value=(authored,)):
-            level = create_level("maze")
+        with patch("game.levels.location.load_fixed_cameras", return_value=(authored,)):
+            level = create_level("start")
         self.assertEqual(level.authored_fixed_cameras, (authored,))
         self.assertEqual(level.fixed_cameras, (authored,))
 
@@ -430,7 +430,7 @@ class FixedCameraTests(unittest.TestCase):
         level = Level((10, 10), 1, (wall,), (0, 1.6, 0), (0, 1.6, -1), ((80, 80, 80),) * 2)
         world = CollisionWorld3D((wall.collider,), level.floor_bounds)
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "maze_objects.json"
+            path = Path(directory) / "location_objects.json"
             editable_level = replace(level, creator_objects_path=path)
             player = create_player(editable_level, world, creator_mode=True)
             body_position = glm.vec3(player.body.position)
@@ -459,7 +459,7 @@ class FixedCameraTests(unittest.TestCase):
     def test_creator_places_block_on_virtual_basement_floor(self):
         floor_height = -3.6
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "maze_objects.json"
+            path = Path(directory) / "location_objects.json"
             level = Level(
                 (20, 20), 1, (), (0, floor_height + settings.PLAYER_EYE_HEIGHT, 0),
                 (0, floor_height + settings.PLAYER_EYE_HEIGHT, -1), ((80, 80, 80),) * 2,
@@ -491,7 +491,7 @@ class FixedCameraTests(unittest.TestCase):
             creator_room_height=3.0,
         )
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "maze_lights.json"
+            path = Path(directory) / "location_lights.json"
             player = create_player(
                 replace(level, creator_lights_path=path),
                 CollisionWorld3D((wall.collider, ceiling.collider), level.floor_bounds),
@@ -525,7 +525,7 @@ class FixedCameraTests(unittest.TestCase):
             creator_lights_path=Path("unused_lights.json"), creator_room_height=3.0,
         )
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "maze_lights.json"
+            path = Path(directory) / "location_lights.json"
             player = create_player(
                 replace(level, creator_lights_path=path),
                 CollisionWorld3D((wall.collider, upper_ceiling.collider), level.floor_bounds),
@@ -550,7 +550,7 @@ class FixedCameraTests(unittest.TestCase):
         near = Box((0, 1.6, -2.0), (0.6, 0.6, 0.6), material="rust")
         far = Box((0, 1.6, -4.0), (0.6, 0.6, 0.6), material="rust")
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "maze_objects.json"
+            path = Path(directory) / "location_objects.json"
             level = Level(
                 (10, 10), 1, (), (0, settings.PLAYER_EYE_HEIGHT, 0),
                 (0, settings.PLAYER_EYE_HEIGHT, -1), ((80, 80, 80),) * 2,
@@ -588,9 +588,9 @@ class FixedCameraTests(unittest.TestCase):
         actual_direction = glm.normalize(player.camera.target - player.camera.position)
         self.assertLess(glm.length(actual_direction - expected_direction), 1e-5)
 
-    def test_maze_player_uses_fixed_camera_until_leaving_its_zone(self):
-        with patch("game.levels.maze.load_fixed_cameras", return_value=None):
-            level = create_level("maze")
+    def test_start_uses_free_camera_without_authored_zones(self):
+        with patch("game.levels.location.load_fixed_cameras", return_value=None):
+            level = create_level("start")
         world = CollisionWorld3D(
             (box.collider for box in level.boxes), level.floor_bounds,
             ground_height=level.base_height, objects=level.objects,

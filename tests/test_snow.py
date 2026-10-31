@@ -4,7 +4,7 @@ import unittest
 from config import settings
 from engine.collision.aabb import AABB
 from engine.particles.snow import Snowfall, SnowSettings
-from game.levels import create_level
+from support_levels import create_level
 
 
 class SnowTests(unittest.TestCase):

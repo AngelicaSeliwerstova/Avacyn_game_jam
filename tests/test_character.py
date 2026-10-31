@@ -8,7 +8,7 @@ from engine.collision.world3d import CollisionWorld3D
 from engine.controllers.first_person import FirstPersonController
 from engine.physics.character import CharacterBody
 from engine.scene.camera import Camera
-from game.levels import create_level
+from support_levels import create_level
 
 
 def make_body(world, position=(0, 0, 3), step_height=0.3):

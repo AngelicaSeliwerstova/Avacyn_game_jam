@@ -46,15 +46,12 @@ class TextureSettingsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 replace(materials, **changes)
 
-    def test_all_material_kinds_are_used_by_existing_scenes(self):
+    def test_start_materials_exist_in_catalog(self):
         materials = create_texture_settings()
         names = {material.name for material in materials.materials}
-        used = set()
-        for name in ("stairs", "corridor", "demo"):
-            level = create_level(name)
-            used.add(level.floor_material)
-            used.update(box.material for box in level.boxes)
-        self.assertEqual(used, names)
+        level = create_level("start")
+        used = {level.floor_material} | {box.material for box in level.boxes}
+        self.assertTrue(used <= names)
         for material in materials.materials:
             self.assertTrue(material.path.is_file(), material.path)
 

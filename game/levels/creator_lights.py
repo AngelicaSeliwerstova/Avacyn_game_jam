@@ -4,10 +4,6 @@ from pathlib import Path
 from engine.scene.lighting import LightFlicker, SpotLight
 
 
-def creator_lights_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "resources" / "levels" / "maze_lights.json"
-
-
 def load_creator_lights(path: Path) -> tuple[SpotLight, ...]:
     if not path.exists():
         return ()

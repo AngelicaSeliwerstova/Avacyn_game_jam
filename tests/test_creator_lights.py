@@ -40,14 +40,14 @@ class CreatorLightTests(unittest.TestCase):
             ),
         )
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "maze_lights.json"
+            path = Path(directory) / "location_lights.json"
             self.assertEqual(load_creator_lights(path), ())
             save_creator_lights(path, lights)
             self.assertEqual(load_creator_lights(path), lights)
 
     def test_invalid_creator_light_data_reports_path_and_index(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "maze_lights.json"
+            path = Path(directory) / "location_lights.json"
             path.write_text('{"lights": [{"position": [1, 2]}]}', encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "Invalid light 1"):
                 load_creator_lights(path)

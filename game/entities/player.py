@@ -275,10 +275,8 @@ class Player(Entity):
         title = f"FLOOR {label}" if self._level.floor_labels else f"FLOOR {floor + 1} / {len(heights)}"
         if self.body.grounded and abs(heights[floor] - y) > self.body.step_height:
             title = f"STAIRS - NEAR FLOOR {label}"
-        hint = self._level.floor_hints[floor] if self._level.floor_hints else (
-            "Find stairs. Exit is upstairs." if floor == 0 else "Find the rusted exit frame."
-        )
-        return title + "\n" + hint
+        hint = self._level.floor_hints[floor] if self._level.floor_hints else ""
+        return title + ("\n" + hint if hint else "")
 
     def update(self, delta_time: float, inputs: InputState) -> None:
         self._camera_transition_remaining = max(0.0, self._camera_transition_remaining - delta_time)

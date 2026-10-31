@@ -109,13 +109,6 @@ MATERIAL_TEXTURES = {
     "brick": ("walls/red_brick_128.png", 2.0),
     "rust": ("metals/rust_{size}.png", 2.0),
 }
-STAIRS_FLOOR_MATERIAL = "asphalt"
-STAIRS_STEP_MATERIAL = "concrete"
-STAIRS_LANDING_MATERIAL = "wood"
-CORRIDOR_FLOOR_MATERIAL = "dirty_tiles"
-CORRIDOR_WALL_MATERIALS = ("hospital_tiles", "plaster", "brick")  # От старта к повороту.
-DEMO_FLOOR_MATERIAL = "wood"
-DEMO_CUBE_MATERIAL = "rust"
 
 # Спокойный снег в открытых проходах. Размер и высота — в мировых единицах.
 SNOW_ENABLED = True
@@ -126,9 +119,8 @@ SNOW_FLAKE_SIZE = 0.05
 SNOW_COLOR = (210, 220, 235)
 SNOW_SEED = 7                  # Одинаковое начальное расположение при запуске.
 
-# Выбор сцены: "maze", "stairs", "corridor" или "demo".
-LEVEL_NAME = "maze"
-MAZE_LAYOUT = "maze.json"       # Разметка двух этажей и размеры лестничных клеток.
+# Стартовая карта из resources/levels/<имя>.json.
+LEVEL_NAME = "start"
 HUD_FONT_SIZE = 18
 HUD_MARGIN = 8
 HUD_FONT = "SourceSans3-Regular.ttf"  # Файлы относительно resources/fonts.
@@ -157,9 +149,6 @@ PLAYER_CAMERA_HEIGHT = 0.1
 PLAYER_CAMERA_WALL_MARGIN = 0.2
 PLAYER_CAMERA_SHOULDER_OFFSET = 0.4
 
-# Старт кубовой сцены. Старт коридора хранится в TMX-карте.
-CAMERA_POSITION = (3.0, PLAYER_EYE_HEIGHT, 4.0)
-CAMERA_TARGET = (0.0, 1.0, 0.0)
 CAMERA_FOV_DEGREES = 60.0  # Вертикальный угол обзора.
 CAMERA_ZOOM_FOV_DEGREES = 35.0  # Меньше угол - сильнее приближение на ПКМ.
 CAMERA_ZOOM_SPEED = 12.0       # Скорость плавного перехода, 1/с.
@@ -189,18 +178,5 @@ MAX_DELTA_TIME = 0.1              # Ограничение шага после �
 PLAYER_RADIUS = 0.25
 COLLISION_MAX_STEP = 0.1          # Максимальная длина подшага в мировых единицах.
 
-# Кубовая сцена. Координата модели задаёт её центр.
-FLOOR_SIZE = (20.0, 20.0)
+# Размер плитки пола по умолчанию.
 FLOOR_TILE_SIZE = 1.0
-CUBE_SIZE = (2.0, 2.0, 2.0)
-CUBE_POSITION = (0.0, CUBE_SIZE[1] / 2, 0.0)
-
-# Тестовая лестница и верхняя площадка.
-STAIRS_COUNT = 6
-STAIRS_RISE = 0.25
-STAIRS_RUN = 0.8
-STAIRS_WIDTH = 3.0
-STAIRS_START_Z = 2.0
-STAIRS_LANDING_DEPTH = 3.0
-STAIRS_LANDING_WIDTH = 5.0
-STAIRS_SPAWN = (0.0, PLAYER_EYE_HEIGHT, 6.0)

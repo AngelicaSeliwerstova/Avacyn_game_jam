@@ -14,7 +14,6 @@ from engine.scene.interaction import Interaction
 from engine.scene.level import Level
 from game.entities.player import create_player
 from game.interactions import InteractionController
-from game.levels import create_level
 
 
 class InteractionTests(unittest.TestCase):
@@ -90,19 +89,6 @@ class InteractionTests(unittest.TestCase):
         player = create_player(level, CollisionWorld3D((self.crate.collider,)))
         player.update(0, InputState(interact=True))
         self.assertEqual(player.aim_text, "")
-
-    def test_actual_basement_has_three_explicit_interactions_with_individual_messages(self):
-        level = create_level("maze")
-        targets = tuple(b for b in level.boxes if b.interaction is not None)
-        self.assertEqual(len(targets), 3)
-        self.assertEqual(len({b.interaction.message for b in targets}), 3)
-        controller = self.controller(level.boxes + level.decorations)
-        for box in targets:
-            x, y, z = box.position
-            camera = Camera((x - 2, y, z), box.position, 60, 0.1, 100)
-            controller.update(0, camera, pressed=True)
-            self.assertIs(controller.focused, box)
-            self.assertIn(box.interaction.message, controller.text)
 
     def test_prompt_uses_configured_key(self):
         level = Level((10, 10), 1, (self.crate,), (0, 1.6, 0), (0, 1.6, -1), ((80, 80, 80),) * 2)

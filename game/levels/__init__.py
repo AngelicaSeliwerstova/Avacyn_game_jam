@@ -1,19 +1,18 @@
-"""Создание игровых и тестовых уровней."""
+"""Карты геймджема из resources/levels/<name>.json."""
+
+from pathlib import Path
 
 from engine.scene.level import Level
-from game.levels.corridor import create_corridor_level
-from game.levels.demo import create_demo_level
-from game.levels.stairs import create_stairs_level
-from game.levels.maze import create_maze_level
+from game.levels.location import load_location
+
+
+LEVELS_ROOT = Path(__file__).resolve().parents[2] / "resources" / "levels"
 
 
 def create_level(name: str) -> Level:
-    if name == "maze":
-        return create_maze_level()
-    if name == "stairs":
-        return create_stairs_level()
-    if name == "corridor":
-        return create_corridor_level()
-    if name == "demo":
-        return create_demo_level()
-    raise ValueError(f"Unknown level: {name!r}. Choose 'maze', 'stairs', 'corridor' or 'demo'.")
+    if not isinstance(name, str) or not name or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789_-" for c in name):
+        raise ValueError(f"Invalid level name: {name!r}")
+    path = LEVELS_ROOT / f"{name}.json"
+    if not path.is_file():
+        raise ValueError(f"Unknown level: {name!r}")
+    return load_location(path)

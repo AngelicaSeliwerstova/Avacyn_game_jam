@@ -4,10 +4,6 @@ from pathlib import Path
 from engine.scene.box import Box
 
 
-def creator_objects_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "resources" / "levels" / "maze_objects.json"
-
-
 def load_creator_objects(path: Path) -> tuple[Box, ...]:
     if not path.exists():
         return ()

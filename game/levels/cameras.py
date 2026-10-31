@@ -5,12 +5,6 @@ from pathlib import Path
 from engine.scene.box import Box
 from engine.scene.camera import FixedCameraZone
 from engine.collision.obb import OBB
-from config import settings
-
-
-def camera_layout_path() -> Path:
-    level_name = Path(settings.MAZE_LAYOUT).stem
-    return Path(__file__).resolve().parents[2] / "resources" / "levels" / f"{level_name}_cameras.json"
 
 
 def load_fixed_cameras(path: Path) -> tuple[FixedCameraZone, ...] | None:

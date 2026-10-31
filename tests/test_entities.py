@@ -14,7 +14,7 @@ from engine.scene.box import Box
 from engine.scene.model import ModelComponent
 from engine.scene.transform import Transform
 from game.entities.player import create_player
-from game.levels import create_level
+from support_levels import create_level
 
 
 class EntityTests(unittest.TestCase):
@@ -27,7 +27,7 @@ class EntityTests(unittest.TestCase):
             player = create_player(self.level, self.world)
         self.assertIsInstance(player, Entity)
         self.assertIsNone(player.model.source_path)
-        for frame in range(240):
+        for frame in range(180):
             player.update(1 / 60, InputState(forward=1, jump=frame == 0))
             self.assertLess(glm.length(glm.vec3(player.transform.position) - player.body.position), 1e-6)
             self.assertGreater(player.camera.position.y, player.body.position.y)

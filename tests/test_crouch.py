@@ -13,7 +13,7 @@ from engine.scene.camera import Camera
 from engine.scene.level import Level
 from game.entities.player import create_player
 from game.entities.player_state import MovementState
-from game.levels import create_level
+from support_levels import create_level
 
 
 def make_character(world, position=(0, 0, 3)):
