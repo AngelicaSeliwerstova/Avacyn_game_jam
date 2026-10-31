@@ -43,7 +43,8 @@ class WorldTransitionTests(unittest.TestCase):
 
     def test_peaceful_world_copies_first_floor_rooms(self):
         peaceful, hospital = create_level("peaceful"), create_level("start")
-        self.assertEqual(peaceful.floor_size, hospital.floor_size)
+        self.assertEqual(peaceful.floor_size, (43, 29))
+        self.assertEqual(hospital.floor_size, (60, 48))
         self.assertEqual(peaceful.floor_heights, (0,))
         self.assertEqual(hospital.floor_heights, (0, 4.8, 9.6))
         first_floor = {o.name for o in hospital.objects if not o.name.startswith(("f2_", "f3_"))}

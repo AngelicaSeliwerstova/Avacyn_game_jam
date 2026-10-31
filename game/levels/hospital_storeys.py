@@ -9,7 +9,8 @@ from game.levels.objects import build_objects
 
 
 def assemble_storeys(level, boxes, decorations, definitions, lights, stair, count=3,
-                     material_map=None, ceiling_material="concrete"):
+                     material_map=None, ceiling_material="concrete", surgical_floor=None,
+                     patient_floor=None):
     all_boxes, all_decorations, all_objects, all_lights = [], [], [], []
     base_lights = level.lighting.lights if level.lighting else ()
     height, slab = stair.height, 0.24
@@ -25,19 +26,36 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
         all_boxes.append(Box(((x1 + x2) / 2, top - slab / 2, (z1 + z2) / 2),
                              (x2 - x1, slab, z2 - z1), material=material_map.get(material, material)))
 
-    def gallery(top):
+    def surgical_plate(top):
         cx, cz = stair.center
         half = 4.6
-        for x1, x2, z1, z2 in ((-21, cx - half, -2, 9), (cx + half, -5, -2, 9),
-                                (cx - half, cx + half, -2, cz - half),
-                                (cx - half, cx + half, cz + half, 9)):
-            plate(x1, x2, z1, z2, top, material="concrete")
-        # Торцы радиальных плит не закрывают углы квадрата точно: перекрываем швы
-        # прямыми полосами и угловыми плитами, оставаясь снаружи круглого проёма.
+        plate(-30, cx - half, -24, 24, top)
+        bridge_end = cx + 6
+        bridge_z = cz + 2.9
+        bridge_half_depth = 2.65 / 2
+        plate(cx + half, bridge_end, -24, bridge_z - bridge_half_depth, top)
+        plate(bridge_end, 30, -24, 24, top)
+        plate(cx + half, bridge_end, bridge_z + bridge_half_depth, 24, top)
+        plate(cx - half, cx + half, -24, cz - half, top)
+        plate(cx - half, cx + half, cz + half, 24, top)
+
+    def gallery(top, *, fill_landing=True):
+        cx, cz = stair.center
+        half = 4.6
+        if fill_landing:
+            for x1, x2, z1, z2 in ((-21, cx - half, -2, 9), (cx + half, -5, -2, 9),
+                                    (cx - half, cx + half, -2, cz - half),
+                                    (cx - half, cx + half, cz + half, 9)):
+                plate(x1, x2, z1, z2, top, material="concrete")
+            # Торцы радиальных плит не закрывают углы квадрата точно: перекрываем швы
+            # прямыми полосами и угловыми плитами, оставаясь снаружи круглого проёма.
+            for side in (-1, 1):
+                a, b = sorted((side * 4.35, side * half))
+                plate(cx + a, cx + b, cz - half, cz + half, top, material="concrete")
+                plate(cx - half, cx + half, cz + a, cz + b, top, material="concrete")
+        # Square corner pockets fall outside the radial segments but remain outside
+        # the stair opening, so keep them even when the old landing fill is disabled.
         for side in (-1, 1):
-            a, b = sorted((side * 4.35, side * half))
-            plate(cx + a, cx + b, cz - half, cz + half, top, material="concrete")
-            plate(cx - half, cx + half, cz + a, cz + b, top, material="concrete")
             for other_side in (-1, 1):
                 c, d = sorted((other_side * 3.1, other_side * half))
                 e, f = sorted((side * 3.1, side * half))
@@ -65,12 +83,21 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
 
     for floor in range(count):
         offset = floor * height
-        all_boxes.extend(move(box, offset) for box in boxes)
-        all_decorations.extend(move(box, offset, floor * len(lights)) for box in decorations)
+        custom = floor == 1 and surgical_floor is not None
+        patient_custom = floor == 2 and patient_floor is not None
+        storey_boxes, storey_decorations, storey_lights, storey_definitions = (
+            surgical_floor if custom else patient_floor if patient_custom
+            else (boxes, decorations, lights, definitions)
+        )
+        all_boxes.extend(move(box, offset) for box in storey_boxes)
+        light_offset = floor * len(lights)
+        if surgical_floor is not None and floor > 1:
+            light_offset += len(surgical_floor[2]) - len(lights)
+        all_decorations.extend(move(box, offset, light_offset) for box in storey_decorations)
         all_lights.extend(replace(light, position=(light.position[0], light.position[1] + offset,
-                                                  light.position[2])) for light in lights)
+                                                  light.position[2])) for light in storey_lights)
         current_definitions = []
-        for original in definitions:
+        for original in storey_definitions:
             if floor and original["id"].startswith(("main_entrance", "side_entrance")):
                 continue
             data = dict(original)
@@ -80,7 +107,13 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
                 data["name"] = f"{floor + 1} этаж — {data.get('name', 'Дверь')}"
             current_definitions.append(data)
         all_objects.extend(build_objects(current_definitions))
-        if floor:
+        if custom or patient_custom:
+            surgical_plate(offset)
+            gallery(offset, fill_landing=False)
+        elif floor == 2 and surgical_floor is not None:
+            surgical_plate(offset)
+            gallery(offset, fill_landing=False)
+        elif floor:
             # На верхних этажах у наружных дверей сплошные стены, без выходов в воздух.
             for low, high, material in ((0, 1.35, "hospital_tiles"), (1.35, height - slab, "plaster")):
                 y = offset + (low + high) / 2
@@ -93,7 +126,10 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
             plate(-21, -5, 9, 14, offset)
             gallery(offset)
     # Крыша находится над третьим этажом; колодец открыт между всеми тремя этажами.
-    plate(-21, 21, -14, 14, count * height, material=ceiling_material)
+    if surgical_floor is None:
+        plate(-21, 21, -14, 14, count * height, material=ceiling_material)
+    else:
+        plate(-30, 30, -24, 24, count * height, material=ceiling_material)
     all_boxes.extend(move(box, 0) for box in stair.build())
     all_lights.append(PointLight((-13, count * height - 0.6, 4), (1, 0.83, 0.61), 3.5, 9))
     return replace(level, boxes=tuple(all_boxes) + level.boxes,

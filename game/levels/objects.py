@@ -112,6 +112,29 @@ def _door(data, position):
     frame += (box(0, (height + wall_height + overlap) / 2, 0,
                   width, wall_height - height + overlap, thickness + 0.1,
                   data.get("frame_material", "concrete")),)
+    if data.get("elevator"):
+        panel_width = (width - 0.02) / 2
+        panel = tuple(
+            box(sign * panel_width / 2, height / 2, 0, panel_width, height - 0.04, thickness,
+                data.get("panel_material", "metal_scratched_dark"))
+            for sign in (-1, 1)
+        )
+        # Красный индикатор подчёркивает лифтовую дверь и предупреждает об опасности.
+        for side_sign in (-1, 1):
+            normal = side_sign * (thickness / 2 + 0.035)
+            frame += (
+                box(width / 2 + side / 2, 1.7, normal, 0.2, 0.46, 0.05, "metal_scratched_dark"),
+                replace(box(width / 2 + side / 2, 1.84, normal + side_sign * 0.028,
+                            0.09, 0.07, 0.015, "rust"),
+                        color=(0.85, 0.12, 0.08), emission=(0.8, 0.04, 0.02)),
+            )
+        warning = data.get("warning", "Лифтом лучше не пользоваться.")
+        name = data.get("name", "Лифт")
+        action = Interaction(name, warning, "Не пользоваться", "inspect")
+        return (
+            SceneObject(data["id"] + "_frame", {"default": ObjectState(frame)}),
+            SceneObject(data["id"], {"default": ObjectState(panel, interaction=action)}),
+        )
     panel = (box(0, height / 2, 0, width - 0.04, height - 0.04, thickness,
                  data.get("panel_material", "rust")),)
     # Ручки с обеих сторон видны независимо от стороны подхода.
