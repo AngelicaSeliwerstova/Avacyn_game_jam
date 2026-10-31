@@ -9,6 +9,7 @@ from engine.scene.object import ObjectState, SceneObject
 from engine.scene.transform import Transform
 from game.entities.enemy import Enemy, EnemySettings
 from game.entities.escape import EscapeGoal
+from game.entities.companion import Companion, CompanionSettings
 
 
 def build_objects(definitions) -> tuple[SceneObject, ...]:
@@ -32,6 +33,12 @@ def build_objects(definitions) -> tuple[SceneObject, ...]:
             enemy = Enemy(data["id"], position,
                           tuning=EnemySettings(**data.get("settings", {})))
             objects.append(enemy.scene_object)
+        elif data["type"] == "companion":
+            ally = Companion(data["id"], position, CompanionSettings(**data.get("settings", {})),
+                             following=data.get("following", True), display_name=data.get("name", "Союзник"),
+                             dialogue=data.get("dialogue", ()), next_level=data.get("next_level"),
+                             appearance=data.get("appearance", "player"))
+            objects.append(ally.scene_object)
         elif data["type"] == "exit":
             goal = EscapeGoal(data["id"], transform=Transform(position=position),
                               radius=data.get("radius", 1.0), required_keys=tuple(data.get("required_keys", ())),

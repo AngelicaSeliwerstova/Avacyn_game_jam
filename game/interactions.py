@@ -223,7 +223,9 @@ class InteractionController:
             return action.message
         if not isinstance(target, SceneObject):
             raise ValueError("Stateful interactions require a SceneObject")
-        if action.command == "pickup_key":
+        if action.command == "talk":
+            target.entity.request_talk()
+        elif action.command == "pickup_key":
             self.inventory.add_key(action.argument, action.name)
             target.set_state("collected")
         elif action.command == "unlock_door":

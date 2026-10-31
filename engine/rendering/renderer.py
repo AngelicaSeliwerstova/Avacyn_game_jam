@@ -68,6 +68,7 @@ class Renderer:
         self._presenter = None
         self._snow = None
         self._player_model = None
+        self._entity_models = []
         self._hud = None
         self._debug_hud = None
         self._aim_hud = None
@@ -137,6 +138,12 @@ class Renderer:
                     self.context, self._program, player_model.source_path, self._fallback_texture,
                 )
                 self._program["skin_matrices"].value = 10
+            for obj in level.objects:
+                entity = obj.entity
+                if entity is not None and entity.model is not None and entity.model.source_path is not None:
+                    mesh = GLTFModel(self.context, self._program, entity.model.source_path, self._fallback_texture)
+                    self._entity_models.append((entity, mesh))
+                    self._program["skin_matrices"].value = 10
             if textures is not None:
                 if textures.floor is not None:
                     self._floor_texture = self._load_texture(textures.floor)
@@ -179,6 +186,10 @@ class Renderer:
             self._postprocess.update(delta_time)
         if self._player_model is not None:
             self._player_model.update(delta_time, speed=model_animation_speed)
+        for entity, mesh in self._entity_models:
+            body = getattr(entity, "body", None)
+            speed = 1.0 if body is not None and body.horizontal_speed > 0.05 else 0.0
+            mesh.update(delta_time, speed=speed)
 
     def set_camera_markers(self, boxes: tuple[Box, ...]):
         if boxes == self._camera_marker_boxes:
@@ -324,6 +335,11 @@ class Renderer:
                     self._player_model_component.world_matrix(player_transform),
                     self._camera.position,
                 )
+            for entity, mesh in self._entity_models:
+                self._render_target.framebuffer.depth_mask = True
+                calls, triangles = mesh.render(entity.model.world_matrix(entity.transform), self._camera.position)
+                model_draw_calls += calls
+                model_triangles += triangles
         finally:
             self._render_target.framebuffer.depth_mask = True
             self.context.depth_func = "<"
@@ -457,6 +473,9 @@ class Renderer:
             texture.use(location=0)
 
     def release(self, release_context: bool = True):
+        for _, mesh in self._entity_models:
+            mesh.release()
+        self._entity_models.clear()
         if self._inventory is not None:
             self._inventory.release()
             self._inventory = None

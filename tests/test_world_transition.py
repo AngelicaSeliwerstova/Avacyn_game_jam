@@ -47,7 +47,7 @@ class WorldTransitionTests(unittest.TestCase):
         self.assertEqual(peaceful.floor_heights, (0,))
         self.assertEqual(hospital.floor_heights, (0, 4.8, 9.6))
         first_floor = {o.name for o in hospital.objects if not o.name.startswith(("f2_", "f3_"))}
-        self.assertEqual(first_floor, {o.name for o in peaceful.objects if o.name != "doctor_room_transition"})
+        self.assertEqual(first_floor, {o.name for o in peaceful.objects})
         self.assertEqual(peaceful.floor_material, "linoleum_blue_gray")
         self.assertEqual(hospital.floor_material, "floor_tile_dirty")
         self.assertNotEqual(peaceful.camera_save_path, hospital.camera_save_path)
@@ -67,6 +67,13 @@ class WorldTransitionTests(unittest.TestCase):
         walk(self, body, ((3.5, 0, 12.2), (3.5, 0, -4.5), (-17, 0, -4.5),
                          (-17, 0, -8.1), (-15.9, 0, -8.6), (-15.9, 0, -10.9)))
         peaceful.session.update(0)
+        self.assertIsNone(peaceful.session.next_level)
+        speaker = next(o for o in peaceful.level.objects if o.name == "hospital_companion")
+        peaceful.player._interactions._activate(speaker)
+        peaceful.session.update(0)
+        self.assertIsNotNone(peaceful.session.dialog)
+        for _ in speaker.entity.dialogue:
+            peaceful.session.handle_action("dialogue_next")
         self.assertEqual(peaceful.session.next_level, "start")
         peaceful.player.inventory.add_key("story", "Сюжетный ключ")
         hospital = campaign.load_level(peaceful.session.next_level)
@@ -81,6 +88,12 @@ class WorldTransitionTests(unittest.TestCase):
 
     def test_portal_does_not_fire_from_corridor_or_doorway(self):
         scene = Campaign().load_level("peaceful")
-        goal = scene.session.goals[0]
+        door = next(obj for obj in scene.level.objects if obj.name == "office_0")
+        door.set_state("open")
+        door.update(1)
+        self.assertEqual(scene.session.goals, ())
         for position in ((-17, 0, -4.5), (-17, 0, -6), (-17, 0, -8)):
-            self.assertFalse(goal.reached(position, scene.player.inventory))
+            scene.player.body = make_body(scene.player.body.world, position)
+            scene.session.update(0)
+            self.assertIsNone(scene.session.next_level)
+            self.assertIsNone(scene.session.dialog)

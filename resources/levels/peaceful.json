@@ -11,12 +11,17 @@
   "boxes": [],
   "objects": [
     {
-      "id": "doctor_room_transition",
-      "type": "exit",
-      "position": [-16.1, 0.0, -11.0],
-      "radius": 1.0,
+      "id": "hospital_companion",
+      "name": "Незнакомец",
+      "type": "companion",
+      "position": [-16.0, 0.0, -11.8],
+      "following": false,
       "next_level": "start",
-      "hint": "Пройдите в кабинет врача в дальнем конце коридора."
+      "dialogue": [
+        "Ты тоже слышишь этот шум?",
+        "Здесь что-то не так. Давай держаться вместе.",
+        "Я пойду с тобой. Только не отходи далеко."
+      ]
     }
   ]
 }

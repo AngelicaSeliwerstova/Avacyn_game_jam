@@ -75,7 +75,7 @@ class Enemy(Entity):
         self._graph = level.navigation
         self._navigation = NavigationTraversal(
             (box.collider for box in level.collision_boxes),
-            tuple(obj for obj in level.objects if not isinstance(obj.entity, Enemy)), level.floor_bounds,
+            tuple(obj for obj in level.objects if not hasattr(obj.entity, "body")), level.floor_bounds,
             TraversalProfile(self.tuning.radius, self.tuning.height, self.tuning.step_height),
         )
 

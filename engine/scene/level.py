@@ -75,7 +75,7 @@ class Level:
 
     @property
     def object_boxes(self) -> tuple[Box, ...]:
-        return tuple(box for obj in self.objects for box in obj.boxes)
+        return tuple(box for obj in self.objects for box in obj.render_boxes)
 
     @property
     def static_shadow_boxes(self) -> tuple[Box, ...]:

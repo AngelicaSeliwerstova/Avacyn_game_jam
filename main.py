@@ -31,7 +31,7 @@ def run_session(creator_mode: bool = False, debug_mode: bool = False):
         fog=scene.fog,
         dynamic_lights=scene.player.dynamic_lights,
         dynamic_shadow_resolution=settings.DYNAMIC_SHADOW_RESOLUTION,
-        systems=scene.systems,
+        systems=scene.systems,  # Includes companion following, enemies, and story/dialog updates.
         session=scene.session,
         debug=create_debug_settings(),
         debug_mode=debug_mode,

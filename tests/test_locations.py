@@ -24,12 +24,12 @@ class LocationTests(unittest.TestCase):
         self.assertEqual(settings.LEVEL_NAME, "peaceful")
         self.assertTrue(scene.level.objects)
         self.assertEqual(scene.level.creator_objects, ())
-        self.assertEqual(len(scene.session.goals), 1)
+        self.assertEqual(len(scene.session.goals), 0)
         self.assertFalse(scene.player.body.world.is_blocked(
             scene.player.body.position, scene.player.body.radius, scene.player.body.height))
         scene.player.update(1 / 60, InputState())
         scene.session.update(1 / 60)
-        self.assertIn("кабинет врача", scene.player.objective_status)
+        self.assertIn("дальнем кабинете", scene.player.objective_status)
         self.assertIsNone(scene.session.next_level)
 
     def test_retired_levels_are_unavailable(self):
@@ -44,7 +44,9 @@ class LocationTests(unittest.TestCase):
             try:
                 os.chdir(directory)
                 actual = create_level("start")
-                self.assertEqual(replace(actual, objects=()), replace(expected, objects=()))
+                self.assertEqual(replace(actual, objects=(), navigation=None),
+                                 replace(expected, objects=(), navigation=None))
+                self.assertEqual(actual.navigation.points, expected.navigation.points)
                 self.assertEqual([(obj.name, dict(obj.states)) for obj in actual.objects],
                                  [(obj.name, dict(obj.states)) for obj in expected.objects])
             finally:

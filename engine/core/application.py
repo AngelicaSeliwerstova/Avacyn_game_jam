@@ -118,6 +118,12 @@ class Application:
                 if not self._running:
                     break
 
+                if self._session.next_level is not None:
+                    renderer = self._change_level(renderer, window)
+                    input_device.reset_after_loading()
+                    clock.tick()
+                    continue
+
                 inputs = input_device.read()
                 profiling = self._debug_mode
                 started = perf_counter() if profiling else 0.0
@@ -197,7 +203,7 @@ class Application:
                         "pacing_input": started - frame_started,
                         "objects_doors": objects_updated - started,
                         "player_camera_collision": player_updated - objects_updated,
-                        "systems_enemies_session": systems_updated - player_updated,
+                        "systems_actors_session": systems_updated - player_updated,
                         "animation_particles": animation_updated - systems_updated,
                         **renderer.frame_timings,
                         "present": presented - rendered,
@@ -335,6 +341,10 @@ class Application:
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     action = dialog_action_at(self._session.dialog, event.pos, window.size, self._render_size)
                 if action is not None:
+                    if self._session.handle_action(action):
+                        if self._session.dialog is None:
+                            input_device.reset_after_loading()
+                        continue
                     self._result = action
                     self._running = False
                     break

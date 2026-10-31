@@ -960,14 +960,7 @@ def create_player(level: Level, world: CollisionWorld3D, creator_mode: bool = Fa
         pitch_limit_degrees=settings.PITCH_LIMIT_DEGREES, max_delta_time=settings.MAX_DELTA_TIME,
         player_radius=settings.PLAYER_RADIUS, collision_max_step=settings.COLLISION_MAX_STEP,
     )
-    model_root = Path(__file__).resolve().parents[2] / "resources" / "models"
-    source = None if settings.PLAYER_MODEL is None else model_root / settings.PLAYER_MODEL
-    model = ModelComponent(
-        source_path=source,
-        local_transform=Transform(
-            position=settings.PLAYER_MODEL_OFFSET, rotation=settings.PLAYER_MODEL_ROTATION,
-            scale=(settings.PLAYER_MODEL_SCALE,) * 3,
-        ),
-    )
+    from game.entities.appearance import create_character_model
+    model = create_character_model()
     return Player(body, camera, controller, model, level=level, creator_mode=creator_mode,
                   inventory=inventory)

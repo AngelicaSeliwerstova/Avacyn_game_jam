@@ -1,0 +1,142 @@
+from dataclasses import replace
+import math
+import unittest
+
+import glm
+
+from engine.collision.world3d import CollisionWorld3D
+from engine.navigation.graph import NavigationGraph
+from engine.scene.box import Box
+from engine.scene.level import Level
+from game.campaign import Campaign
+from game.entities.companion import Companion, CompanionSettings
+from game.entities.player import create_player
+from game.companions import CompanionSystem
+from game.levels.objects import build_objects
+from test_hospital import make_body
+
+
+def fixture(boxes=(), graph=None, objects=(), position=(-4, 0, 0)):
+    ally = Companion("ally", position, appearance="boxes")
+    level = Level((20, 20), 1, boxes, (4, 1.6, 0), (3, 1.6, 0), ((80, 80, 80),) * 2,
+                  objects=(ally.scene_object,) + objects, navigation=graph)
+    world = CollisionWorld3D((b.collider for b in boxes), level.floor_bounds, objects=level.objects)
+    player = create_player(level, world)
+    system = CompanionSystem(level, player)
+    return ally, player, system
+
+
+class CompanionTests(unittest.TestCase):
+    def test_follows_stops_near_player_and_resumes_without_jitter(self):
+        ally, player, system = fixture()
+        for _ in range(180):
+            system.update(1 / 60)
+        distance = glm.distance(ally.body.position, player.body.position)
+        self.assertAlmostEqual(distance, ally.tuning.stop_distance, places=3)
+        before = tuple(ally.body.position)
+        for _ in range(60):
+            system.update(1 / 60)
+        self.assertEqual(tuple(ally.body.position), before)
+        player.body = make_body(player.body.world, (7, 0, 0))
+        for _ in range(180):
+            system.update(1 / 60)
+        self.assertLess(glm.distance(ally.body.position, player.body.position), 1.5)
+
+    def test_astar_routes_around_wall_without_crossing_it(self):
+        wall = Box((0, 1.5, 0), (0.5, 3, 4))
+        graph = NavigationGraph(((-3, 0, 0), (-3, 0, 3), (3, 0, 3), (3, 0, 0)),
+                                ((0, 1, False), (1, 2, False), (2, 3, False)), connection_distance=4)
+        ally, player, system = fixture((wall,), graph)
+        farthest_z = 0
+        for _ in range(360):
+            system.update(1 / 60)
+            farthest_z = max(farthest_z, ally.body.position.z)
+            self.assertFalse(ally.body.world.is_blocked(ally.body.position, 0.249, 1.799))
+        self.assertGreater(farthest_z, 2.25)
+        self.assertLess(glm.distance(ally.body.position, player.body.position), 1.5)
+
+    def test_replans_when_closed_door_opens(self):
+        doors = build_objects([{"id": "door", "type": "door", "position": (0, 0, 0),
+                                "axis": "z", "opening_width": 3, "width": 1.8}])
+        wall = (Box((0, 1.5, -5.75), (0.4, 3, 8.5)), Box((0, 1.5, 5.75), (0.4, 3, 8.5)))
+        ally, player, system = fixture(wall, objects=doors)
+        for _ in range(120):
+            system.update(1 / 60)
+        self.assertLess(ally.body.position.x, 0)
+        door = next(o for o in doors if o.name == "door")
+        door.set_state("open")
+        door.update(1)
+        for _ in range(180):
+            system.update(1 / 60)
+        self.assertLess(glm.distance(ally.body.position, player.body.position), 1.5)
+
+    def test_replans_when_obstacle_is_added_to_current_route(self):
+        graph = NavigationGraph(((-3, 0, 0), (-3, 0, 3), (3, 0, 3), (3, 0, 0)),
+                                ((0, 1, False), (1, 2, False), (2, 3, False)), connection_distance=4)
+        ally, player, system = fixture(graph=graph)
+        for _ in range(20):
+            system.update(1 / 60)
+        player._creator_objects = (Box((0, 1.5, 0), (0.5, 3, 4)),)
+        farthest_z = 0
+        for _ in range(360):
+            system.update(1 / 60)
+            farthest_z = max(farthest_z, ally.body.position.z)
+        self.assertGreater(farthest_z, 2.25)
+        self.assertLess(glm.distance(ally.body.position, player.body.position), 1.5)
+
+    def test_conversation_is_required_before_world_transition(self):
+        campaign = Campaign()
+        scene = campaign.load_level("peaceful")
+        ally = scene.session.companions[0]
+        self.assertFalse(ally.following)
+        self.assertEqual(ally.model, scene.player.model)
+        self.assertEqual(ally.scene_object.render_boxes, ())
+        scene.session.update(0)
+        self.assertIsNone(scene.session.next_level)
+        scene.player._interactions._activate(ally.scene_object)
+        scene.session.update(0)
+        for index in range(len(ally.dialogue)):
+            self.assertIsNotNone(scene.session.dialog)
+            self.assertIsNone(scene.session.next_level)
+            scene.session.handle_action("dialogue_next")
+        self.assertEqual(scene.session.next_level, "start")
+        self.assertIn("recruited:hospital_companion", campaign.progress.flags)
+        horror = campaign.load_level(scene.session.next_level)
+        self.assertTrue(horror.session.companions[0].following)
+
+    def test_companion_can_follow_up_and_down_both_spiral_flights(self):
+        scene = Campaign().load_level("start")
+        system = next(s for s in scene.systems if isinstance(s, CompanionSystem))
+        ally = system.companions[0]
+        ally.body = make_body(ally.body.world, (-13, 0, 8.6))
+        for goal in ((-7, 9.6, 6.9), (-13, 0, 8.6)):
+            scene.player.body = make_body(scene.player.body.world, goal)
+            for frame in range(1800):
+                system.update(1 / 30)
+                if glm.distance(ally.body.position, glm.vec3(goal)) < 1.5:
+                    break
+            else:
+                self.fail(f"Companion stuck at {tuple(ally.body.position)} following {goal}; path={ally.remaining_path}")
+            self.assertAlmostEqual(ally.body.position.y, goal[1], places=3)
+
+    def test_invalid_settings_are_rejected(self):
+        for data in ({"speed": 0}, {"stop_distance": 0}, {"resume_distance": 1}, {"speed": math.nan}):
+            with self.assertRaises(ValueError):
+                CompanionSettings(**data)
+
+    def test_hospital_companion_leaves_office_and_routes_to_stair_hall(self):
+        scene = Campaign().load_level("start")
+        system = next(s for s in scene.systems if isinstance(s, CompanionSystem))
+        ally = system.companions[0]
+        for obj in scene.level.objects:
+            if "open" in obj.states:
+                obj.set_state("open")
+                obj.update(1)
+        goal = (-13, 0, 8.6)
+        scene.player.body = make_body(scene.player.body.world, goal)
+        for _ in range(1200):
+            system.update(1 / 30)
+            if glm.distance(ally.body.position, glm.vec3(goal)) < 1.5:
+                break
+        else:
+            self.fail(f"Office route blocked: {tuple(ally.body.position)}, path={ally.remaining_path}")

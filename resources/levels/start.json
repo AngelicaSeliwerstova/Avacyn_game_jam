@@ -8,5 +8,13 @@
   "snow_enabled": false,
   "lighting": {"ambient": [0.23, 0.25, 0.23], "lights": []},
   "boxes": [],
-  "objects": []
+  "objects": [
+    {
+      "id": "hospital_companion",
+      "name": "Союзник",
+      "type": "companion",
+      "position": [-16.0, 0.0, -11.8],
+      "following": true
+    }
+  ]
 }

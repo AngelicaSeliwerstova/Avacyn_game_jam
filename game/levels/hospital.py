@@ -211,7 +211,11 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
         # Верх обычных стен окрашен ровно, без трещин и облупившейся штукатурки.
         boxes = [replace(box, color=(0.82, 0.81, 0.74))
                  if box.material == "plaster" and box.size[1] > 1.2 else box for box in boxes]
-    return assemble_storeys(level, tuple(boxes) + tuple(props.boxes),
+    result = assemble_storeys(level, tuple(boxes) + tuple(props.boxes),
                             tuple(decorations) + tuple(props.decorations), definitions, lights,
                             stair, count=floor_count, material_map=palette,
                             ceiling_material="ceiling_acoustic_panels" if peaceful else "concrete")
+    if any(obj.entity is not None and hasattr(obj.entity, "following") for obj in result.objects):
+        from game.levels.hospital_navigation import build_hospital_navigation
+        result = replace(result, navigation=build_hospital_navigation(result, stair, definitions))
+    return result

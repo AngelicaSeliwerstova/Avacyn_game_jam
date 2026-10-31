@@ -21,3 +21,7 @@ class Session:
 
     dialog: Dialog | None = None
     next_level: str | None = None
+
+    def handle_action(self, action: str) -> bool:
+        """True when a game dialog consumes an action without exiting the app."""
+        return False

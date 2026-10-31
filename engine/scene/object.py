@@ -114,5 +114,10 @@ class SceneObject:
         return self.current_state.boxes
 
     @property
+    def render_boxes(self) -> tuple[Box, ...]:
+        model = self.entity.model if self.entity is not None else None
+        return () if model is not None and model.source_path is not None else self.boxes
+
+    @property
     def interaction(self) -> Interaction | None:
         return self.current_state.interaction

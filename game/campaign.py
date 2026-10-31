@@ -6,6 +6,7 @@ from engine.particles.snow import Snowfall, SnowSettings
 from engine.scene.runtime import RuntimeScene
 from game.entities.player import create_player
 from game.enemies import EnemySystem
+from game.companions import CompanionSystem
 from game.inventory import Inventory
 from game.levels import create_level
 from game.session import GameSession
@@ -39,8 +40,9 @@ class Campaign:
                                inventory=self.progress.inventory)
         if self._scene is not None:
             player.flashlight.light.enabled = self._scene.player.flashlight.light.enabled
-        session = GameSession(level, player)
+        session = GameSession(level, player, flags=self.progress.flags)
         enemies = EnemySystem(level, player, on_caught=session.lose)
+        companions = CompanionSystem(level, player)
         snow = None
         if settings.SNOW_ENABLED and level.snow_enabled:
             snow = Snowfall(
@@ -53,8 +55,9 @@ class Campaign:
                 obstacles=tuple(box.footprint for box in level.boxes),
             )
         fog, postprocess = create_scene_effects(level.visual_style)
-        scene = RuntimeScene(level, player, session, (enemies, session), snow,
-                             enemies.debug_paths, fog=fog, postprocess=postprocess)
+        scene = RuntimeScene(level, player, session, (companions, enemies, session), snow,
+                             lambda: enemies.debug_paths() + companions.debug_paths(),
+                             fog=fog, postprocess=postprocess)
         if self.progress.current_level is not None:
             self.progress.completed_levels.add(self.progress.current_level)
         self.progress.current_level = name
