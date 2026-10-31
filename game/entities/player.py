@@ -255,8 +255,9 @@ class Player(Entity):
             text += ("\n" if text else "") + (
                 f"CREATOR  |  {camera_count} CAMERAS  |  {len(self._creator_objects)} OBJECTS"
             )
-        if self.inventory.key_names:
-            text += ("\n" if text else "") + "KEYS: " + ", ".join(self.inventory.key_names)
+        if not self._creator_mode and controls.INPUT_BINDINGS.toggle_inventory is not None:
+            key = pygame.key.name(controls.INPUT_BINDINGS.toggle_inventory).title()
+            text += ("\n" if text else "") + f"{key} — инвентарь"
         if self.enemy_status:
             text += ("\n" if text else "") + self.enemy_status
         if self.objective_status:

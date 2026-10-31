@@ -20,6 +20,7 @@ from engine.scene.level import Level
 from engine.scene.lighting import SpotLight
 from engine.scene.runtime import RuntimeScene
 from engine.scene.session import Session
+from engine.scene.inventory import InventoryView
 
 
 class Application:
@@ -79,6 +80,8 @@ class Application:
         self._scene_loader = scene_loader
         self._result = "quit"
         self._running = False
+        self._inventory_open = False
+        self._inventory_page = 0
 
     def run(self):
         pygame.init()
@@ -108,7 +111,7 @@ class Application:
                 inputs = input_device.read()
                 profiling = self._debug.enabled
                 started = perf_counter() if profiling else 0.0
-                if self._session.dialog is None:
+                if not self._simulation_paused:
                     creator_was_active = getattr(self._controlled_entity, "creator_mode", False)
                     creator_is_being_toggled = (
                         inputs.toggle_camera_editor
@@ -150,6 +153,7 @@ class Application:
                 renderer.render(window.size, hud_text=self._controlled_entity.status_text,
                                 debug_text=self._debug.text, aim_text=self._controlled_entity.aim_text,
                                 dialog=self._session.dialog,
+                                inventory=self._inventory_view(),
                                 camera_markers=getattr(self._controlled_entity, "camera_marker_boxes", ()),
                                 creator_objects=getattr(self._controlled_entity, "creator_object_boxes", ()),
                                 creator_lights=getattr(self._controlled_entity, "creator_lights", ()),
@@ -228,7 +232,26 @@ class Application:
         self._snow = scene.snow
         self._debug_paths = scene.debug_paths
         self._dynamic_lights = scene.player.dynamic_lights
+        self._inventory_open = False
+        self._inventory_page = 0
         return self._create_renderer(context=context)
+
+    @property
+    def _simulation_paused(self):
+        return self._session.dialog is not None or self._inventory_open
+
+    def _inventory_view(self):
+        if not self._inventory_open:
+            return None
+        key = self._input_bindings.toggle_inventory
+        label = pygame.key.name(key).title() if key is not None else "Tab"
+        view = InventoryView(tuple(self._controlled_entity.inventory.items), self._inventory_page, label)
+        self._inventory_page = max(0, min(view.page_count - 1, self._inventory_page))
+        return InventoryView(view.items, self._inventory_page, label)
+
+    def _close_inventory(self, input_device):
+        self._inventory_open = False
+        input_device.end_modal()
 
     def _handle_events(self, input_device: KeyboardMouse, window: Window, renderer: Renderer | None = None):
         for event in pygame.event.get():
@@ -239,12 +262,33 @@ class Application:
                   and not getattr(event, "repeat", False)):
                 self._debug.toggle()
             elif (event.type == pygame.KEYDOWN and event.key == self._input_bindings.cycle_postprocess
-                  and renderer is not None and self._session.dialog is None and not getattr(event, "repeat", False)):
+                  and renderer is not None and not self._simulation_paused and not getattr(event, "repeat", False)):
                 renderer.cycle_postprocess()
             elif event.type == pygame.KEYDOWN and event.key == self._input_bindings.toggle_fullscreen:
                 input_device.release()
                 window.toggle_fullscreen()
             window.handle_event(event)
+            if self._session.dialog is None:
+                if (event.type == pygame.KEYDOWN and event.key == self._input_bindings.toggle_inventory
+                        and not getattr(event, "repeat", False)):
+                    if self._inventory_open:
+                        self._close_inventory(input_device)
+                    elif getattr(self._controlled_entity, "inventory", None) is not None:
+                        self._inventory_open = True
+                        self._inventory_page = 0
+                        input_device.begin_modal()
+                    continue
+                if self._inventory_open:
+                    if event.type in (pygame.WINDOWFOCUSLOST, pygame.WINDOWFOCUSGAINED):
+                        input_device.handle_event(event)
+                    elif event.type == pygame.KEYDOWN and not getattr(event, "repeat", False):
+                        if event.key in (pygame.K_ESCAPE, self._input_bindings.release_mouse):
+                            self._close_inventory(input_device)
+                        elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
+                            self._inventory_page += 1 if event.key == pygame.K_RIGHT else -1
+                    elif event.type == pygame.MOUSEWHEEL:
+                        self._inventory_page -= event.y
+                    continue
             if self._session.dialog is not None:
                 action = None
                 if event.type == pygame.KEYDOWN and not getattr(event, "repeat", False):
@@ -263,7 +307,7 @@ class Application:
         rw, rh = self._render_size
         ww, wh = window.size
         return (
-            f"SIM: {'PAUSED' if self._session.dialog is not None else 'RUNNING'} | INPUT: {input_device.status_text}",
+            f"SIM: {'PAUSED' if self._simulation_paused else 'RUNNING'} | INPUT: {input_device.status_text}",
             *self._controlled_entity.debug_lines,
             *renderer.debug_lines,
             f"VIEW: {rw}x{rh} -> {ww}x{wh}",

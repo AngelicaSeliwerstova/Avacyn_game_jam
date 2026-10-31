@@ -28,6 +28,8 @@ from engine.scene.lighting import Lighting, SpotLight, static_point_light
 from engine.scene.model import ModelComponent
 from engine.scene.transform import Transform
 from engine.scene.session import Dialog
+from engine.scene.inventory import InventoryView
+from engine.rendering.inventory import InventoryOverlay
 from engine.rendering.gltf_model import GLTFModel
 
 
@@ -68,6 +70,7 @@ class Renderer:
         self._aim_hud = None
         self._creator_sidebar = None
         self._dialog = None
+        self._inventory = None
         self._debug_lines = None
         self._postprocess = None
         self._postprocess_presets = postprocess_presets
@@ -159,6 +162,7 @@ class Renderer:
             self._aim_hud = AimOverlay(self.context, hud_style or HudStyle())
             self._creator_sidebar = CreatorSidebarOverlay(self.context, hud_style or HudStyle())
             self._dialog = DialogOverlay(self.context, hud_style or HudStyle())
+            self._inventory = InventoryOverlay(self.context, hud_style or HudStyle())
             if snow is not None and snow.settings.count > 0:
                 self._snow = SnowRenderer(self.context, snow, camera, render_size, fog=fog)
         except Exception:
@@ -236,6 +240,7 @@ class Renderer:
 
     def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = "",
                *, aim_text: str | None = None, dialog: Dialog | None = None,
+               inventory: InventoryView | None = None,
                debug_paths: tuple[DebugPath, ...] = (),
                player_transform: Transform | None = None,
                camera_markers: tuple[Box, ...] = (),
@@ -329,7 +334,7 @@ class Renderer:
                 transition_strength=camera_transition_strength,
             )
         target = self.output_target
-        if dialog is None:
+        if dialog is None and inventory is None:
             if debug_paths:
                 if self._debug_lines is None:
                     self._debug_lines = DebugLineRenderer(self.context)
@@ -340,10 +345,12 @@ class Renderer:
             if aim_text is not None:
                 self._aim_hud.draw(aim_text, target.size)
             self._debug_hud.draw(debug_text, target.size, anchor="bottom_right")
-        else:
+        elif dialog is not None:
             self._dialog.draw(dialog, target.size, window_size)
+        else:
+            self._inventory.draw(inventory, target.size)
         self._presenter.present(target.color, self.context.screen, window_size)
-        if creator_help_text is not None and dialog is None:
+        if creator_help_text is not None and dialog is None and inventory is None:
             self._creator_sidebar.draw(window_size, target.size, creator_help_text)
 
     @property
@@ -430,6 +437,9 @@ class Renderer:
             texture.use(location=0)
 
     def release(self, release_context: bool = True):
+        if self._inventory is not None:
+            self._inventory.release()
+            self._inventory = None
         if self._debug_lines is not None:
             self._debug_lines.release()
             self._debug_lines = None

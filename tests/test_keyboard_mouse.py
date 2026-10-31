@@ -39,6 +39,25 @@ class KeyboardMouseTests(unittest.TestCase):
             self.keys[key] = True
         self.assertEqual(self.input.read(), InputState())
 
+    def test_modal_restores_capture_and_clears_queued_actions(self):
+        self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+        self.input.begin_modal()
+        self.assertEqual(self.input.read(), InputState())
+        self.input.end_modal()
+        self.grab.assert_called_with(True)
+        self.assertEqual(self.input.read(), InputState())
+
+    def test_modal_keeps_cursor_free_when_unfocused_or_previously_released(self):
+        self.input.release()
+        self.input.begin_modal()
+        self.input.end_modal()
+        self.grab.assert_called_with(False)
+        self.input._set_capture(True)
+        self.input.begin_modal()
+        self.input.handle_event(pygame.event.Event(pygame.WINDOWFOCUSLOST))
+        self.input.end_modal()
+        self.grab.assert_called_with(False)
+
     def test_first_mouse_delta_after_capture_is_discarded(self):
         self.motion.return_value = (500, 300)
         self.assertEqual(self.input.read().mouse_delta, (0, 0))

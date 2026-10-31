@@ -11,6 +11,7 @@ class KeyboardMouse:
         self._bindings = bindings
         self._focused = bool(pygame.key.get_focused())
         self._captured = False
+        self._capture_before_modal = False
         self._discard_mouse_delta = True
         self._jump_queued = False
         self._jump_held = False
@@ -172,3 +173,11 @@ class KeyboardMouse:
     def reset_after_loading(self):
         """Сбрасывает накопленное движение мыши и разовые действия после загрузки."""
         self._set_capture(self._captured and self._focused)
+
+    def begin_modal(self):
+        self._capture_before_modal = self._captured
+        self.release()
+
+    def end_modal(self):
+        self._set_capture(self._capture_before_modal and self._focused)
+        self._capture_before_modal = False
