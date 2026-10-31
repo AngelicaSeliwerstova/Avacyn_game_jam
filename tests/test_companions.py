@@ -28,6 +28,24 @@ def fixture(boxes=(), graph=None, objects=(), position=(-4, 0, 0)):
 
 
 class CompanionTests(unittest.TestCase):
+    def test_follows_through_security_reception_and_open_stair_lobby(self):
+        scene = Campaign().load_level("start")
+        system = next(s for s in scene.systems if isinstance(s, CompanionSystem))
+        ally = system.companions[0]
+        for obj in scene.level.objects:
+            if "open" in obj.states:
+                obj.set_state("open")
+                obj.update(1)
+        for goal in ((-3, 0, 7), (11.5, 0, 3.7), (-13, 0, 8.6)):
+            with self.subTest(goal=goal):
+                scene.player.body = make_body(scene.player.body.world, goal)
+                for _ in range(1200):
+                    system.update(1 / 30)
+                    if math.dist(tuple(ally.body.position), goal) < 1.5:
+                        break
+                else:
+                    self.fail(f"Ally cannot follow reference route to {goal}: {tuple(ally.body.position)}")
+
     def test_pending_search_is_retargeted_after_player_moves(self):
         ally, player, system = fixture()
         pending = Mock(done=False)

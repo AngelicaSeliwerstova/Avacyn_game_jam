@@ -46,14 +46,36 @@ class TextureSettingsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 replace(materials, **changes)
 
-    def test_start_materials_exist_in_catalog(self):
+    def test_both_worlds_resolve_all_material_roles_to_existing_textures(self):
         materials = create_texture_settings()
         names = {material.name for material in materials.materials}
-        level = create_level("start")
-        used = {level.floor_material} | {box.material for box in level.boxes}
-        self.assertTrue(used <= names)
+        for world in ("start", "peaceful"):
+            level = create_level(world)
+            used = {level.floor_material} | {box.material for box in
+                    level.boxes + level.decorations + level.all_object_boxes if box.material is not None}
+            self.assertTrue(used <= names, (world, used - names))
         for material in materials.materials:
             self.assertTrue(material.path.is_file(), material.path)
+
+    def test_mattresses_use_textile_materials_without_color_overriding_texture(self):
+        for world, finish in (("peaceful", "linen_ivory"), ("start", "linen_worn")):
+            level = create_level(world)
+            mattresses = [b for b in level.boxes if b.size in ((1.08, 0.15, 1.96), (1.14, 0.2, 2.05))]
+            self.assertEqual(len(mattresses), 30)
+            self.assertTrue(all(b.material == finish and b.color is None for b in mattresses))
+
+    def test_department_floors_have_distinct_finishes_in_each_world(self):
+        for world, lobby, surgery, ward in (
+            ("peaceful", "terrazzo_gray", "tile_mint_clean", "linoleum_sage"),
+            ("start", "floor_tile_dirty", "hospital_checker", "linoleum_green"),
+        ):
+            level = create_level(world)
+            self.assertEqual(level.floor_material, lobby)
+            for height, expected in ((4.8, surgery), (9.6, ward)):
+                floors = [b for b in level.boxes if abs(b.collider.top - height) < 1e-5
+                          and b.footprint.intersects_circle(24, 18, 0.01)]
+                self.assertTrue(floors)
+                self.assertTrue(all(b.material == expected for b in floors))
 
     def test_both_texture_resolutions_have_complete_catalogs(self):
         fixed_small = {"brick", "plaster", "hospital_tiles", "hospital_floor"}

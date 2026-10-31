@@ -98,7 +98,8 @@ class HospitalTests(unittest.TestCase):
         self.assertEqual(level.floor_hints[2], "Пациентское отделение")
         names = {obj.name for obj in level.objects}
         self.assertTrue({f"office_{i}" for i in range(6)} <= names)
-        self.assertTrue({"main_entrance_0", "side_entrance_0", "registration_0"} <= names)
+        self.assertTrue({"main_entrance_0", "side_entrance_0", "security_0", "security_hall_0"} <= names)
+        self.assertFalse({"registration_0", "corridor_stair_0", "stair_lounge_0"} & names)
         self.assertTrue({"f2_surgery_or_1", "f2_surgery_or_2", "f2_surgery_electrical"} <= names)
         self.assertTrue({f"f3_patient_room_{i}" for i in range(8)} <= names)
         self.assertFalse({f"f{floor}_main_entrance_0" for floor in (2, 3)} & names)
@@ -242,23 +243,27 @@ class HospitalTests(unittest.TestCase):
                                  objects=level.objects)
         body = make_body(world, (-0.5, 0, 12.2))
         walk(self, body, ((-5, 0, 10.5), (-9, 0, 10.5), (-12.95, 0, 8.6),
-                         (-12, 0, 8.5), (-12, 0, 6.5), (-19, 0, 6.5),
-                         (-19, 0, -0.9), (-18.5, 0, -0.9), (-18.5, 0, -4.5)))
+                         (-9, 0, 10.5), (3.5, 0, 10.5), (3.5, 0, -4.5)))
         for x in OFFICE_DOORS:
             walk(self, body, ((x, 0, -4.5), (x, 0, -8), (x, 0, -4.5)))
-        # Регистрация, проход в охрану и возвращение в главный холл.
-        walk(self, body, ((11, 0, -4.5), (11, 0, 0), (12, 0, 0), (12, 0, 4.3),
-                         (14.3, 0, 4.3), (14.3, 0, 5.3), (12, 0, 4.3), (12, 0, 0),
-                         (3.5, 0, 0), (3.5, 0, 10.5), (-0.5, 0, 10.5), (3.5, 0, 10.5),
-                         (3.5, 0, 2.2), (-1, 0, 2.2), (-1, 0, 4.5), (-1, 0, 2.2),
-                         (-1, 0, -4.5)))
+        # Reception's east staff entrance and both security doors match the plan.
+        walk(self, body, ((19.5, 0, -4.5), (19.5, 0, 2.7), (16.5, 0, 2.7),
+                         (11.5, 0, 2.7), (11.5, 0, 4.0), (11.5, 0, 2.7),
+                         (16.5, 0, 2.7), (19.5, 0, 2.7), (19.5, 0, 10.5),
+                         (3.5, 0, 10.5), (3.5, 0, -1), (-3, 0, -1),
+                         (-3, 0, 2.5), (-0.7, 0, 2.5), (-0.7, 0, 6.6),
+                         (-3, 0, 6.6), (-3, 0, 9.5), (3.5, 0, 9.5)))
         self.assertAlmostEqual(body.position.y, 0, places=4)
 
     def test_reported_corridor_partition_is_clear_on_every_floor(self):
         level = create_level("start")
         world = CollisionWorld3D((b.collider for b in level.boxes), level.floor_bounds,
                                  objects=level.objects)
-        for height in level.floor_heights:
+        # The ground floor now has reception's north wall at Z=0; its public
+        # routes run down the center and east, rather than through the counter.
+        body = make_body(world, (3.5, 0, -4.5))
+        walk(self, body, ((3.5, 0, 10.5), (19.5, 0, 10.5), (19.5, 0, -4.5)))
+        for height in level.floor_heights[1:]:
             body = make_body(world, (12, height, -3.5))
             walk(self, body, ((12, height, 0),))
             self.assertAlmostEqual(body.position.y, height, places=4)

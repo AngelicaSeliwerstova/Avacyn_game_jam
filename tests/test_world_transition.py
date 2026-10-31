@@ -29,7 +29,7 @@ class WorldTransitionTests(unittest.TestCase):
         self.assertNotIn("Пока туда нельзя", player.aim_text)
         self.assertEqual(create_level("start").invisible_barriers, ())
 
-    def test_shifted_stair_door_opens_into_clear_space_in_both_worlds(self):
+    def test_stair_lobby_connects_to_the_open_south_hall_in_both_worlds(self):
         for name in ("peaceful", "start"):
             scene = Campaign().load_level(name)
             for obj in scene.level.objects:
@@ -37,19 +37,28 @@ class WorldTransitionTests(unittest.TestCase):
                     obj.set_state("open")
                     obj.update(1)
             for height in scene.level.floor_heights:
-                scene.player.body = make_body(scene.player.body.world, (-18.5, height, -4.5))
-                walk(self, scene.player.body, ((-18.5, height, 0.5),))
+                scene.player.body = make_body(scene.player.body.world, (3.5, height, 10.5))
+                points = ((-8, height, 10.5), (-12.95, height, 8.6)) if height == 0 else (
+                    (-8, height, 10.5), (-8, height, 6.9), (-12.2, height, 6.9))
+                walk(self, scene.player.body, points)
                 self.assertAlmostEqual(scene.player.body.position.y, height, places=4)
 
-    def test_peaceful_world_copies_first_floor_rooms(self):
+    def test_worlds_share_all_three_floors_and_furniture_geometry(self):
         peaceful, hospital = create_level("peaceful"), create_level("start")
-        self.assertEqual(peaceful.floor_size, (43, 29))
+        self.assertEqual(peaceful.floor_size, (60, 48))
         self.assertEqual(hospital.floor_size, (60, 48))
-        self.assertEqual(peaceful.floor_heights, (0,))
+        self.assertEqual(peaceful.floor_heights, (0, 4.8, 9.6))
         self.assertEqual(hospital.floor_heights, (0, 4.8, 9.6))
-        first_floor = {o.name for o in hospital.objects if not o.name.startswith(("f2_", "f3_"))}
-        self.assertEqual(first_floor, {o.name for o in peaceful.objects})
-        self.assertEqual(peaceful.floor_material, "linoleum_blue_gray")
+        self.assertEqual({o.name for o in hospital.objects}, {o.name for o in peaceful.objects})
+        geometry = lambda boxes: tuple((b.position, b.size, b.yaw_degrees) for b in boxes)
+        self.assertEqual(geometry(hospital.boxes), geometry(peaceful.boxes))
+        # Creator edits are per-map overlays; compare the shared authored building.
+        self.assertEqual(geometry(b for b in hospital.decorations if b not in hospital.creator_objects),
+                         geometry(b for b in peaceful.decorations if b not in peaceful.creator_objects))
+        self.assertEqual(geometry(hospital.all_object_boxes), geometry(peaceful.all_object_boxes))
+        self.assertNotEqual(tuple(b.material for b in hospital.boxes),
+                            tuple(b.material for b in peaceful.boxes))
+        self.assertEqual(peaceful.floor_material, "terrazzo_gray")
         self.assertEqual(hospital.floor_material, "floor_tile_dirty")
         self.assertNotEqual(peaceful.camera_save_path, hospital.camera_save_path)
 

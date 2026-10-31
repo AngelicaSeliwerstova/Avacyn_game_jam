@@ -142,6 +142,28 @@ MATERIAL_TEXTURES = {
     "rust": ("metals/rust_{size}.png", 2.0),
 }
 
+# Dedicated hospital finishes: subtle painted surfaces, upholstery and textiles.
+MATERIAL_TEXTURES.update({
+    name: (f"surfaces/{name}_{{size}}.png", repeat)
+    for name, repeat in {
+        "paint_ivory": 2.0, "paint_sage": 2.0, "paint_mint": 2.0,
+        "enamel_white": 1.0, "ceramic_white": 0.8, "brushed_steel": 0.7,
+        "oak_veneer": 1.4, "vinyl_burgundy": 0.6, "vinyl_sage": 0.6,
+        "linen_ivory": 0.5, "blanket_sage": 0.5, "curtain_sage": 0.9,
+        "linoleum_sage": 3.5, "ceiling_clean": 1.2, "tile_mint_clean": 1.2,
+        "linen_worn": 0.5, "blanket_worn": 0.5, "curtain_worn": 0.9,
+        "tile_cream_clean": 1.2, "linoleum_blue_clean": 3.5,
+        "vinyl_burgundy_worn": 0.6, "vinyl_sage_worn": 0.6,
+    }.items()
+})
+# Four tiles across the wall images; keep ceramics close to a 30 cm tile.
+for _hospital_name in ("hospital_tile_cream", "hospital_tile_mint", "hospital_tile_ruined",
+                       "stair_diamond_burgundy", "stair_diamond_cold"):
+    MATERIAL_TEXTURES[_hospital_name] = (MATERIAL_TEXTURES[_hospital_name][0], 1.2)
+MATERIAL_TEXTURES["floor_tile_dirty"] = ("floors/floor_tile_dirty_{size}.png", 1.6)
+MATERIAL_TEXTURES["hospital_checker"] = ("floors/hospital_checker_{size}.png", 2.4)
+MATERIAL_TEXTURES["ceiling_acoustic_panels"] = ("ceilings/ceiling_acoustic_panels_{size}.png", 1.2)
+
 # Спокойный снег в открытых проходах. Размер и высота — в мировых единицах.
 SNOW_ENABLED = True
 SNOW_COUNT = 600

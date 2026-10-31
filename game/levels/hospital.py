@@ -11,10 +11,11 @@ from game.levels.hospital_props import HospitalProps
 from game.levels.hospital_storeys import assemble_storeys
 from game.levels.hospital_surgery import SURGERY_FLOOR_SIZE, build_surgical_floor
 from game.levels.hospital_patient import PATIENT_FLOOR_SIZE, build_patient_floor
+from game.levels.hospital_finishes import hospital_palette
 
 
 OFFICE_DOORS = (-17, -10, -3, 4, 11, 18)
-ROOM_NAMES = ("Кабинет врача", "Процедурная", "Смотровая", "Палата 01", "Склад", "Палата 02")
+ROOM_NAMES = ("Кабинет врача", "Процедурная", "Смотровая", "Склад", "Палата 01", "Палата 02")
 FLOOR_HEIGHT = 4.8
 FLOOR_COUNT = 3
 SLAB_THICKNESS = 0.24
@@ -23,7 +24,7 @@ SLAB_THICKNESS = 0.24
 def build_hospital(level: Level, peaceful: bool = False) -> Level:
     boxes, decorations, definitions, lights = [], [], [], []
     height = FLOOR_HEIGHT - SLAB_THICKNESS
-    floor_count = 1 if peaceful else FLOOR_COUNT
+    floor_count = FLOOR_COUNT
     stair = SpiralStair(height=FLOOR_HEIGHT, flights=max(1, floor_count - 1))
     base_lights = level.lighting.lights if level.lighting else ()
     props = HospitalProps()
@@ -52,9 +53,9 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
         size = (end - start, 0.15, 0.28)
         if axis == "z":
             center, size = (fixed, 0.075, center[0]), (0.28, 0.15, end - start)
-        box(center, size, "rust", (0.24, 0.27, 0.25))
+        box(center, size, "skirting")
 
-    def partition(axis, fixed, start, end, doors, prefix, names=()):
+    def partition(axis, fixed, start, end, doors, prefix, names=(), **door_options):
         cursor = start
         for index, center in enumerate(doors):
             wall(axis, fixed, cursor, center - 0.95)
@@ -63,6 +64,7 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
                                 "name": names[index] if names else prefix.replace("_", " ").title(),
                                 "width": 1.65, "height": 2.65, "opening_width": 1.9,
                                 "wall_height": height, "axis": axis, "open_seconds": 0.6})
+            definitions[-1].update(door_options)
             cursor = center + 0.95
         wall(axis, fixed, cursor, end)
 
@@ -82,12 +84,15 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
             box((x + side * (width / 2 - 0.27), 0.43, z), (0.4, 0.86, depth * 0.85), "plaster")
 
     def bed(x, z):
-        box((x, 0.45, z), (1.2, 0.22, 2.2), "rust", (0.48, 0.51, 0.47))
-        box((x, 0.66, z), (1.14, 0.2, 2.05), "plaster", (0.78, 0.77, 0.65))
-        box((x, 0.82, z - 0.7), (0.85, 0.12, 0.48), "plaster", (0.86, 0.84, 0.75))
-        for side in (-1, 1):
-            box((x + side * 0.5, 0.25, z), (0.07, 0.5, 1.85), "rust")
-        box((x, 0.72, z - 1.05), (1.2, 0.85, 0.06), "rust")
+        # Leave only the radiator's depth behind the headboard.
+        with props.against_wall("z", -13.88, gap=0.4, extra_boxes=boxes):
+            box((x, 0.45, z), (1.2, 0.22, 2.2), "medical_enamel")
+            box((x, 0.66, z), (1.14, 0.2, 2.05), "bed_linen")
+            box((x, 0.82, z - 0.7), (0.85, 0.12, 0.48), "bed_linen")
+            for side in (-1, 1):
+                box((x + side * 0.5, 0.25, z), (0.07, 0.5, 1.85), "rust")
+            box((x, 0.72, z - 1.05), (1.2, 0.85, 0.06), "medical_enamel")
+            props.bed_details(x, z, mattress_top=0.76)
 
     # Внешняя оболочка и шесть кабинетов вдоль северного фасада.
     wall("x", -14, -21, 21)
@@ -106,76 +111,121 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
     for x in (-14, -7, 0, 7, 14):
         wall("z", x, -14, -6)
     partition("x", -6, -21, 21, OFFICE_DOORS, "office", ROOM_NAMES)
-    partition("x", -2, -21, -5, (-18.5,), "corridor_stair")
-    # Справа коридор свободно соединяется с зоной ожидания, без торчащей перегородки.
-    # Центральная зона открыта из коридора до холла; служебные комнаты компактные.
-    partition("z", -5, -2, 14, (10.5,), "stair_lounge", ("Лестничный зал",))
-    partition("x", 3, -5, 2, (-1,), "security", ("Охрана",))
-    wall("x", 9, -5, 2)
-    wall("z", 2, 3, 9)
-    partition("x", 3, 9, 19, (12,), "registration", ("Регистрация",))
-    wall("x", 9, 9, 19)
-    wall("z", 9, 3, 9)
-    wall("z", 19, 3, 9)
+    # The reference has a solid north wall at the stair and an open south lobby.
+    wall("x", -2, -21, -6)
+    wall("z", -6, -2, 8)
+    # Security connects the corridor and the entrance hall through two doors.
+    partition("x", 0, -6, 0, (-3,), "security", ("Охрана — вход из коридора",), open_angle=-90)
+    partition("x", 8, -6, 0, (-3,), "security_hall", ("Охрана — вход из холла",))
+    wall("z", 0, 0, 8)
+    # Reception is a staffed counter open to the hall, rather than a closed office.
+    wall("x", 0, 5, 18)
+    wall("z", 5, 0, 3.5)
+    wall("z", 18, 0, 2)
 
-    # Отдельная гостиная под лестничным залом и несколько небольших зон ожидания.
-    props.sofa(-19.5, 11.5, 2.6, -90)
-    props.sofa(-6.8, 12.0, 2.1, 90)
-    props.sofa(-13, 12.8, 3.0)
-    props.table(-13, 11.2, 2.0)
-    props.plant(-12.6, 11.2, small=True, base=0.6)
-    props.sofa(6.6, 12.8, 2.6)
-    props.sofa(12.0, 12.8, 3.0)
-    props.sofa(19.7, 11.2, 2.6, 90)
-    props.sofa(15.8, 0.35, 3.0)
-    props.sofa(-7.7, -2.7, 2.6)
-    props.sofa(5.5, -1.65, 2.6)
-    props.table(11.7, 10.9, 1.8)
-    props.table(1.0, 0.9, 2.4, 0.95)
-    props.table(5.8, 6.3, 0.7, 1.25)
-    # Стойка регистрации — дерево, рабочие места, шкафы и боковое крыло.
-    desk(14, 7.3, 7.3, 1.0)
-    desk(17.4, 5.7, 0.8, 3.2)
-    for x in (11.5, 14.5, 16.6):
-        props.desk_details(x, 7.3)
-        props.chair(x, 8.25, 180)
-    props.cabinet(18.25, 4.4, 1.1)
-    props.plant(10.2, 4.15)
-    # Охрана со столом, стулом, монитором и шкафом для документов.
-    desk(-1.4, 7.1, 3.2)
-    props.desk_details(-1.4, 7.1)
-    props.chair(-1.4, 8.15, 180)
-    props.cabinet(-4.35, 5.1, 1.15)
+    # Four waiting benches and small tables line the south wall, as in the plan.
+    for x in (-16.8, -9.8, 9.4, 16.3):
+        with props.against_wall("z", 13.88, inward=-1):
+            props.sofa(x, 12.6, 3.0)
+    props.table(-13.3, 12.1, 0.75, 0.7)
+    props.table(12.8, 12.1, 0.75, 0.7)
+    with props.against_wall("z", -2.14, inward=-1):
+        props.sofa(-10, -2.9, 3.0)
+    # The east bench follows reception's north wall and faces the corridor.
+    with props.against_wall("z", -0.12, inward=-1):
+        props.sofa(13.2, -2.9, 3.0)
+    props.table(2.5, 6.5, 0.75, 0.75)
+    # U-shaped reception with chamfered corners and a staff entrance on the east.
+    for position, size, yaw in (
+        ((11.6, 0.9, 6.2), (9.6, 1.15, 0.6), 0),
+        ((6.1, 0.9, 5.35), (0.6, 1.15, 2.4), 35),
+        ((5.5, 0.9, 3.4), (0.6, 1.15, 2.2), 0),
+        ((17.1, 0.9, 5.35), (0.6, 1.15, 2.4), -35),
+        ((17.8, 0.9, 3.9), (0.6, 1.15, 0.9), 0),
+    ):
+        box(position, size, "wood", yaw=yaw)
+        box((position[0], 1.5, position[2]), (size[0] + 0.12, 0.12, size[2] + 0.12), "wood", yaw=yaw)
+    for x in (9.2, 13.6):
+        props.desk_details(x, 6.2, height=1.56)
+    props.chair(11.5, 4.8, 180)
+    with props.against_wall("z", 0.12):
+        props.cabinet(7.0, 0.8, 1.8, 1.7, yaw=180)
+        props.linen_shelf(11, 0.8, 2.0)
+        props.cabinet(16, 0.9, 1.4, 2.1, yaw=180)
+    props.table(8.1, 2.0, 1.2, 0.7, 0.8)
+    props.plant(6.3, 3.2)
+    props.sign(11.5, 0.16, "Регистрация — обращайтесь к стойке", yaw=180, width=1.8)
+    # Keep both security door swings free of the desk and filing cabinets.
+    desk(-3, 4.9, 3.2, 0.9)
+    props.desk_details(-3, 4.9)
+    props.chair(-3, 3.65)
+    with props.against_wall("z", 0.12):
+        props.cabinet(-0.9, 1.1, 1.2, 2.0, yaw=180)
+    with props.against_wall("x", -5.86):
+        props.cabinet(-5.3, 3.2, 1.6, 1.7, yaw=-90)
+    props.sign(-1.4, 0.16, "Охрана", yaw=180)
+    props.sign(-1.4, 8.16, "Охрана", yaw=180)
 
-    for x, z in ((-20, -2.7), (-15, -2.65), (-6.0, 1), (7.8, -1.65),
-                 (19.8, -1.7), (-19.5, 8.7), (-6.5, 13.0), (3, 12.7),
-                 (8.3, 10.7), (17.2, 12.9), (19.9, 8.4)):
+    for x, z in ((-19.2, -2.9), (-5.0, -2.8), (7.5, -2.8), (20.45, -1.7),
+                 (-19.5, 10.4), (-6.0, 12.6), (6.0, 12.6), (20.45, 8.4)):
         props.plant(x, z)
 
     for i, x in enumerate(OFFICE_DOORS):
         # Светлая плитка и разная обстановка отличают кабинеты друг от друга.
         props.part(x, -10, (0, 0.006, 0), (6.65, 0.012, 7.65),
-                   "hospital_floor" if i in (0, 3, 5) else "hospital_tiles", detail=True)
-        if i in (1, 2, 3, 5):
-            bed(x - 1.45, -10.6)
-            if i in (3, 5):
-                bed(x + 1.45, -10.6)
-                props.table(x, -12.6, 0.75, 0.6, 0.72)
+                   "ward_floor" if i in (4, 5) else "office_floor" if i == 0
+                   else "storage_floor" if i == 3 else "clinical_floor", detail=True)
+        if i in (4, 5):
+            for side in (-1, 1):
+                bed(x + side * 1.45, -10.6)
+                props.cabinet(x + side * 2.45, -12.4, 0.45, 0.65)
+            props.privacy_screen(x, -12.0, yaw=90, width=2.2)
+            props.table(x + 2.55, -6.55, 0.45, 0.45, 0.72)
         if i == 0:
-            desk(x - 1.6, -10.6, 2.2)
-            props.desk_details(x - 1.6, -10.6)
-            props.chair(x - 1.6, -9.35)
-            props.chair(x + 0.2, -9.8, -90)
-            props.cabinet(x + 1.9, -12.7, 1.2, medical=False)
-            props.plant(x + 1.9, -8.0)
-        if i in (1, 2):
-            desk(x + 1.5, -12.0, 2.0)
-            props.cart(x + 1.8, -9.8)
-            props.cabinet(x + 1.8, -7.4, 1.2)
-        if i == 4:
-            for offset in (-1.9, 0, 1.9):
-                props.cabinet(x + offset, -12.7, 1.6, 2.3)
-            props.cart(x + 1.8, -9)
+            with props.against_wall("z", -13.88, extra_boxes=boxes):
+                desk(-19, -10.6, 2.2)
+                with props.rotated_group(-19, -10.6, 180):
+                    props.desk_details(-19, -10.6)
+            props.chair(-19, -12.0, 180)
+            props.chair(-17.4, -12.0, 180)
+            with props.against_wall("z", -13.88):
+                props.cabinet(-14.8, -12.7, 1.2, yaw=180, medical=False)
+            props.plant(-14.7, -6.8)
+        if i == 1:
+            bed(x, -10.6)
+            props.privacy_screen(x + 1.9, -12.0, yaw=90)
+            with props.against_wall("x", -13.86):
+                props.cart(x - 2.0, -11.5)
+            with props.against_wall("z", -13.88):
+                props.sink(x + 1.8, -12.8, yaw=180)
+            with props.against_wall("z", -6.14, inward=-1):
+                props.cabinet(x + 2.2, -7.4, 1.2)
+            props.iv_stand(x - 1.05, -12.2)
+            # Adjustable examination lamp, with its shade over the couch.
+            props.part(x, -12.38, (-1.5, 0.06, -0.3), (0.65, 0.08, 0.5), "rust")
+            props.part(x, -12.38, (-1.5, 1.2, -0.3), (0.06, 2.3, 0.06), "rust")
+            props.part(x, -12.38, (-0.8, 2.3, -0.3), (1.4, 0.055, 0.055), "rust", detail=True)
+            props.part(x, -12.38, (-0.1, 2.25, -0.3), (0.6, 0.1, 0.55), "rust", detail=True)
+        if i == 2:
+            bed(x - 1.0, -10.6)
+            props.privacy_screen(x - 2.4, -12.0, yaw=90)
+            with props.against_wall("z", -13.88, extra_boxes=boxes):
+                desk(x + 1.4, -11.9, 1.8)
+                with props.rotated_group(x + 1.4, -11.9, 180):
+                    props.desk_details(x + 1.4, -11.9)
+            props.chair(x + 1.4, -12.0, 180)
+            with props.against_wall("z", -6.14, inward=-1):
+                props.cabinet(x + 1.9, -8.0, 1.1)
+            with props.against_wall("x", -0.14, inward=-1):
+                props.cart(x - 0.9, -10.0)
+        if i == 3:
+            with props.against_wall("z", -13.88):
+                props.linen_shelf(x - 1.6, -12.7, 2.7)
+                props.cabinet(x + 1.9, -12.5, 1.2, 2.3, yaw=180)
+            props.cart(x + 1.8, -8.0)
+            for y in (0.38, 1.12):
+                props.part(6.4, -6.6, (0, y, 0), (0.75, 0.72, 0.75),
+                           "wood", (0.37, 0.31, 0.2))
         props.radiator(x, -13.65)
         plaque = Box((x + 1.35, 1.7, -5.84), (0.75, 0.28, 0.035), material="rust",
                      color=(0.27, 0.36, 0.31),
@@ -184,7 +234,7 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
         lamp(x, -10)
     for x in (-17, -9, -1, 7, 16):
         lamp(x, -3.5)
-    for x, z in ((-15, 11.5), (-5, 11.5), (5, 11.5), (15, 11.5), (-1, 4), (11, 5)):
+    for x, z in ((-15, 11.5), (-5, 11.5), (5, 11.5), (15, 11.5), (-3, 4), (11, 3)):
         lamp(x, z, warm=z > 9)
     # Свет под галереей освещает ступени, не перекрываясь её плитой.
     lamp(-8.2, 6.7, y=4.15, warm=True)
@@ -197,20 +247,14 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
             box((-20.81, 2.6, z + offset), (0.08, 2.8, 0.07), "rust", (0.2, 0.24, 0.22))
         for y in (1.25, 2.2, 3.05, 3.95):
             box((-20.81, y, z), (0.08, 0.07, 1.85), "rust", (0.2, 0.24, 0.22))
-    palette = ({"hospital_tiles": "hospital_tile_cream", "hospital_floor": "linoleum_blue_gray",
-                "plaster": "wallpaper_aged", "concrete": "concrete_cracked",
-                "rust": "metal_scratched_dark", "wood": "door_aged_wood"} if peaceful else
-               {"hospital_tiles": "hospital_tile_ruined", "hospital_floor": "floor_tile_dirty",
-                "plaster": "plaster_water_damage", "concrete": "concrete_cracked",
-                "rust": "rust_iron_heavy", "wood": "wood_rotten"})
+    palette = hospital_palette(peaceful)
     for definition in definitions:
         if not definition.get("elevator"):
-            definition["panel_material"] = "door_painted_teal" if peaceful else "door_aged_wood"
-            definition["frame_material"] = "hospital_tile_cream" if peaceful else "concrete_cracked"
-        if peaceful:
-            definition["panel_color"] = (0.34, 0.52, 0.48)
+            definition["panel_material"] = "door_panel"
+            definition["frame_material"] = "wall_tile_frame"
+            definition["handle_material"] = "brushed_metal"
     if peaceful:
-        # В мирном мире доступны только помещения первого этажа.
+        # The building is shared; story access to the upper floors stays gated.
         angle = 30
         radius = (stair.inner_radius + stair.outer_radius) / 2
         gate = Box(stair.point(angle, radius, 1.25),
@@ -221,12 +265,12 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
         # Верх обычных стен окрашен ровно, без трещин и облупившейся штукатурки.
         boxes = [replace(box, color=(0.82, 0.81, 0.74))
                  if box.material == "plaster" and box.size[1] > 1.2 else box for box in boxes]
-    surgical_floor = build_surgical_floor() if not peaceful else None
-    patient_floor = build_patient_floor() if not peaceful else None
+    surgical_floor = build_surgical_floor(peaceful=peaceful)
+    patient_floor = build_patient_floor(peaceful=peaceful)
     result = assemble_storeys(level, tuple(boxes) + tuple(props.boxes),
                             tuple(decorations) + tuple(props.decorations), definitions, lights,
                             stair, count=floor_count, material_map=palette,
-                            ceiling_material="ceiling_acoustic_panels" if peaceful else "concrete",
+                            ceiling_material="ceiling_acoustic_panels" if peaceful else "ceiling_mold",
                             surgical_floor=surgical_floor, patient_floor=patient_floor)
     if surgical_floor is not None:
         result = replace(

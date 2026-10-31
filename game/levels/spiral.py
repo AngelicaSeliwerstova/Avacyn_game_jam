@@ -75,7 +75,7 @@ class SpiralStair:
                 cap_height = top + (next_top - top) * fraction + 0.99
                 cap_depth = 2 * (radius + 0.13) * math.tan(math.radians(delta / 4)) + 0.035
                 boxes.append(Box(self.point(cap_angle, radius, cap_height), (0.26, 0.16, cap_depth),
-                                 material="rust", yaw_degrees=-cap_angle, color=(0.25, 0.24, 0.22)))
+                                 material="rail_metal", yaw_degrees=-cap_angle))
 
         for step in range(self.steps * self.flights):
             angle = 90 - (step + 0.5) * delta
@@ -88,12 +88,12 @@ class SpiralStair:
                                  (strip_width + 0.012, 0.22, depth),
                                  material="concrete", yaw_degrees=-angle))
             # Сплошной внутренний парапет подчёркивает открытый лестничный колодец.
-            parapet(step, self.inner_radius - 0.09, "plaster")
+            parapet(step, self.inner_radius - 0.09, "stair_wall")
             # Нижний вход оставляем свободным с внешней стороны первых ступеней.
             remaining = self.steps - 1 - step % self.steps
             merge_height = remaining * self.height / (self.steps - self.landing_steps)
             if step % self.steps >= self.landing_steps and merge_height > self.gallery_drop:
-                parapet(step, self.outer_radius + 0.025, "plaster")
+                parapet(step, self.outer_radius + 0.025, "stair_wall")
         # Верхний выход идёт по касательной вправо; под ним свободно начало марша.
         cx, cz = self.center
         for flight in range(1, self.flights + 1):
@@ -105,8 +105,7 @@ class SpiralStair:
         end = cx + math.sqrt(self.gallery_radius ** 2 - (self.inner_radius - 0.09) ** 2)
         z = cz + self.inner_radius - 0.09
         boxes.append(Box(((start + end) / 2, self.total_height + 0.53, z),
-                         (end - start, 1.1, 0.2), material="plaster"))
+                         (end - start, 1.1, 0.2), material="stair_wall"))
         boxes.append(Box(((start + end) / 2, self.total_height + 0.99, z),
-                         (end - start + 0.08, 0.16, 0.26), material="rust",
-                         color=(0.25, 0.24, 0.22)))
+                         (end - start + 0.08, 0.16, 0.26), material="rail_metal"))
         return tuple(boxes)

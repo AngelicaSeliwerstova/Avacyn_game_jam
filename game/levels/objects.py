@@ -139,7 +139,7 @@ def _door(data, position):
                  data.get("panel_material", "rust")),)
     # Ручки с обеих сторон видны независимо от стороны подхода.
     panel += tuple(box(width * 0.3, 1.05, sign * (thickness / 2 + 0.04),
-                       0.22, 0.055, 0.08, "wood") for sign in (-1, 1))
+                       0.22, 0.055, 0.08, data.get("handle_material", "wood")) for sign in (-1, 1))
     panel = tuple(replace(b, local_texture=True,
                           color=tuple(data["panel_color"]) if i == 0 and "panel_color" in data else b.color)
                   for i, b in enumerate(panel))
