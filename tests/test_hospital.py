@@ -39,10 +39,12 @@ class HospitalTests(unittest.TestCase):
     def test_plan_has_six_offices_and_correct_scale(self):
         level = create_level("start")
         self.assertEqual(level.floor_size, (43, 29))
-        self.assertEqual(level.floor_heights, (0, 4.8))
+        self.assertEqual(level.floor_heights, (0, 4.8, 9.6))
         names = {obj.name for obj in level.objects}
         self.assertTrue({f"office_{i}" for i in range(6)} <= names)
         self.assertTrue({"main_entrance_0", "side_entrance_0", "registration_0"} <= names)
+        self.assertTrue({f"f{floor}_office_{i}" for floor in (2, 3) for i in range(6)} <= names)
+        self.assertFalse({f"f{floor}_main_entrance_0" for floor in (2, 3)} & names)
 
     def test_hospital_doors_open_without_keys(self):
         scene = Campaign().load_level("start")
@@ -64,7 +66,7 @@ class HospitalTests(unittest.TestCase):
             player._creator_pitch = math.radians(80)
             player.update(0, InputState(add_creator_light=True))
             self.assertEqual(len(player.creator_lights), 1)
-            self.assertAlmostEqual(player.creator_lights[0].position[1], 9.36, places=4)
+            self.assertAlmostEqual(player.creator_lights[0].position[1], 9.12, places=4)
 
     def test_spiral_ascends_and_descends_in_complete_hospital(self):
         level = create_level("start")
@@ -76,9 +78,9 @@ class HospitalTests(unittest.TestCase):
                 body = make_body(world, (-12.95, 0, 8.6))
                 radius = (stair.inner_radius + stair.outer_radius) / 2
                 points = (stair.point(89, radius), *stair.walking_path(),
-                          (-12.2, 4.8, 6.9), (-7.0, 4.8, 6.9))
+                          (-12.2, 9.6, 6.9), (-7.0, 9.6, 6.9))
                 walk(self, body, points, fps)
-                self.assertAlmostEqual(body.position.y, stair.height, places=4)
+                self.assertAlmostEqual(body.position.y, stair.total_height, places=4)
                 self.assertTrue(body.grounded)
                 walk(self, body, (*reversed(points[:-1]), (-12.95, 0, 8.6)), fps)
                 self.assertAlmostEqual(body.position.y, 0.0, places=4)
@@ -95,16 +97,50 @@ class HospitalTests(unittest.TestCase):
         body = make_body(world, (-0.5, 0, 12.2))
         walk(self, body, ((-5, 0, 10.5), (-9, 0, 10.5), (-12.95, 0, 8.6),
                          (-12, 0, 8.5), (-12, 0, 6.5), (-19, 0, 6.5),
-                         (-19, 0, 0), (-13, 0, 0), (-13, 0, -3.5)))
+                         (-19, 0, -0.9), (-13, 0, -0.9), (-13, 0, -4.5)))
         for x in OFFICE_DOORS:
-            walk(self, body, ((x, 0, -3.5), (x, 0, -8), (x, 0, -3.5)))
+            walk(self, body, ((x, 0, -4.5), (x, 0, -8), (x, 0, -4.5)))
         # Регистрация, проход в охрану и возвращение в главный холл.
-        walk(self, body, ((11, 0, -3.5), (11, 0, 0), (12, 0, 0), (12, 0, 4.3),
+        walk(self, body, ((11, 0, -4.5), (11, 0, 0), (12, 0, 0), (12, 0, 4.3),
                          (14.3, 0, 4.3), (14.3, 0, 5.3), (12, 0, 4.3), (12, 0, 0),
                          (3.5, 0, 0), (3.5, 0, 10.5), (-0.5, 0, 10.5), (3.5, 0, 10.5),
                          (3.5, 0, 2.2), (-1, 0, 2.2), (-1, 0, 4.5), (-1, 0, 2.2),
-                         (-1, 0, -3.5)))
+                         (-1, 0, -4.5)))
         self.assertAlmostEqual(body.position.y, 0, places=4)
+
+    def test_reported_corridor_partition_is_clear_on_every_floor(self):
+        level = create_level("start")
+        world = CollisionWorld3D((b.collider for b in level.boxes), level.floor_bounds,
+                                 objects=level.objects)
+        for height in level.floor_heights:
+            body = make_body(world, (12, height, -3.5))
+            walk(self, body, ((12, height, 0),))
+            self.assertAlmostEqual(body.position.y, height, places=4)
+
+    def test_stair_landings_connect_to_second_and_third_floor_rooms(self):
+        level = create_level("start")
+        for obj in level.objects:
+            if "open" in obj.states:
+                obj.set_state("open")
+                obj.update(1)
+        world = CollisionWorld3D((b.collider for b in level.boxes), level.floor_bounds,
+                                 objects=level.objects)
+        stair = SpiralStair()
+        body = make_body(world, (-12.95, 0, 8.6))
+        path = stair.walking_path()
+        radius = (stair.inner_radius + stair.outer_radius) / 2
+        walk(self, body, (stair.point(89, radius),))
+        for flight in range(stair.flights):
+            walk(self, body, path[flight * stair.steps:(flight + 1) * stair.steps])
+            height = (flight + 1) * stair.height
+            walk(self, body, ((-12.2, height, 6.9), (-8, height, 6.9), (-8, height, 10.5),
+                             (-3, height, 10.5), (3.5, height, 10.5), (3.5, height, -4.5),
+                             (4, height, -4.5), (4, height, -8), (4, height, -4.5)))
+            self.assertAlmostEqual(body.position.y, height, places=4)
+            self.assertTrue(body.grounded)
+            if flight + 1 < stair.flights:
+                walk(self, body, ((3.5, height, -4.5), (3.5, height, 10.5), (-3, height, 10.5),
+                                 (-8, height, 10.5), (-8, height, 6.9), (-12.2, height, 6.9)))
 
     def test_invalid_stair_dimensions_are_rejected(self):
         for values in ({"steps": 0}, {"inner_radius": -1}, {"height": float("nan")},

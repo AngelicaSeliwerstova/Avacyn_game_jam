@@ -1,5 +1,5 @@
 {
-  "layout": "hospital_first_floor",
+  "layout": "hospital",
   "floor_size": [43.0, 29.0],
   "floor_material": "hospital_floor",
   "room_height": 4.8,

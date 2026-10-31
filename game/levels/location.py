@@ -69,7 +69,7 @@ def load_location(path: Path) -> Level:
         fixed_cameras_authored=cameras is not None,
         camera_save_path=cameras_path,
     )
-    if data.get("layout") == "hospital_first_floor":
+    if data.get("layout") in ("hospital", "hospital_first_floor"):
         from game.levels.hospital import build_hospital
         level = build_hospital(level)
     elif data.get("layout") is not None:
