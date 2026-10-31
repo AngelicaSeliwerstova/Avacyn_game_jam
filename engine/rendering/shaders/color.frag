@@ -5,6 +5,8 @@ in vec2 texture_uv;
 in float surface_shade;
 in vec3 world_point;
 in vec3 world_normal;
+flat in vec4 object_instance_color;
+flat in vec3 object_instance_emission;
 
 uniform sampler2D surface_texture;
 uniform bool textured;
@@ -29,6 +31,7 @@ uniform vec3 light_grid_origin;
 uniform ivec3 light_grid_shape;
 uniform float light_grid_cell_size;
 uniform bool depth_only;
+uniform bool use_instancing;
 uniform bool fog_enabled;
 uniform vec3 fog_color;
 uniform float fog_start;
@@ -123,7 +126,9 @@ void main() {
     } else if (!textured) {
         albedo = vertex_color;
     }
-    if (object_color_enabled) albedo = object_color;
+    if (use_instancing ? object_instance_color.a > 0.5 : object_color_enabled) {
+        albedo = use_instancing ? object_instance_color.rgb : object_color;
+    }
     vec3 color = albedo;
     if (textured) {
         if (!lighting_enabled) color *= surface_shade;
@@ -159,6 +164,7 @@ void main() {
         color *= illumination;
     }
     if (dynamic_light_count > 0) color += albedo * dynamic_illumination(normalize(world_normal));
-    fragment_color = vec4(mix(color + emission, fog_color, fog),
+    vec3 object_emission = use_instancing ? object_instance_emission : emission;
+    fragment_color = vec4(mix(color + object_emission, fog_color, fog),
                           material_alpha_mode == 2 ? alpha : 1.0);
 }

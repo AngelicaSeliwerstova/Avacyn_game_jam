@@ -12,6 +12,7 @@ from engine.core.application import Application
 from engine.debug.panel import DebugSettings, DeveloperPanel
 from engine.debug.profiler import FrameProfiler
 from engine.debug.frame_log import SlowFrameLog
+from engine.rendering.renderer import _group_render_objects
 from engine.input.state import InputState
 from engine.scene.box import Box
 from engine.scene.level import Level
@@ -20,6 +21,22 @@ from game.entities.player_state import MovementState
 
 
 class DebugTests(unittest.TestCase):
+    def test_render_objects_are_batched_by_material_without_dropping_instances(self):
+        boxes = (
+            Box((0, 0, 0), (1, 1, 1), material="wood"),
+            Box((1, 0, 0), (1, 1, 1), material="rust"),
+            Box((2, 0, 0), (1, 1, 1), material="wood"),
+            Box((3, 0, 0), (1, 1, 1), material="wood", local_texture=True),
+        )
+        items = tuple((box, b"", (0, 0, 0)) for box in boxes)
+
+        groups = _group_render_objects(items)
+
+        self.assertEqual([key for key, _ in groups],
+                         [("wood", False), ("rust", False), ("wood", False), ("wood", True)])
+        self.assertEqual(sum(len(batch) for _, batch in groups), len(items))
+        self.assertEqual(tuple(item for _, batch in groups for item in batch), items)
+
     def test_fps_is_frames_over_elapsed_time_including_frame_pacing(self):
         profiler = FrameProfiler(0.04)
         self.assertFalse(profiler.record(0.01, 0.002, 0.004))

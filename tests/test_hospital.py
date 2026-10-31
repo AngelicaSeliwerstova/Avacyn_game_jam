@@ -11,6 +11,7 @@ from engine.physics.character import CharacterBody
 from engine.input.state import InputState
 from game.campaign import Campaign
 from game.entities.player import create_player
+from game.interactions import InteractionController
 from game.levels import create_level
 from game.levels.hospital import OFFICE_DOORS
 from game.levels.spiral import SpiralStair
@@ -90,13 +91,85 @@ class HospitalTests(unittest.TestCase):
 
     def test_plan_has_six_offices_and_correct_scale(self):
         level = create_level("start")
-        self.assertEqual(level.floor_size, (43, 29))
+        self.assertEqual(level.floor_size, (60, 48))
         self.assertEqual(level.floor_heights, (0, 4.8, 9.6))
+        self.assertEqual(level.floor_labels, ("1", "2 — хирургия", "3 — пациентское отделение"))
+        self.assertEqual(level.floor_hints[1], "Хирургическое отделение")
+        self.assertEqual(level.floor_hints[2], "Пациентское отделение")
         names = {obj.name for obj in level.objects}
         self.assertTrue({f"office_{i}" for i in range(6)} <= names)
         self.assertTrue({"main_entrance_0", "side_entrance_0", "registration_0"} <= names)
-        self.assertTrue({f"f{floor}_office_{i}" for floor in (2, 3) for i in range(6)} <= names)
+        self.assertTrue({"f2_surgery_or_1", "f2_surgery_or_2", "f2_surgery_electrical"} <= names)
+        self.assertTrue({f"f3_patient_room_{i}" for i in range(8)} <= names)
         self.assertFalse({f"f{floor}_main_entrance_0" for floor in (2, 3)} & names)
+
+    def test_surgical_wing_fills_expanded_floor_and_has_no_puzzle_locks(self):
+        level = create_level("start")
+        names = {obj.name for obj in level.objects}
+        expected_rooms = {
+            "f2_surgery_xray", "f2_surgery_preop", "f2_surgery_or_1",
+            "f2_surgery_surgeon", "f2_surgery_sterilization", "f2_surgery_or_2",
+            "f2_surgery_pharmacy", "f2_surgery_nurses", "f2_surgery_recovery",
+            "f2_surgery_staff", "f2_surgery_electrical",
+        }
+        self.assertTrue(expected_rooms <= names)
+        operating_rooms = {obj.name: obj for obj in level.objects if obj.name in (
+            "f2_surgery_or_1", "f2_surgery_or_2",
+        )}
+        self.assertEqual(set(operating_rooms), {"f2_surgery_or_1", "f2_surgery_or_2"})
+        surgery_doors = [obj.name for obj in level.objects if obj.name.startswith("f2_surgery_")]
+        self.assertEqual(len(surgery_doors), len(set(surgery_doors)))
+        self.assertEqual(sum(box.size == (1.18, 0.2, 2.15) and 4.8 < box.position[1] < 9.6
+                             for box in level.boxes), 6)
+        self.assertEqual(sum(box.size == (1.18, 0.2, 2.15) and box.position[1] > 9.6
+                             for box in level.boxes), 18)
+        self.assertTrue(all(obj.interaction.command == "open_door" for obj in operating_rooms.values()))
+        world = CollisionWorld3D((box.collider for box in level.boxes), level.floor_bounds)
+        self.assertAlmostEqual(world.support_height(glm.vec3(27, 4.8, 20), 0.1, 4.8), 4.8)
+        self.assertTrue(any(abs(point[1] - 4.8) < 0.01 and math.dist(point, (24, 4.8, 18)) < 1.6
+                            for point in level.navigation.points))
+        for angle in range(0, 360, 15):
+            point = glm.vec3(SpiralStair().point(angle, 4.5, 4.8))
+            self.assertAlmostEqual(world.support_height(point, 0.01, 4.8), 4.8, places=4)
+        roof = [box for box in level.boxes if abs(box.collider.top - 14.4) < 1e-5
+                and box.footprint.intersects_circle(27, 21, 0.01)]
+        self.assertTrue(roof)
+        upper_floor = [box for box in level.boxes if abs(box.collider.top - 9.6) < 1e-5
+                       and box.footprint.intersects_circle(27, 21, 0.01)]
+        self.assertTrue(upper_floor)
+
+    def test_surgical_floor_is_enclosed_by_walls_on_all_sides(self):
+        level = create_level("start")
+        world = CollisionWorld3D((box.collider for box in level.boxes), level.floor_bounds)
+        for point in ((0, 4.8, -24), (0, 4.8, 24), (-30, 4.8, 0), (30, 4.8, 0)):
+            with self.subTest(point=point):
+                self.assertTrue(world.is_blocked(glm.vec3(point), 0.25, 1.8))
+
+    def test_patient_floor_has_eight_open_rooms_and_supported_wings(self):
+        level = create_level("start")
+        patient_rooms = [obj for obj in level.objects
+                         if obj.name.startswith("f3_patient_room_") and not obj.name.endswith("_frame")]
+        self.assertEqual(len(patient_rooms), 8)
+        self.assertTrue(all(obj.interaction.command == "open_door" for obj in patient_rooms))
+        names = {obj.name for obj in level.objects}
+        self.assertTrue({
+            "f3_patient_nurse_room", "f3_patient_nurse_inner",
+            "f3_patient_east_entry", "f3_patient_south_west",
+            "f3_patient_south_center", "f3_patient_south_east",
+        } <= names)
+        world = CollisionWorld3D((box.collider for box in level.boxes), level.floor_bounds)
+        for point in ((-25, 9.6, -17), (24, 9.6, -17), (24, 9.6, 18)):
+            self.assertAlmostEqual(world.support_height(glm.vec3(point), 0.1, 9.6), 9.6)
+        roof = [box for box in level.boxes if abs(box.collider.top - 14.4) < 1e-5
+                and box.footprint.intersects_circle(27, 21, 0.01)]
+        self.assertTrue(roof)
+
+    def test_patient_floor_is_enclosed_by_walls_on_all_sides(self):
+        level = create_level("start")
+        world = CollisionWorld3D((box.collider for box in level.boxes), level.floor_bounds)
+        for point in ((0, 9.6, -24), (0, 9.6, 24), (-30, 9.6, 0), (30, 9.6, 0)):
+            with self.subTest(point=point):
+                self.assertTrue(world.is_blocked(glm.vec3(point), 0.25, 1.8))
 
     def test_hospital_doors_open_without_keys(self):
         scene = Campaign().load_level("start")
@@ -105,6 +178,27 @@ class HospitalTests(unittest.TestCase):
         scene.player._interactions._activate(door)
         door.update(1)
         self.assertEqual(door.current_state, door.states["open"])
+
+    def test_exterior_doors_are_closed_elevators_with_a_warning(self):
+        for level_name in ("start", "peaceful"):
+            with self.subTest(level=level_name):
+                level = create_level(level_name)
+                doors = {obj.name: obj for obj in level.objects
+                         if obj.name in ("main_entrance_0", "side_entrance_0")}
+                self.assertEqual(set(doors), {"main_entrance_0", "side_entrance_0"})
+                for door in doors.values():
+                    self.assertEqual(tuple(door.states), ("default",))
+                    self.assertEqual(door.interaction.action, "Не пользоваться")
+                    self.assertEqual(door.interaction.message, "Лифтом лучше не пользоваться.")
+                    self.assertEqual({box.material for box in door.boxes}, {"metal_scratched_dark"})
+                    interactions = InteractionController((), 3, 2, "E", objects=(door,))
+                    self.assertEqual(interactions._activate(door), "Лифтом лучше не пользоваться.")
+                    self.assertEqual(door.state_name, "default")
+                frames = {obj.name: obj for obj in level.objects
+                          if obj.name in ("main_entrance_0_frame", "side_entrance_0_frame")}
+                self.assertEqual(len(frames), 2)
+                self.assertTrue(all(any(box.emission == (0.8, 0.04, 0.02) for box in frame.boxes)
+                                    for frame in frames.values()))
 
     def test_creator_can_place_lamp_on_upper_gallery_ceiling(self):
         level = create_level("start")
@@ -185,14 +279,24 @@ class HospitalTests(unittest.TestCase):
         for flight in range(stair.flights):
             walk(self, body, path[flight * stair.steps:(flight + 1) * stair.steps])
             height = (flight + 1) * stair.height
-            walk(self, body, ((-12.2, height, 6.9), (-8, height, 6.9), (-8, height, 10.5),
-                             (-3, height, 10.5), (3.5, height, 10.5), (3.5, height, -4.5),
-                             (4, height, -4.5), (4, height, -8), (4, height, -4.5)))
+            if flight == 0:
+                walk(self, body, ((-12.2, height, 6.9), (-8, height, 6.9), (-8, height, 10.5),
+                                 (-3, height, 10.5), (3.5, height, 10.5), (10, height, 10.5),
+                                 (10, height, 1), (20, height, 1)))
+            else:
+                walk(self, body, ((-12.2, height, 6.9), (-8, height, 6.9), (-8, height, 10.5),
+                                 (-3, height, 10.5), (3.5, height, 10.5), (3.5, height, -4.5),
+                                 (4, height, -4.5), (4, height, -8), (4, height, -4.5)))
             self.assertAlmostEqual(body.position.y, height, places=4)
             self.assertTrue(body.grounded)
             if flight + 1 < stair.flights:
-                walk(self, body, ((3.5, height, -4.5), (3.5, height, 10.5), (-3, height, 10.5),
-                                 (-8, height, 10.5), (-8, height, 6.9), (-12.2, height, 6.9)))
+                if flight == 0:
+                    walk(self, body, ((20, height, 1), (10, height, 1), (10, height, 10.5),
+                                     (3.5, height, 10.5), (-3, height, 10.5),
+                                     (-8, height, 10.5), (-8, height, 6.9), (-12.2, height, 6.9)))
+                else:
+                    walk(self, body, ((3.5, height, -4.5), (3.5, height, 10.5), (-3, height, 10.5),
+                                     (-8, height, 10.5), (-8, height, 6.9), (-12.2, height, 6.9)))
 
     def test_invalid_stair_dimensions_are_rejected(self):
         for values in ({"steps": 0}, {"inner_radius": -1}, {"height": float("nan")},

@@ -1,4 +1,4 @@
-"""Трёхэтажная больница 43 × 29 м с непрерывной винтовой лестницей."""
+"""Трёхэтажная больница с хирургическим вторым этажом 60 × 48 м."""
 
 from dataclasses import replace
 
@@ -9,6 +9,8 @@ from engine.scene.lighting import PointLight
 from game.levels.spiral import SpiralStair
 from game.levels.hospital_props import HospitalProps
 from game.levels.hospital_storeys import assemble_storeys
+from game.levels.hospital_surgery import SURGERY_FLOOR_SIZE, build_surgical_floor
+from game.levels.hospital_patient import PATIENT_FLOOR_SIZE, build_patient_floor
 
 
 OFFICE_DOORS = (-17, -10, -3, 4, 11, 18)
@@ -94,6 +96,13 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
     wall("z", -21, 9, 14)
     partition("z", 21, -14, 14, (-3.5,), "side_entrance")
     partition("x", 14, -21, 21, (-0.5,), "main_entrance")
+    for definition in definitions:
+        if definition["id"] in ("side_entrance_0", "main_entrance_0"):
+            definition.update(
+                elevator=True,
+                name="Лифт",
+                warning="Лифтом лучше не пользоваться.",
+            )
     for x in (-14, -7, 0, 7, 14):
         wall("z", x, -14, -6)
     partition("x", -6, -21, 21, OFFICE_DOORS, "office", ROOM_NAMES)
@@ -195,8 +204,9 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
                 "plaster": "plaster_water_damage", "concrete": "concrete_cracked",
                 "rust": "rust_iron_heavy", "wood": "wood_rotten"})
     for definition in definitions:
-        definition["panel_material"] = "door_painted_teal" if peaceful else "door_aged_wood"
-        definition["frame_material"] = "hospital_tile_cream" if peaceful else "concrete_cracked"
+        if not definition.get("elevator"):
+            definition["panel_material"] = "door_painted_teal" if peaceful else "door_aged_wood"
+            definition["frame_material"] = "hospital_tile_cream" if peaceful else "concrete_cracked"
         if peaceful:
             definition["panel_color"] = (0.34, 0.52, 0.48)
     if peaceful:
@@ -211,11 +221,34 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
         # Верх обычных стен окрашен ровно, без трещин и облупившейся штукатурки.
         boxes = [replace(box, color=(0.82, 0.81, 0.74))
                  if box.material == "plaster" and box.size[1] > 1.2 else box for box in boxes]
+    surgical_floor = build_surgical_floor() if not peaceful else None
+    patient_floor = build_patient_floor() if not peaceful else None
     result = assemble_storeys(level, tuple(boxes) + tuple(props.boxes),
                             tuple(decorations) + tuple(props.decorations), definitions, lights,
                             stair, count=floor_count, material_map=palette,
-                            ceiling_material="ceiling_acoustic_panels" if peaceful else "concrete")
+                            ceiling_material="ceiling_acoustic_panels" if peaceful else "concrete",
+                            surgical_floor=surgical_floor, patient_floor=patient_floor)
+    if surgical_floor is not None:
+        result = replace(
+            result,
+            floor_size=PATIENT_FLOOR_SIZE,
+            floor_labels=("1", "2 — хирургия", "3 — пациентское отделение"),
+            floor_hints=("", "Хирургическое отделение", "Пациентское отделение"),
+        )
     if any(obj.entity is not None and hasattr(obj.entity, "following") for obj in result.objects):
         from game.levels.hospital_navigation import build_hospital_navigation
-        result = replace(result, navigation=build_hospital_navigation(result, stair, definitions))
+        storey_definitions = None
+        floor_sizes = None
+        if surgical_floor is not None:
+            floor_definitions = tuple(surgical_floor[3])
+            patient_definitions = tuple(patient_floor[3])
+            storey_definitions = (tuple(definitions), floor_definitions, patient_definitions)
+            floor_sizes = ((43.0, 29.0), SURGERY_FLOOR_SIZE, PATIENT_FLOOR_SIZE)
+        result = replace(
+            result,
+            navigation=build_hospital_navigation(
+                result, stair, definitions, storey_definitions=storey_definitions,
+                floor_sizes=floor_sizes,
+            ),
+        )
     return result

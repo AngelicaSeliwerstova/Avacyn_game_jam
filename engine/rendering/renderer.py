@@ -1,3 +1,4 @@
+from array import array
 from dataclasses import replace
 from pathlib import Path
 from time import perf_counter
@@ -34,6 +35,23 @@ from engine.rendering.inventory import InventoryOverlay
 from engine.rendering.gltf_model import GLTFModel
 
 
+def _group_render_objects(objects):
+    groups = []
+    current_key = None
+    current_items = []
+    for item in objects:
+        box = item[0]
+        key = box.material, box.local_texture
+        if current_items and key != current_key:
+            groups.append((current_key, tuple(current_items)))
+            current_items = []
+        current_key = key
+        current_items.append(item)
+    if current_items:
+        groups.append((current_key, tuple(current_items)))
+    return tuple(groups)
+
+
 class Renderer:
     """Управляет OpenGL-ресурсами и рисует содержимое кадра."""
 
@@ -63,6 +81,8 @@ class Renderer:
         self.context = context if context is not None else moderngl.create_context(require=major * 100 + minor * 10)
         self._program = None
         self._cube = None
+        self._instance_buffer = None
+        self._instance_capacity = 0
         self._floor = None
         self._render_target = None
         self._presenter = None
@@ -155,7 +175,14 @@ class Renderer:
                 unknown = used_materials - {None} - self._materials.keys()
                 if unknown:
                     raise ValueError(f"Unknown materials in level: {sorted(unknown)}")
-            self._cube = CubeMesh(self.context, self._program)
+            self._instance_capacity = max(1, len(self._objects))
+            self._instance_buffer = self.context.buffer(
+                reserve=self._instance_capacity * 96, dynamic=True,
+            )
+            self._cube = CubeMesh(
+                self.context, self._program,
+                instance_buffer=self._instance_buffer, instance_attributes=True,
+            )
             self._floor = FloorMesh(
                 self.context, self._program, level.floor_size, level.floor_tile_size,
                 colors=level.floor_colors, height=level.base_height,
@@ -245,6 +272,38 @@ class Renderer:
                          + self._creator_objects + self._creator_light_objects
                          + self._camera_marker_objects)
 
+    def _ensure_instance_capacity(self, required: int):
+        if required <= self._instance_capacity:
+            return
+        capacity = max(required, self._instance_capacity * 2)
+        instance_buffer = self.context.buffer(reserve=capacity * 96, dynamic=True)
+        try:
+            cube = CubeMesh(
+                self.context, self._program,
+                instance_buffer=instance_buffer, instance_attributes=True,
+            )
+        except Exception:
+            instance_buffer.release()
+            raise
+        if self._cube is not None:
+            self._cube.release()
+        if self._instance_buffer is not None:
+            self._instance_buffer.release()
+        self._instance_capacity = capacity
+        self._instance_buffer = instance_buffer
+        self._cube = cube
+
+    def _write_instances(self, objects):
+        self._ensure_instance_capacity(len(objects))
+        data = bytearray()
+        for box, model, _ in objects:
+            data.extend(model)
+            color = box.color or (1.0, 1.0, 1.0)
+            emission = self._lighting.emission(box)
+            data.extend(array("f", (*color, float(box.color is not None),
+                                    *emission, 0.0)).tobytes())
+        self._instance_buffer.write(data)
+
     def cycle_postprocess(self):
         if self._postprocess is None or not self._postprocess_presets:
             return
@@ -303,8 +362,9 @@ class Renderer:
             (0, self._level.base_height, 0), (self._level.floor_size[0] / 2, 0, self._level.floor_size[1] / 2),
         )
         self._profile_mark("visibility_setup")
+        depth_draw_calls = 0
         if self.options.depth_prepass:
-            self._draw_depth(objects, draw_floor)
+            depth_draw_calls = self._draw_depth(objects, draw_floor)
             self.context.depth_func = "<="
             self._render_target.framebuffer.depth_mask = False
             # При равной глубине сохраняем прежний приоритет копланарных поверхностей.
@@ -312,16 +372,17 @@ class Renderer:
         self._profile_mark("depth_prepass")
         if draw_floor and not self.options.depth_prepass:
             self._draw_floor()
+        box_draw_calls = 0
         try:
-            for box, model, _ in objects:
-                self._program["emission"].value = self._lighting.emission(box)
-                self._program["object_color_enabled"].value = box.color is not None
-                self._program["object_color"].value = box.color or (1.0, 1.0, 1.0)
-                self._program["local_texture"].value = box.local_texture
-                self._use_material(box.material, self._wall_texture,
+            self._program["use_instancing"].value = True
+            for (material, local_texture), batch in _group_render_objects(objects):
+                self._program["local_texture"].value = local_texture
+                self._use_material(material, self._wall_texture,
                                    self._textures.wall_world_size if self._textures else 1.0)
-                self._program["m_model"].write(model)
-                self._cube.render()
+                self._write_instances(batch)
+                self._cube.render_instanced(len(batch))
+                box_draw_calls += 1
+            self._program["use_instancing"].value = False
             self._program["object_color_enabled"].value = False
             self._program["object_color"].value = (1.0, 1.0, 1.0)
             if draw_floor and self.options.depth_prepass:
@@ -341,13 +402,14 @@ class Renderer:
                 model_draw_calls += calls
                 model_triangles += triangles
         finally:
+            self._program["use_instancing"].value = False
             self._render_target.framebuffer.depth_mask = True
             self.context.depth_func = "<"
         self._profile_mark("world_character")
         self._submitted_objects = len(objects) + int(model_draw_calls > 0)
-        self._draw_calls = len(objects) + int(draw_floor) + model_draw_calls
+        self._draw_calls = box_draw_calls + int(draw_floor) + model_draw_calls
         self._model_draw_calls = model_draw_calls
-        self._depth_draw_calls = (len(objects) + int(draw_floor)) if self.options.depth_prepass else 0
+        self._depth_draw_calls = depth_draw_calls
         self._submitted_triangles = len(objects) * self._cube.triangle_count + (
             self._floor.triangle_count if draw_floor else 0
         ) + model_triangles
@@ -438,17 +500,19 @@ class Renderer:
         self._program["use_uv"].value = False
         self._program["use_skinning"].value = False
         try:
-            position = tuple(self._camera.position)
-            for _, model, _ in sorted(objects, key=lambda item: distance_to_box_squared(
-                    position, item[0].position, item[2])):
-                self._program["m_model"].write(model)
-                self._cube.render()
+            if objects:
+                self._program["use_instancing"].value = True
+                self._write_instances(objects)
+                self._cube.render_instanced(len(objects), depth_only=True)
+            self._program["use_instancing"].value = False
             if draw_floor:
                 self._program["m_model"].write(glm.mat4(1.0))
                 self._floor.render()
         finally:
+            self._program["use_instancing"].value = False
             target.color_mask = (True, True, True, True)
             self._program["depth_only"].value = False
+        return int(bool(objects)) + int(draw_floor)
 
     def _load_texture(self, path: Path) -> Texture2D:
         key = Path(path).resolve()
@@ -533,6 +597,9 @@ class Renderer:
         if self._cube is not None:
             self._cube.release()
             self._cube = None
+        if self._instance_buffer is not None:
+            self._instance_buffer.release()
+            self._instance_buffer = None
         if self._program is not None:
             self._program.release()
             self._program = None
