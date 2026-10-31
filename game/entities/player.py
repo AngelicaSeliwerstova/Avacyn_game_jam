@@ -433,11 +433,7 @@ class Player(Entity):
         pitch = math.radians(self.controller.pitch_degrees)
         horizontal_distance = settings.PLAYER_CAMERA_DISTANCE * math.cos(pitch)
         shoulder = settings.PLAYER_CAMERA_SHOULDER_OFFSET if self._look_back else 0.0
-        focus = glm.vec3(
-            self.body.position.x,
-            self.body.position.y + min(self.body.height * 0.8, settings.PLAYER_EYE_HEIGHT),
-            self.body.position.z,
-        )
+        focus = self.body.eye_position(min(self.body.height * 0.8, settings.PLAYER_EYE_HEIGHT))
         look_direction = glm.vec3(
             math.cos(yaw) * math.cos(pitch),
             math.sin(pitch),

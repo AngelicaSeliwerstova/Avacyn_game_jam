@@ -36,6 +36,13 @@ def walk(test, body, points, fps=60):
 
 
 class HospitalTests(unittest.TestCase):
+    def test_overlapping_gallery_floor_uses_one_material(self):
+        level = create_level("start")
+        for height in (4.8, 9.6):
+            for x, z in ((-9, 8.06), (-9.43, 7.91), (-17.5, 8.4), (-7.5, 6.9)):
+                materials = {b.material for b in level.boxes if abs(b.collider.top - height) < 1e-5
+                             and b.footprint.intersects_circle(x, z, 0.00001)}
+                self.assertEqual(materials, {"concrete_cracked"}, (x, z, height))
     def test_gallery_floor_covers_radial_slab_seams(self):
         level = create_level("start")
         for height in (4.8, 9.6):

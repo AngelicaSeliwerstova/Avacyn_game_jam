@@ -18,6 +18,27 @@ from support_levels import create_level
 
 
 class EntityTests(unittest.TestCase):
+    def test_third_person_camera_smooths_steps_in_both_directions(self):
+        for fps in (30, 60, 120):
+            with self.subTest(fps=fps):
+                player = create_player(self.level, self.world)
+                for direction in (1, -1):
+                    body_deltas, camera_deltas = [], []
+                    for _ in range(fps * 3):
+                        body_y, camera_y = player.body.position.y, player.camera.position.y
+                        player.update(1 / fps, InputState(forward=direction))
+                        body_deltas.append(abs(player.body.position.y - body_y))
+                        camera_deltas.append(abs(player.camera.position.y - camera_y))
+                    self.assertGreater(max(body_deltas), 0.2)
+                    self.assertLess(max(camera_deltas), max(body_deltas) * 0.85)
+                    self.assertLess(abs(player.camera.position.y - player.body.eye_position(
+                        min(player.body.height * 0.8, settings.PLAYER_EYE_HEIGHT)).y
+                        - settings.PLAYER_CAMERA_HEIGHT), 0.001)
+                for _ in range(fps):
+                    player.update(1 / fps, InputState())
+                expected = player.body.position.y + min(player.body.height * 0.8, settings.PLAYER_EYE_HEIGHT)
+                self.assertAlmostEqual(player.camera.position.y, expected + settings.PLAYER_CAMERA_HEIGHT, places=3)
+
     def setUp(self):
         self.level = create_level("stairs")
         self.world = CollisionWorld3D((box.collider for box in self.level.boxes), self.level.floor_bounds)

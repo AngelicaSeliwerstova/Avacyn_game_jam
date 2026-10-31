@@ -170,7 +170,7 @@ PLAYER_STEP_HEIGHT = 0.3         # Максимальная высота авт�
 GRAVITY = 18.0
 JUMP_HEIGHT = 0.9              # Высота прыжка над текущей опорой.
 PHYSICS_STEP = 1 / 120          # Фиксированный шаг физики в секундах.
-STAIR_CAMERA_SMOOTHING = 12.0   # Больше значение - быстрее камера догоняет тело.
+STAIR_CAMERA_SMOOTHING = 8.0    # Больше значение - быстрее камера догоняет тело.
 
 # Модель игрока в GLB 2.0; путь относительно resources/models.
 PLAYER_MODEL = "player/girl_chestnut_black_stockings.glb"

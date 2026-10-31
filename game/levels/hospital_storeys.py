@@ -50,15 +50,17 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
             radius = (inner + outer) / 2
             depth = 2 * outer * math.tan(math.pi / 64) + 0.025
             all_boxes.append(Box(stair.point(angle, radius, top - slab / 2),
-                                 (outer - inner + 0.025, slab, depth), material="concrete",
+                                 (outer - inner + 0.025, slab, depth),
+                                 material=material_map.get("concrete", "concrete"),
                                  yaw_degrees=-angle))
             if not 20 < angle < 75:
                 radius = 4.34
                 depth = 2 * (radius + 0.12) * math.tan(math.pi / 64) + 0.04
                 all_boxes.append(Box(stair.point(angle, radius, top + 0.5), (0.2, 1.04, depth),
-                                     material="plaster", yaw_degrees=-angle))
+                                     material=material_map.get("plaster", "plaster"), yaw_degrees=-angle))
                 all_boxes.append(Box(stair.point(angle, radius, top + 1.04), (0.26, 0.12, depth),
-                                     material="rust", color=(0.3, 0.29, 0.26), yaw_degrees=-angle))
+                                     material=material_map.get("rust", "rust"),
+                                     color=(0.3, 0.29, 0.26), yaw_degrees=-angle))
 
     for floor in range(count):
         offset = floor * height
@@ -81,8 +83,10 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
             # На верхних этажах у наружных дверей сплошные стены, без выходов в воздух.
             for low, high, material in ((0, 1.35, "hospital_tiles"), (1.35, height - slab, "plaster")):
                 y = offset + (low + high) / 2
-                all_boxes.append(Box((-0.5, y, 14), (1.9, high - low, 0.24), material=material))
-                all_boxes.append(Box((21, y, -3.5), (0.24, high - low, 1.9), material=material))
+                all_boxes.append(Box((-0.5, y, 14), (1.9, high - low, 0.24),
+                                     material=material_map.get(material, material)))
+                all_boxes.append(Box((21, y, -3.5), (0.24, high - low, 1.9),
+                                     material=material_map.get(material, material)))
             plate(-21, 21, -14, -2, offset)
             plate(-5, 21, -2, 14, offset)
             plate(-21, -5, 9, 14, offset)
