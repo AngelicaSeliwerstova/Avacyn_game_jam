@@ -34,6 +34,9 @@ class LevelLighting:
         self._framebuffer = None
         self._program = None
         self._cube = None
+        self._instance_buffer = None
+        self._static_nearby = ()
+        self._extra_shadow_boxes = tuple(extra_shadow_boxes)
         self._elapsed = 0.0
         self._animated = ()
         self._scales = []
@@ -86,10 +89,15 @@ class LevelLighting:
             program["shadow_light_columns"].value = self._atlas_columns
             shaders = Path(__file__).resolve().parent / "shaders"
             self._program = context.program(
-                vertex_shader=(shaders / "shadow.vert").read_text(encoding="utf-8"),
+                vertex_shader=(shaders / "shadow_instanced.vert").read_text(encoding="utf-8"),
                 fragment_shader=(shaders / "shadow.frag").read_text(encoding="utf-8"),
             )
-            self._cube = CubeMesh(context, self._program, position_only=True)
+            self._instance_buffer = context.buffer(reserve=max(64, 64 * (
+                len(self._static_geometry) + len(self._object_boxes) + len(extra_shadow_boxes))), dynamic=True)
+            self._cube = CubeMesh(context, self._program, position_only=True, instance_buffer=self._instance_buffer)
+            self._static_nearby = tuple(tuple(model for box, model, half_size in self._static_geometry
+                                             if distance_to_box_squared(light.position, box.position, half_size)
+                                             < light.radius ** 2) for light in lighting.lights)
             self._bake(level, resolution, extra_shadow_boxes)
             self.grid = build_light_grid(level, cell_size, context.info["GL_MAX_TEXTURE_SIZE"])
             if self.grid is not None:
@@ -111,18 +119,20 @@ class LevelLighting:
         self._object_boxes = boxes
         if self._framebuffer is None or previous == boxes:
             return
-        changed = tuple(box for box in previous if box not in boxes) + tuple(box for box in boxes if box not in previous)
+        before, after = set(previous), set(boxes)
+        changed = before.symmetric_difference(after)
         affected = [index for index, light in enumerate(self._level.lighting.lights)
                     if any(distance_to_box_squared(light.position, box.position, box.bounds_half_size)
                            < light.radius ** 2 for box in changed)]
         if affected:
             self._render_lights(affected, self._level.lighting.shadow_resolution,
-                                boxes)
+                                boxes + self._extra_shadow_boxes)
 
     def recalculate_shadows(self, extra_boxes=()):
         if self._framebuffer is None:
             return
-        boxes = self._object_boxes + tuple(extra_boxes)
+        self._extra_shadow_boxes = tuple(extra_boxes)
+        boxes = self._object_boxes + self._extra_shadow_boxes
         self._render_lights(
             range(len(self._level.lighting.lights)),
             self._level.lighting.shadow_resolution,
@@ -135,17 +145,21 @@ class LevelLighting:
         self._context.enable_only(moderngl.DEPTH_TEST)
         self._context.depth_func = "<"
         self._framebuffer.depth_mask = True
-        prepared = self._static_geometry + tuple((box, box.model_matrix.to_bytes(), box.bounds_half_size)
-                                                 for box in boxes)
+        prepared = tuple((box, box.model_matrix.to_bytes(), box.bounds_half_size) for box in boxes)
         for index in indices:
             light = self._level.lighting.lights[index]
             origin = glm.vec3(light.position)
             projection = glm.perspective(glm.radians(90.0), 1.0, SHADOW_NEAR, light.radius)
-            nearby = []
+            nearby = list(self._static_nearby[index])
             for box, model, half_size in prepared:
                 distance = distance_to_box_squared(light.position, box.position, half_size)
                 if distance < light.radius ** 2:
                     nearby.append(model)
+            if nearby:
+                data = b"".join(nearby)
+                if len(data) > self._instance_buffer.size:
+                    self._instance_buffer.orphan(len(data))
+                self._instance_buffer.write(data)
             for face, (direction, up) in enumerate(FACE_VIEWS):
                 x = ((index % self._atlas_columns) * 3 + face % 3) * resolution
                 y = ((index // self._atlas_columns) * 2 + face // 3) * resolution
@@ -154,9 +168,8 @@ class LevelLighting:
                 self._framebuffer.clear(depth=1.0, viewport=(x, y, resolution, resolution))
                 matrix = projection * glm.lookAt(origin, origin + glm.vec3(direction), glm.vec3(up))
                 self._program["m_light"].write(matrix)
-                for model in nearby:
-                    self._program["m_model"].write(model)
-                    self._cube.render()
+                if nearby:
+                    self._cube.render(instances=len(nearby))
         self._context.scissor = None
 
     def update(self, delta_time: float, enabled: bool = True):
@@ -188,7 +201,7 @@ class LevelLighting:
             self._light_data.use(location=4)
 
     def release(self):
-        for name in ("_cube", "_program", "_framebuffer", "_texture", "_grid_texture", "_light_data"):
+        for name in ("_cube", "_instance_buffer", "_program", "_framebuffer", "_texture", "_grid_texture", "_light_data"):
             resource = getattr(self, name)
             if resource is not None:
                 resource.release()

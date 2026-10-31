@@ -25,8 +25,12 @@ def cast_ray(origin: Sequence[float], direction: Sequence[float],
     if length == 0:
         raise ValueError("Ray direction must be nonzero")
     direction = tuple(v / length for v in direction)
+    end_y = origin[1] + direction[1] * max_distance
+    min_y, max_y = min(origin[1], end_y), max(origin[1], end_y)
     nearest, result = max_distance, None
     for index, box in enumerate(colliders):
+        if box.bottom > max_y or box.top < min_y:
+            continue
         start_point, ray_direction = origin, direction
         footprint = box.footprint
         if isinstance(footprint, OBB):

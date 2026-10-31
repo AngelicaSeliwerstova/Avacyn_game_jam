@@ -24,6 +24,18 @@ class InteractionTests(unittest.TestCase):
     def controller(self, boxes):
         return InteractionController(tuple(boxes), reach=2.5, message_seconds=3, key_label="E")
 
+    def test_ray_candidates_use_actual_segment_length_and_height(self):
+        near = Box((0, 1, -5), (1, 2, 1))
+        far = Box((0, 1, -20), (1, 2, 1))
+        upstairs = Box((0, 7, -5), (1, 2, 1))
+        controller = self.controller((near, far, upstairs))
+        unit = controller._ray_colliders((0, 1, 0), (0, 0, -1), 5)
+        non_unit = controller._ray_colliders((0, 1, 0), (0, 0, -5), 5)
+        self.assertEqual(unit, non_unit)
+        self.assertIn(0, non_unit)
+        self.assertNotIn(1, non_unit)
+        self.assertNotIn(2, non_unit)
+
     def test_aim_press_look_away_and_message_expiry(self):
         controller = self.controller((self.crate,))
         controller.update(0, self.camera)

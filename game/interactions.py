@@ -197,8 +197,14 @@ class InteractionController:
     def _ray_colliders(self, origin, direction, distance):
         cell_size = self._RAY_GRID_CELL_SIZE
         margin = self._RAY_GRID_MARGIN
-        end_x = origin[0] + direction[0] * distance
-        end_z = origin[2] + direction[2] * distance
+        length = math.hypot(*direction)
+        if not length:
+            raise ValueError("Ray direction must be nonzero")
+        scale = distance / length
+        end_x = origin[0] + direction[0] * scale
+        end_y = origin[1] + direction[1] * scale
+        end_z = origin[2] + direction[2] * scale
+        min_y, max_y = min(origin[1], end_y) - margin, max(origin[1], end_y) + margin
         min_x = math.floor((min(origin[0], end_x) - margin) / cell_size)
         max_x = math.floor((max(origin[0], end_x) + margin) / cell_size)
         min_z = math.floor((min(origin[2], end_z) - margin) / cell_size)
@@ -208,7 +214,8 @@ class InteractionController:
             for cell_z in range(min_z, max_z + 1):
                 indices.update(self._static_spatial_index.get((cell_x, cell_z), ()))
                 indices.update(self._dynamic_spatial_index.get((cell_x, cell_z), ()))
-        return tuple(sorted(indices))
+        return tuple(index for index in sorted(indices)
+                     if self._colliders[index].bottom <= max_y and self._colliders[index].top >= min_y)
 
     def _activate(self, target: Box | SceneObject) -> str:
         action = target.interaction
