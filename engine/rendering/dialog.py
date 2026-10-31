@@ -1,7 +1,7 @@
 import pygame
 
 from engine.rendering.hud import TextOverlay
-from engine.rendering.presentation import integer_viewport
+from engine.rendering.presentation import fit_viewport
 from engine.scene.session import Dialog
 
 
@@ -13,7 +13,7 @@ def button_rects(render_size: tuple[int, int], count: int) -> tuple[pygame.Rect,
 
 
 def dialog_action_at(dialog: Dialog, position, window_size, render_size) -> str | None:
-    x, y, width, height = integer_viewport(window_size, render_size)
+    x, y, width, height = fit_viewport(window_size, render_size)
     # Pygame считает Y сверху, а viewport OpenGL - снизу.
     top = window_size[1] - y - height
     if not width or not (x <= position[0] < x + width and top <= position[1] < top + height):

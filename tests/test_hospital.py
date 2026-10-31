@@ -36,6 +36,31 @@ def walk(test, body, points, fps=60):
 
 
 class HospitalTests(unittest.TestCase):
+    def test_gallery_floor_covers_radial_slab_seams(self):
+        level = create_level("start")
+        for height in (4.8, 9.6):
+            footprints = [box.footprint for box in level.boxes if abs(box.collider.top - height) < 1e-5]
+            for i in range(93):
+                for j in range(93):
+                    x, z = -17.6 + i * 0.1, -0.6 + j * 0.1
+                    if math.hypot(x + 13, z - 4) < 4.45:
+                        continue
+                    self.assertTrue(any(f.intersects_circle(x, z, 0.00001) for f in footprints), (x, z, height))
+            self.assertTrue(any(f.intersects_circle(-9.43, 7.91, 0.00001) for f in footprints))
+        world = CollisionWorld3D((b.collider for b in level.boxes), level.floor_bounds)
+        self.assertEqual(world.support_height(glm.vec3(-13, 9.6, 4), 0.01, 9.6), 0)
+
+    def test_gallery_parapet_is_solid_below_the_handrail(self):
+        level = create_level("start")
+        world = CollisionWorld3D((b.collider for b in level.boxes), level.floor_bounds)
+        stair = SpiralStair()
+        for height in (4.8, 9.6):
+            for angle in range(0, 360, 3):
+                if 17 < angle < 78:
+                    continue
+                point = glm.vec3(stair.point(angle, 4.34, height + 0.35))
+                self.assertTrue(world.is_blocked(point, 0.02, 0.1), (angle, height))
+
     def test_plan_has_six_offices_and_correct_scale(self):
         level = create_level("start")
         self.assertEqual(level.floor_size, (43, 29))

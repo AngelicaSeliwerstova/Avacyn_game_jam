@@ -50,6 +50,24 @@ class SpiralStair:
         delta = 360 / self.steps
         strips = 6
         strip_width = (self.outer_radius - self.inner_radius) / strips
+
+        def parapet(step, radius, material):
+            angle = 90 - (step + 0.5) * delta
+            top = self.step_height(step)
+            next_top = self.step_height(step + 1) if step + 1 < self.steps * self.flights else top
+            depth = 2 * (radius + 0.13) * math.tan(math.radians(delta / 2)) + 0.04
+            boxes.append(Box(self.point(angle, radius, top + 0.53), (0.2, 1.1, depth),
+                             material=material, yaw_degrees=-angle))
+            # Поручень набирается с малым перепадом высоты: соседние части
+            # перекрываются, вместо отдельных горизонтальных планок над ступенями.
+            for part in range(2):
+                fraction = (part + 0.5) / 2
+                cap_angle = 90 - (step + fraction) * delta
+                cap_height = top + (next_top - top) * fraction + 0.99
+                cap_depth = 2 * (radius + 0.13) * math.tan(math.radians(delta / 4)) + 0.035
+                boxes.append(Box(self.point(cap_angle, radius, cap_height), (0.26, 0.16, cap_depth),
+                                 material="rust", yaw_degrees=-cap_angle, color=(0.25, 0.24, 0.22)))
+
         for step in range(self.steps * self.flights):
             angle = 90 - (step + 0.5) * delta
             top = self.step_height(step)
@@ -61,21 +79,10 @@ class SpiralStair:
                                  (strip_width + 0.012, 0.22, depth),
                                  material="concrete", yaw_degrees=-angle))
             # Сплошной внутренний парапет подчёркивает открытый лестничный колодец.
-            radius = self.inner_radius - 0.09
-            depth = 2 * radius * math.tan(math.radians(delta / 2)) + 0.045
-            boxes.append(Box(self.point(angle, radius, top + 0.38), (0.18, 1.0, depth),
-                             material="plaster", yaw_degrees=-angle))
-            boxes.append(Box(self.point(angle, radius, top + 0.91), (0.23, 0.07, depth + 0.02),
-                             material="rust", yaw_degrees=-angle, color=(0.25, 0.24, 0.22)))
+            parapet(step, self.inner_radius - 0.09, "plaster")
             # Нижний вход оставляем свободным с внешней стороны первых ступеней.
             if step % self.steps >= self.landing_steps:
-                radius = self.outer_radius + 0.025
-                depth = 2 * radius * math.tan(math.radians(delta / 2)) + 0.025
-                boxes.append(Box(self.point(angle, radius, top + 1.0), (0.075, 0.075, depth),
-                                 material="rust", yaw_degrees=-angle, color=(0.26, 0.25, 0.23)))
-                if step % 2 == 0:
-                    boxes.append(Box(self.point(angle, radius, top + 0.47), (0.06, 1.0, 0.06),
-                                     material="rust", color=(0.28, 0.27, 0.25)))
+                parapet(step, self.outer_radius + 0.025, "plaster")
         # Верхний выход идёт по касательной вправо; под ним свободно начало марша.
         cx, cz = self.center
         for flight in range(1, self.flights + 1):

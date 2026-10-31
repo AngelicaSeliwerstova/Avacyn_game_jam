@@ -22,19 +22,34 @@ def integer_viewport(
     )
 
 
+def fit_viewport(window_size: tuple[int, int], render_size: tuple[int, int]) -> tuple[int, int, int, int]:
+    """Максимально большой кадр в окне, с исходными пропорциями и любым масштабом."""
+    width, height = window_size
+    render_width, render_height = render_size
+    if min(render_size) <= 0 or min(window_size) < 0:
+        raise ValueError("Render size must be positive and window size nonnegative")
+    if not width or not height:
+        return 0, 0, 0, 0
+    if width * render_height <= height * render_width:
+        scaled_width, scaled_height = width, max(1, width * render_height // render_width)
+    else:
+        scaled_width, scaled_height = max(1, height * render_width // render_height), height
+    return (width - scaled_width) // 2, (height - scaled_height) // 2, scaled_width, scaled_height
+
+
 def horizontal_side_bars(
     window_size: tuple[int, int], render_size: tuple[int, int],
 ) -> tuple[int, int]:
-    """Returns unused left/right widths around the centered integer-scaled frame."""
+    """Returns unused left/right widths around the fitted game view."""
     window_width = window_size[0]
-    x, _, width, _ = integer_viewport(window_size, render_size)
+    x, _, width, _ = fit_viewport(window_size, render_size)
     if width == 0:
         return 0, 0
     return x, window_width - x - width
 
 
 class PixelPresenter:
-    """Выводит готовую текстуру в окно, сохраняя чёткие квадратные пиксели."""
+    """Увеличивает готовый кадр до границ окна, сохраняя пропорции и пиксельный стиль."""
 
     def __init__(self, context: moderngl.Context):
         self._context = context
@@ -63,7 +78,7 @@ class PixelPresenter:
         self._context.scissor = None
         self._context.disable(moderngl.DEPTH_TEST | moderngl.BLEND)
         self._context.clear(0.0, 0.0, 0.0, 1.0)
-        viewport = integer_viewport(window_size, texture.size)
+        viewport = fit_viewport(window_size, texture.size)
         if viewport[2] == 0:
             return
         self._context.viewport = viewport

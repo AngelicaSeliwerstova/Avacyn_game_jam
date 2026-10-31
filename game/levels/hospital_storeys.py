@@ -29,6 +29,16 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
                                 (cx - half, cx + half, -2, cz - half),
                                 (cx - half, cx + half, cz + half, 9)):
             plate(x1, x2, z1, z2, top, material="concrete")
+        # Торцы радиальных плит не закрывают углы квадрата точно: перекрываем швы
+        # прямыми полосами и угловыми плитами, оставаясь снаружи круглого проёма.
+        for side in (-1, 1):
+            a, b = sorted((side * 4.35, side * half))
+            plate(cx + a, cx + b, cz - half, cz + half, top, material="concrete")
+            plate(cx - half, cx + half, cz + a, cz + b, top, material="concrete")
+            for other_side in (-1, 1):
+                c, d = sorted((other_side * 3.1, other_side * half))
+                e, f = sorted((side * 3.1, side * half))
+                plate(cx + c, cx + d, cz + e, cz + f, top, material="concrete")
         for i in range(64):
             angle = (i + 0.5) * 360 / 64
             rad = math.radians(angle)
@@ -41,12 +51,11 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
                                  yaw_degrees=-angle))
             if not 20 < angle < 75:
                 radius = 4.34
-                depth = 2 * radius * math.tan(math.pi / 64) + 0.02
-                all_boxes.append(Box(stair.point(angle, radius, top + 1), (0.065, 0.07, depth),
+                depth = 2 * (radius + 0.12) * math.tan(math.pi / 64) + 0.04
+                all_boxes.append(Box(stair.point(angle, radius, top + 0.5), (0.2, 1.04, depth),
+                                     material="plaster", yaw_degrees=-angle))
+                all_boxes.append(Box(stair.point(angle, radius, top + 1.04), (0.26, 0.12, depth),
                                      material="rust", color=(0.3, 0.29, 0.26), yaw_degrees=-angle))
-                if i % 3 == 0:
-                    all_boxes.append(Box(stair.point(angle, radius, top + 0.48),
-                                         (0.06, 1, 0.06), material="rust"))
 
     for floor in range(count):
         offset = floor * height

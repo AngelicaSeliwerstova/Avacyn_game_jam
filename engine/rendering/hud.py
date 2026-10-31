@@ -4,7 +4,7 @@ from pathlib import Path
 import moderngl
 import pygame
 
-from engine.rendering.presentation import horizontal_side_bars, integer_viewport
+from engine.rendering.presentation import horizontal_side_bars, fit_viewport
 
 
 @dataclass(frozen=True)
@@ -224,7 +224,7 @@ class CreatorSidebarOverlay:
             )
         if left_width < self.MINIMUM_BAR_WIDTH and right_width < self.MINIMUM_BAR_WIDTH:
             panel_width = min(180, max(1, (render_size[0] - margin * 3) // 2))
-            viewport_x, viewport_y, viewport_width, viewport_height = integer_viewport(
+            viewport_x, viewport_y, viewport_width, viewport_height = fit_viewport(
                 window_size, render_size,
             )
             viewport = (viewport_x, viewport_y, viewport_width, viewport_height)
