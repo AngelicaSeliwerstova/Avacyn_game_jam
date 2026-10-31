@@ -6,11 +6,18 @@ in vec3 in_normal;
 in vec2 in_uv;
 in vec4 in_joints;
 in vec4 in_weights;
+in vec4 model_col0;
+in vec4 model_col1;
+in vec4 model_col2;
+in vec4 model_col3;
+in vec4 instance_color;
+in vec4 instance_emission;
 
 uniform mat4 m_model;
 uniform mat4 m_view;
 uniform mat4 m_projection;
 uniform bool local_texture;
+uniform bool use_instancing;
 uniform bool use_uv;
 uniform bool use_skinning;
 uniform sampler2D skin_matrices;
@@ -20,6 +27,8 @@ out vec2 texture_uv;
 out float surface_shade;
 out vec3 world_point;
 out vec3 world_normal;
+flat out vec4 object_instance_color;
+flat out vec3 object_instance_emission;
 
 void main() {
     mat4 skin = mat4(1.0);
@@ -40,12 +49,17 @@ void main() {
     }
     vec3 local_position = (skin * vec4(in_position, 1.0)).xyz;
     vec3 local_normal = mat3(skin) * in_normal;
-    vec4 world_position = m_model * vec4(local_position, 1.0);
+    mat4 model = use_instancing
+        ? mat4(model_col0, model_col1, model_col2, model_col3)
+        : m_model;
+    vec4 world_position = model * vec4(local_position, 1.0);
     gl_Position = m_projection * m_view * world_position;
     vertex_color = in_color;
-    vec3 normal = normalize(transpose(inverse(mat3(m_model))) * local_normal);
+    vec3 normal = normalize(transpose(inverse(mat3(model))) * local_normal);
     world_point = world_position.xyz;
     world_normal = normal;
+    object_instance_color = use_instancing ? instance_color : vec4(1.0, 1.0, 1.0, 0.0);
+    object_instance_emission = use_instancing ? instance_emission.rgb : vec3(0.0);
     vec3 texture_point = world_position.xyz;
     vec3 texture_normal = normal;
     if (use_uv) {
@@ -53,7 +67,7 @@ void main() {
     } else {
         if (local_texture) {
             // Размеры в метрах, но координаты следуют за поворотом самого объекта.
-            texture_point = local_position * vec3(length(m_model[0].xyz), length(m_model[1].xyz), length(m_model[2].xyz));
+            texture_point = local_position * vec3(length(model[0].xyz), length(model[1].xyz), length(model[2].xyz));
             texture_normal = local_normal;
         }
         vec3 axis = abs(texture_normal);
