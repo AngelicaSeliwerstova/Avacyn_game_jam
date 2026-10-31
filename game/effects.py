@@ -11,6 +11,13 @@ def create_fog_settings() -> FogSettings | None:
     return FogSettings(settings.FOG_COLOR, settings.FOG_START, settings.FOG_END)
 
 
+def create_scene_effects(visual_style: str):
+    if visual_style == "peaceful":
+        # Обычный мир без тумана и тревожной цветокоррекции.
+        return None, None
+    return create_fog_settings(), create_postprocess_settings(settings.COLOR_PRESET)
+
+
 def create_postprocess_settings(preset: str = "cold") -> PostProcessSettings | None:
     if not settings.POSTPROCESS_ENABLED:
         return None

@@ -3,7 +3,7 @@ import argparse
 from config import controls, settings
 from engine.core.application import Application
 from engine.rendering.options import RenderOptions
-from game.effects import create_fog_settings, create_postprocess_settings, create_postprocess_presets
+from game.effects import create_postprocess_presets
 from game.materials import create_texture_settings
 from game.ui import create_debug_settings, create_hud_style
 from game.campaign import Campaign
@@ -26,9 +26,9 @@ def run_session(creator_mode: bool = False):
         input_bindings=controls.INPUT_BINDINGS,
         textures=create_texture_settings(),
         hud_style=create_hud_style(),
-        postprocess=create_postprocess_settings(settings.COLOR_PRESET),
+        postprocess=scene.postprocess,
         postprocess_presets=create_postprocess_presets(),
-        fog=create_fog_settings(),
+        fog=scene.fog,
         dynamic_lights=scene.player.dynamic_lights,
         dynamic_shadow_resolution=settings.DYNAMIC_SHADOW_RESOLUTION,
         systems=scene.systems,

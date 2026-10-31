@@ -232,6 +232,8 @@ class Application:
         self._snow = scene.snow
         self._debug_paths = scene.debug_paths
         self._dynamic_lights = scene.player.dynamic_lights
+        self._fog = scene.fog
+        self._postprocess = scene.postprocess
         self._inventory_open = False
         self._inventory_page = 0
         return self._create_renderer(context=context)

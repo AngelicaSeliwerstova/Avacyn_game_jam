@@ -35,7 +35,7 @@ def build_objects(definitions) -> tuple[SceneObject, ...]:
         elif data["type"] == "exit":
             goal = EscapeGoal(data["id"], transform=Transform(position=position),
                               radius=data.get("radius", 1.0), required_keys=tuple(data.get("required_keys", ())),
-                              next_level=data.get("next_level"))
+                              next_level=data.get("next_level"), hint=data.get("hint"))
             objects.append(SceneObject(data["id"], {"default": ObjectState()}, entity=goal))
         else:
             raise ValueError(f"Unknown map object type: {data['type']}")
@@ -99,15 +99,20 @@ def _door(data, position):
     side = (opening_width - width) / 2
     overlap = 0.02  # Торцы рамы уходят в стену, без совпадающих видимых плоскостей.
     frame = tuple(box(sign * (width + side + overlap) / 2, wall_height / 2, 0,
-                      side + overlap, wall_height + 2 * overlap, thickness + 0.1, "concrete")
+                      side + overlap, wall_height + 2 * overlap, thickness + 0.1,
+                      data.get("frame_material", "concrete"))
                   for sign in (-1, 1))
     frame += (box(0, (height + wall_height + overlap) / 2, 0,
-                  width, wall_height - height + overlap, thickness + 0.1, "concrete"),)
-    panel = (box(0, height / 2, 0, width - 0.04, height - 0.04, thickness),)
+                  width, wall_height - height + overlap, thickness + 0.1,
+                  data.get("frame_material", "concrete")),)
+    panel = (box(0, height / 2, 0, width - 0.04, height - 0.04, thickness,
+                 data.get("panel_material", "rust")),)
     # Ручки с обеих сторон видны независимо от стороны подхода.
     panel += tuple(box(width * 0.3, 1.05, sign * (thickness / 2 + 0.04),
                        0.22, 0.055, 0.08, "wood") for sign in (-1, 1))
-    panel = tuple(replace(b, local_texture=True) for b in panel)
+    panel = tuple(replace(b, local_texture=True,
+                          color=tuple(data["panel_color"]) if i == 0 and "panel_color" in data else b.color)
+                  for i, b in enumerate(panel))
     hinge_side = data.get("hinge_side", "left")
     if hinge_side not in ("left", "right"):
         raise ValueError("Door hinge_side must be left or right")

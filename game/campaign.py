@@ -9,6 +9,7 @@ from game.enemies import EnemySystem
 from game.inventory import Inventory
 from game.levels import create_level
 from game.session import GameSession
+from game.effects import create_scene_effects
 
 
 @dataclass
@@ -51,8 +52,9 @@ class Campaign:
                 bounds=level.floor_bounds,
                 obstacles=tuple(box.footprint for box in level.boxes),
             )
+        fog, postprocess = create_scene_effects(level.visual_style)
         scene = RuntimeScene(level, player, session, (enemies, session), snow,
-                             enemies.debug_paths)
+                             enemies.debug_paths, fog=fog, postprocess=postprocess)
         if self.progress.current_level is not None:
             self.progress.completed_levels.add(self.progress.current_level)
         self.progress.current_level = name

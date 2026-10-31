@@ -11,6 +11,7 @@ class EscapeGoal(Entity):
     radius: float = 1.0
     required_keys: tuple[str, ...] = ()
     next_level: str | None = None
+    hint: str | None = None
 
     def __post_init__(self):
         if not math.isfinite(self.radius) or self.radius <= 0:
@@ -21,6 +22,8 @@ class EscapeGoal(Entity):
             not isinstance(self.next_level, str) or not self.next_level.strip()
         ):
             raise ValueError("Next level must be a nonempty level name")
+        if self.hint is not None and (not isinstance(self.hint, str) or not self.hint.strip()):
+            raise ValueError("Exit hint must be nonempty text")
 
     def reached(self, position, inventory) -> bool:
         return (math.dist(tuple(position), self.transform.position) <= self.radius

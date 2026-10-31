@@ -43,4 +43,4 @@ class GameSession(Session):
             if not self.player.inventory.has_key(key):
                 self.player.objective_status = f"Find: {self._key_names.get(key, key)}."
                 return
-        self.player.objective_status = "Reach the exit."
+        self.player.objective_status = self.goals[0].hint or "Reach the exit."

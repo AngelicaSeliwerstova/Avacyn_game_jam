@@ -1,0 +1,386 @@
+[
+  {
+    "category": "walls",
+    "name": "stair_diamond_burgundy",
+    "label_ru": "Бордовая плитка ромбами",
+    "material_name": "stair_diamond_burgundy",
+    "texture_path": "walls/stair_diamond_burgundy_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "diamond"
+  },
+  {
+    "category": "walls",
+    "name": "stair_diamond_cold",
+    "label_ru": "Холодная плитка ромбами",
+    "material_name": "stair_diamond_cold",
+    "texture_path": "walls/stair_diamond_cold_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "diamond"
+  },
+  {
+    "category": "walls",
+    "name": "hospital_tile_cream",
+    "label_ru": "Больничная кремовая плитка",
+    "material_name": "hospital_tile_cream",
+    "texture_path": "walls/hospital_tile_cream_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "ceramic"
+  },
+  {
+    "category": "walls",
+    "name": "hospital_tile_mint",
+    "label_ru": "Мятная плитка процедурной",
+    "material_name": "hospital_tile_mint",
+    "texture_path": "walls/hospital_tile_mint_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "ceramic"
+  },
+  {
+    "category": "walls",
+    "name": "hospital_tile_ruined",
+    "label_ru": "Разбитая грязная плитка",
+    "material_name": "hospital_tile_ruined",
+    "texture_path": "walls/hospital_tile_ruined_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "ceramic"
+  },
+  {
+    "category": "walls",
+    "name": "plaster_peeling_ivory",
+    "label_ru": "Облупившаяся светлая штукатурка",
+    "material_name": "plaster_peeling_ivory",
+    "texture_path": "walls/plaster_peeling_ivory_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "peel"
+  },
+  {
+    "category": "walls",
+    "name": "plaster_peeling_green",
+    "label_ru": "Облупившаяся зелёная краска",
+    "material_name": "plaster_peeling_green",
+    "texture_path": "walls/plaster_peeling_green_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "peel"
+  },
+  {
+    "category": "walls",
+    "name": "plaster_water_damage",
+    "label_ru": "Штукатурка с подтёками",
+    "material_name": "plaster_water_damage",
+    "texture_path": "walls/plaster_water_damage_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "plaster"
+  },
+  {
+    "category": "walls",
+    "name": "plaster_black_mold",
+    "label_ru": "Стена с плесенью",
+    "material_name": "plaster_black_mold",
+    "texture_path": "walls/plaster_black_mold_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "mold"
+  },
+  {
+    "category": "walls",
+    "name": "concrete_cracked",
+    "label_ru": "Растрескавшийся бетон",
+    "material_name": "concrete_cracked",
+    "texture_path": "walls/concrete_cracked_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "concrete"
+  },
+  {
+    "category": "walls",
+    "name": "brick_gray",
+    "label_ru": "Старый серый кирпич",
+    "material_name": "brick_gray",
+    "texture_path": "walls/brick_gray_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "brick"
+  },
+  {
+    "category": "walls",
+    "name": "wallpaper_aged",
+    "label_ru": "Выцветшие обои",
+    "material_name": "wallpaper_aged",
+    "texture_path": "walls/wallpaper_aged_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "wallpaper"
+  },
+  {
+    "category": "floors",
+    "name": "linoleum_green",
+    "label_ru": "Потёртый зелёный линолеум",
+    "material_name": "linoleum_green",
+    "texture_path": "floors/linoleum_green_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "linoleum"
+  },
+  {
+    "category": "floors",
+    "name": "linoleum_blue_gray",
+    "label_ru": "Сине-серый линолеум",
+    "material_name": "linoleum_blue_gray",
+    "texture_path": "floors/linoleum_blue_gray_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "linoleum"
+  },
+  {
+    "category": "floors",
+    "name": "hospital_checker",
+    "label_ru": "Шахматный пол больницы",
+    "material_name": "hospital_checker",
+    "texture_path": "floors/hospital_checker_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "checker"
+  },
+  {
+    "category": "floors",
+    "name": "floor_tile_dirty",
+    "label_ru": "Грязная напольная плитка",
+    "material_name": "floor_tile_dirty",
+    "texture_path": "floors/floor_tile_dirty_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "ceramic"
+  },
+  {
+    "category": "floors",
+    "name": "floor_mosaic_red",
+    "label_ru": "Мелкая бордовая мозаика",
+    "material_name": "floor_mosaic_red",
+    "texture_path": "floors/floor_mosaic_red_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "mosaic"
+  },
+  {
+    "category": "floors",
+    "name": "terrazzo_gray",
+    "label_ru": "Серое терраццо",
+    "material_name": "terrazzo_gray",
+    "texture_path": "floors/terrazzo_gray_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "terrazzo"
+  },
+  {
+    "category": "floors",
+    "name": "terrazzo_brown",
+    "label_ru": "Терраццо с бурой крошкой",
+    "material_name": "terrazzo_brown",
+    "texture_path": "floors/terrazzo_brown_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "terrazzo"
+  },
+  {
+    "category": "floors",
+    "name": "wood_rotten",
+    "label_ru": "Старые гнилые доски",
+    "material_name": "wood_rotten",
+    "texture_path": "floors/wood_rotten_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "wood"
+  },
+  {
+    "category": "floors",
+    "name": "concrete_damp",
+    "label_ru": "Сырой бетонный пол",
+    "material_name": "concrete_damp",
+    "texture_path": "floors/concrete_damp_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "concrete"
+  },
+  {
+    "category": "ceilings",
+    "name": "ceiling_stained",
+    "label_ru": "Потолок с разводами",
+    "material_name": "ceiling_stained",
+    "texture_path": "ceilings/ceiling_stained_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "plaster"
+  },
+  {
+    "category": "ceilings",
+    "name": "ceiling_acoustic_panels",
+    "label_ru": "Пятнистые потолочные панели",
+    "material_name": "ceiling_acoustic_panels",
+    "texture_path": "ceilings/ceiling_acoustic_panels_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "acoustic"
+  },
+  {
+    "category": "ceilings",
+    "name": "ceiling_mold",
+    "label_ru": "Потолок с плесенью",
+    "material_name": "ceiling_mold",
+    "texture_path": "ceilings/ceiling_mold_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "mold"
+  },
+  {
+    "category": "ceilings",
+    "name": "ceiling_concrete",
+    "label_ru": "Тёмный бетонный потолок",
+    "material_name": "ceiling_concrete",
+    "texture_path": "ceilings/ceiling_concrete_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "concrete"
+  },
+  {
+    "category": "metals",
+    "name": "rust_iron_heavy",
+    "label_ru": "Сильная ржавчина",
+    "material_name": "rust_iron_heavy",
+    "texture_path": "metals/rust_iron_heavy_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "rust"
+  },
+  {
+    "category": "metals",
+    "name": "metal_chipped_olive",
+    "label_ru": "Сколотая оливковая краска",
+    "material_name": "metal_chipped_olive",
+    "texture_path": "metals/metal_chipped_olive_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "metalpaint"
+  },
+  {
+    "category": "metals",
+    "name": "metal_chipped_white",
+    "label_ru": "Сколотая белая краска",
+    "material_name": "metal_chipped_white",
+    "texture_path": "metals/metal_chipped_white_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "metalpaint"
+  },
+  {
+    "category": "metals",
+    "name": "metal_scratched_dark",
+    "label_ru": "Тёмный поцарапанный металл",
+    "material_name": "metal_scratched_dark",
+    "texture_path": "metals/metal_scratched_dark_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "steel"
+  },
+  {
+    "category": "metals",
+    "name": "metal_grate",
+    "label_ru": "Решётка / перфорированный металл",
+    "material_name": "metal_grate",
+    "texture_path": "metals/metal_grate_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "grate"
+  },
+  {
+    "category": "doors",
+    "name": "door_painted_teal",
+    "label_ru": "Крашеный металл двери",
+    "material_name": "door_painted_teal",
+    "texture_path": "doors/door_painted_teal_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "metalpaint"
+  },
+  {
+    "category": "doors",
+    "name": "door_aged_wood",
+    "label_ru": "Деревянное дверное полотно",
+    "material_name": "door_aged_wood",
+    "texture_path": "doors/door_aged_wood_{size}.png",
+    "size_px": [
+      128,
+      256
+    ],
+    "type": "wood"
+  }
+]

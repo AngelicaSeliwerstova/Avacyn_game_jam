@@ -1,5 +1,7 @@
 """Трёхэтажная больница 43 × 29 м с непрерывной винтовой лестницей."""
 
+from dataclasses import replace
+
 from engine.scene.box import Box
 from engine.scene.interaction import Interaction
 from engine.scene.level import Level
@@ -16,10 +18,11 @@ FLOOR_COUNT = 3
 SLAB_THICKNESS = 0.24
 
 
-def build_hospital(level: Level) -> Level:
+def build_hospital(level: Level, peaceful: bool = False) -> Level:
     boxes, decorations, definitions, lights = [], [], [], []
     height = FLOOR_HEIGHT - SLAB_THICKNESS
-    stair = SpiralStair(height=FLOOR_HEIGHT, flights=FLOOR_COUNT - 1)
+    floor_count = 1 if peaceful else FLOOR_COUNT
+    stair = SpiralStair(height=FLOOR_HEIGHT, flights=max(1, floor_count - 1))
     base_lights = level.lighting.lights if level.lighting else ()
     props = HospitalProps()
 
@@ -64,7 +67,9 @@ def build_hospital(level: Level) -> Level:
     def lamp(x, z, y=4.2, warm=False):
         color = (1.0, 0.83, 0.61) if warm else (0.72, 0.87, 0.84)
         index = len(base_lights) + len(lights)
-        lights.append(PointLight((x, y, z), color, 3.5 if warm else 2.7, 8.5))
+        if peaceful:
+            color = (1.0, 0.96, 0.87)
+        lights.append(PointLight((x, y, z), color, (2.2 if peaceful else 3.5 if warm else 2.7), 8.5))
         decorations.append(Box((x, y + 0.12, z), (1.5, 0.1, 0.36), material="rust"))
         decorations.append(Box((x, y + 0.06, z), (1.32, 0.025, 0.24),
                                emission=tuple(c * 1.5 for c in color), emission_light=index))
@@ -183,6 +188,36 @@ def build_hospital(level: Level) -> Level:
             box((-20.81, 2.6, z + offset), (0.08, 2.8, 0.07), "rust", (0.2, 0.24, 0.22))
         for y in (1.25, 2.2, 3.05, 3.95):
             box((-20.81, y, z), (0.08, 0.07, 1.85), "rust", (0.2, 0.24, 0.22))
+    palette = ({"hospital_tiles": "hospital_tile_cream", "hospital_floor": "linoleum_blue_gray",
+                "plaster": "wallpaper_aged", "concrete": "concrete_cracked",
+                "rust": "metal_scratched_dark", "wood": "door_aged_wood"} if peaceful else
+               {"hospital_tiles": "hospital_tile_ruined", "hospital_floor": "floor_tile_dirty",
+                "plaster": "plaster_water_damage", "concrete": "concrete_cracked",
+                "rust": "rust_iron_heavy", "wood": "wood_rotten"})
+    for definition in definitions:
+        definition["panel_material"] = "door_painted_teal" if peaceful else "door_aged_wood"
+        definition["frame_material"] = "hospital_tile_cream" if peaceful else "concrete_cracked"
+        if peaceful:
+            definition["panel_color"] = (0.34, 0.52, 0.48)
+    if peaceful:
+        # В мирном мире доступны только помещения первого этажа.
+        angle = 30
+        radius = (stair.inner_radius + stair.outer_radius) / 2
+        gate = Box(stair.point(angle, radius, 1.25),
+                   (stair.outer_radius - stair.inner_radius, 2.5, 0.12),
+                   material="metal_grate", yaw_degrees=-angle,
+                   interaction=Interaction("Верхние этажи", "Проход на верхние этажи закрыт."))
+        boxes.append(gate)
+        for post_radius in (stair.inner_radius, stair.outer_radius):
+            boxes.append(Box(stair.point(angle, post_radius, 1.35), (0.14, 2.7, 0.2),
+                             material="metal_scratched_dark", yaw_degrees=-angle))
+        boxes.append(Box(stair.point(angle, radius, 2.7),
+                         (stair.outer_radius - stair.inner_radius + 0.15, 0.12, 0.2),
+                         material="metal_scratched_dark", yaw_degrees=-angle))
+        # Верх обычных стен окрашен ровно, без трещин и облупившейся штукатурки.
+        boxes = [replace(box, color=(0.82, 0.81, 0.74))
+                 if box.material == "plaster" and box.size[1] > 1.2 else box for box in boxes]
     return assemble_storeys(level, tuple(boxes) + tuple(props.boxes),
                             tuple(decorations) + tuple(props.decorations), definitions, lights,
-                            stair, count=FLOOR_COUNT)
+                            stair, count=floor_count, material_map=palette,
+                            ceiling_material="ceiling_acoustic_panels" if peaceful else "concrete")

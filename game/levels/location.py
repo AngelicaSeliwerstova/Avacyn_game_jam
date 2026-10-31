@@ -68,10 +68,11 @@ def load_location(path: Path) -> Level:
         authored_fixed_cameras=cameras or (),
         fixed_cameras_authored=cameras is not None,
         camera_save_path=cameras_path,
+        visual_style=data.get("visual_style", "default"),
     )
-    if data.get("layout") in ("hospital", "hospital_first_floor"):
+    if data.get("layout") in ("hospital", "hospital_first_floor", "hospital_peaceful"):
         from game.levels.hospital import build_hospital
-        level = build_hospital(level)
+        level = build_hospital(level, peaceful=data.get("layout") == "hospital_peaceful")
     elif data.get("layout") is not None:
         raise ValueError(f"Unknown location layout: {data['layout']!r}")
     return level

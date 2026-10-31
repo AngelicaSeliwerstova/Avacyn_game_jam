@@ -21,15 +21,15 @@ class LocationTests(unittest.TestCase):
     def test_start_is_clear_and_has_no_old_objectives(self):
         campaign = Campaign()
         scene = campaign.load_level(settings.LEVEL_NAME)
-        self.assertEqual(settings.LEVEL_NAME, "start")
+        self.assertEqual(settings.LEVEL_NAME, "peaceful")
         self.assertTrue(scene.level.objects)
         self.assertEqual(scene.level.creator_objects, ())
-        self.assertEqual(scene.session.goals, ())
+        self.assertEqual(len(scene.session.goals), 1)
         self.assertFalse(scene.player.body.world.is_blocked(
             scene.player.body.position, scene.player.body.radius, scene.player.body.height))
         scene.player.update(1 / 60, InputState())
         scene.session.update(1 / 60)
-        self.assertEqual(scene.player.objective_status, "")
+        self.assertIn("кабинет врача", scene.player.objective_status)
         self.assertIsNone(scene.session.next_level)
 
     def test_retired_levels_are_unavailable(self):

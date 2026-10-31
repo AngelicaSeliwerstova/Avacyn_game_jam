@@ -107,6 +107,38 @@ MATERIAL_TEXTURES = {
     "plaster": ("walls/dirty_plaster_128.png", 2.0),
     "hospital_tiles": ("walls/hospital_tiles_128.png", 2.0),
     "hospital_floor": ("walls/hospital_tiles_128.png", 5.0),
+    'stair_diamond_burgundy': ('walls/stair_diamond_burgundy_{size}.png', 2.0),
+    'stair_diamond_cold': ('walls/stair_diamond_cold_{size}.png', 2.0),
+    'hospital_tile_cream': ('walls/hospital_tile_cream_{size}.png', 2.0),
+    'hospital_tile_mint': ('walls/hospital_tile_mint_{size}.png', 2.0),
+    'hospital_tile_ruined': ('walls/hospital_tile_ruined_{size}.png', 2.0),
+    'plaster_peeling_ivory': ('walls/plaster_peeling_ivory_{size}.png', 2.0),
+    'plaster_peeling_green': ('walls/plaster_peeling_green_{size}.png', 2.0),
+    'plaster_water_damage': ('walls/plaster_water_damage_{size}.png', 2.0),
+    'plaster_black_mold': ('walls/plaster_black_mold_{size}.png', 2.0),
+    'concrete_cracked': ('walls/concrete_cracked_{size}.png', 2.0),
+    'brick_gray': ('walls/brick_gray_{size}.png', 2.0),
+    'wallpaper_aged': ('walls/wallpaper_aged_{size}.png', 2.0),
+    'linoleum_green': ('floors/linoleum_green_{size}.png', 2.0),
+    'linoleum_blue_gray': ('floors/linoleum_blue_gray_{size}.png', 2.0),
+    'hospital_checker': ('floors/hospital_checker_{size}.png', 2.0),
+    'floor_tile_dirty': ('floors/floor_tile_dirty_{size}.png', 2.0),
+    'floor_mosaic_red': ('floors/floor_mosaic_red_{size}.png', 2.0),
+    'terrazzo_gray': ('floors/terrazzo_gray_{size}.png', 2.0),
+    'terrazzo_brown': ('floors/terrazzo_brown_{size}.png', 2.0),
+    'wood_rotten': ('floors/wood_rotten_{size}.png', 2.0),
+    'concrete_damp': ('floors/concrete_damp_{size}.png', 2.0),
+    'ceiling_stained': ('ceilings/ceiling_stained_{size}.png', 2.0),
+    'ceiling_acoustic_panels': ('ceilings/ceiling_acoustic_panels_{size}.png', 2.0),
+    'ceiling_mold': ('ceilings/ceiling_mold_{size}.png', 2.0),
+    'ceiling_concrete': ('ceilings/ceiling_concrete_{size}.png', 2.0),
+    'rust_iron_heavy': ('metals/rust_iron_heavy_{size}.png', 2.0),
+    'metal_chipped_olive': ('metals/metal_chipped_olive_{size}.png', 2.0),
+    'metal_chipped_white': ('metals/metal_chipped_white_{size}.png', 2.0),
+    'metal_scratched_dark': ('metals/metal_scratched_dark_{size}.png', 2.0),
+    'metal_grate': ('metals/metal_grate_{size}.png', 2.0),
+    'door_painted_teal': ('doors/door_painted_teal_{size}.png', 2.0),
+    'door_aged_wood': ('doors/door_aged_wood_{size}.png', 2.0),
     "brick": ("walls/red_brick_128.png", 2.0),
     "rust": ("metals/rust_{size}.png", 2.0),
 }
@@ -121,7 +153,7 @@ SNOW_COLOR = (210, 220, 235)
 SNOW_SEED = 7                  # Одинаковое начальное расположение при запуске.
 
 # Стартовая карта из resources/levels/<имя>.json.
-LEVEL_NAME = "start"
+LEVEL_NAME = "peaceful"
 HUD_FONT_SIZE = 18
 HUD_MARGIN = 8
 HUD_FONT = "SourceSans3-Regular.ttf"  # Файлы относительно resources/fonts.

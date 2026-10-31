@@ -99,7 +99,8 @@ class Player(Entity):
         if len(self._creator_lights) + base_light_count > MAX_POINT_LIGHTS:
             raise ValueError(f"Creator lights exceed the level limit of {MAX_POINT_LIGHTS} static lights")
         self.body.world.set_creator_colliders(self._creator_objects)
-        self._creator_materials = ("rust", "concrete", "plaster", "brick")
+        self._creator_materials = tuple(dict.fromkeys(("rust", "concrete", "plaster", "brick",
+                                                     *settings.MATERIAL_TEXTURES)))
         self._creator_material_index = 0
         self._selected_camera_index = None
         self._saved_creator_view = None

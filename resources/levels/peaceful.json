@@ -1,0 +1,22 @@
+{
+  "layout": "hospital_peaceful",
+  "visual_style": "peaceful",
+  "floor_size": [43.0, 29.0],
+  "floor_material": "linoleum_blue_gray",
+  "room_height": 4.56,
+  "spawn_position": [-0.5, 1.6, 12.2],
+  "spawn_target": [-0.5, 1.6, 8.0],
+  "snow_enabled": false,
+  "lighting": {"ambient": [0.52, 0.52, 0.48], "lights": []},
+  "boxes": [],
+  "objects": [
+    {
+      "id": "doctor_room_transition",
+      "type": "exit",
+      "position": [-16.1, 0.0, -11.0],
+      "radius": 1.0,
+      "next_level": "start",
+      "hint": "Пройдите в кабинет врача в дальнем конце коридора."
+    }
+  ]
+}

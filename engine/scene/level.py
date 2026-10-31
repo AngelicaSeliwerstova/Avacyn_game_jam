@@ -40,6 +40,7 @@ class Level:
     creator_objects_path: Path | None = None
     creator_lights_path: Path | None = None
     creator_room_height: float | None = None
+    visual_style: str = "default"
 
     def __post_init__(self):
         if len({obj.name for obj in self.objects}) != len(self.objects):
