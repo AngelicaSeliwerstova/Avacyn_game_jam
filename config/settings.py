@@ -66,8 +66,8 @@ COLOR_PRESETS = {
 # Дальний туман: RGB от 0 до 1, расстояния в мировых единицах.
 FOG_ENABLED = True
 FOG_COLOR = (0.27, 0.28, 0.27)
-FOG_START = 1.8
-FOG_END = 14.0
+FOG_START = 4.0
+FOG_END = 28.0
 
 # Мерцают только лампы с описанием flicker в данных уровня.
 LIGHT_FLICKER_ENABLED = True

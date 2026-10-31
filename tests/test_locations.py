@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 import os
 from pathlib import Path
 import tempfile
@@ -17,11 +18,11 @@ from game.levels.location import load_location
 
 
 class LocationTests(unittest.TestCase):
-    def test_start_is_clear_and_has_no_old_gameplay(self):
+    def test_start_is_clear_and_has_no_old_objectives(self):
         campaign = Campaign()
         scene = campaign.load_level(settings.LEVEL_NAME)
         self.assertEqual(settings.LEVEL_NAME, "start")
-        self.assertEqual(scene.level.objects, ())
+        self.assertTrue(scene.level.objects)
         self.assertEqual(scene.level.creator_objects, ())
         self.assertEqual(scene.session.goals, ())
         self.assertFalse(scene.player.body.world.is_blocked(
@@ -42,7 +43,10 @@ class LocationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             try:
                 os.chdir(directory)
-                self.assertEqual(create_level("start"), expected)
+                actual = create_level("start")
+                self.assertEqual(replace(actual, objects=()), replace(expected, objects=()))
+                self.assertEqual([(obj.name, dict(obj.states)) for obj in actual.objects],
+                                 [(obj.name, dict(obj.states)) for obj in expected.objects])
             finally:
                 os.chdir(original)
 

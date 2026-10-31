@@ -1,0 +1,114 @@
+import unittest
+from dataclasses import replace
+import math
+from pathlib import Path
+import tempfile
+
+import glm
+
+from engine.collision.world3d import CollisionWorld3D
+from engine.physics.character import CharacterBody
+from engine.input.state import InputState
+from game.campaign import Campaign
+from game.entities.player import create_player
+from game.levels import create_level
+from game.levels.hospital import OFFICE_DOORS
+from game.levels.spiral import SpiralStair
+
+
+def make_body(world, position):
+    return CharacterBody(position, world, radius=0.25, height=1.8, step_height=0.3,
+                         gravity=18, collision_max_step=0.1, physics_step=1 / 120,
+                         camera_smoothing=12, jump_height=0.9)
+
+
+def walk(test, body, points, fps=60):
+    for point in points:
+        for _ in range(fps * 20):
+            delta = glm.vec3(point[0] - body.position.x, 0, point[2] - body.position.z)
+            distance = glm.length(delta)
+            if distance < 0.045:
+                break
+            body.update(1 / fps, glm.normalize(delta) * min(2.3, distance * 25))
+        else:
+            test.fail(f"Player stuck at {tuple(body.position)} while walking to {point}")
+        test.assertFalse(body.world.is_blocked(body.position, body.radius - 1e-4, body.height - 1e-4))
+
+
+class HospitalTests(unittest.TestCase):
+    def test_plan_has_six_offices_and_correct_scale(self):
+        level = create_level("start")
+        self.assertEqual(level.floor_size, (43, 29))
+        self.assertEqual(level.floor_heights, (0, 4.8))
+        names = {obj.name for obj in level.objects}
+        self.assertTrue({f"office_{i}" for i in range(6)} <= names)
+        self.assertTrue({"main_entrance_0", "side_entrance_0", "registration_0"} <= names)
+
+    def test_hospital_doors_open_without_keys(self):
+        scene = Campaign().load_level("start")
+        door = next(obj for obj in scene.level.objects if obj.name == "office_0")
+        self.assertEqual(door.interaction.command, "open_door")
+        scene.player._interactions._activate(door)
+        door.update(1)
+        self.assertEqual(door.current_state, door.states["open"])
+
+    def test_creator_can_place_lamp_on_upper_gallery_ceiling(self):
+        level = create_level("start")
+        with tempfile.TemporaryDirectory() as directory:
+            level = replace(level, spawn_position=(-7, 6.4, 7), spawn_target=(-7, 6.4, 6),
+                            creator_lights_path=Path(directory) / "lights.json")
+            world = CollisionWorld3D((box.collider for box in level.boxes), level.floor_bounds,
+                                     objects=level.objects)
+            player = create_player(level, world, creator_mode=True)
+            player._creator_yaw = 0
+            player._creator_pitch = math.radians(80)
+            player.update(0, InputState(add_creator_light=True))
+            self.assertEqual(len(player.creator_lights), 1)
+            self.assertAlmostEqual(player.creator_lights[0].position[1], 9.36, places=4)
+
+    def test_spiral_ascends_and_descends_in_complete_hospital(self):
+        level = create_level("start")
+        world = CollisionWorld3D((b.collider for b in level.boxes), level.floor_bounds,
+                                 objects=level.objects)
+        stair = SpiralStair()
+        for fps in (30, 60, 120):
+            with self.subTest(fps=fps):
+                body = make_body(world, (-12.95, 0, 8.6))
+                radius = (stair.inner_radius + stair.outer_radius) / 2
+                points = (stair.point(89, radius), *stair.walking_path(),
+                          (-12.2, 4.8, 6.9), (-7.0, 4.8, 6.9))
+                walk(self, body, points, fps)
+                self.assertAlmostEqual(body.position.y, stair.height, places=4)
+                self.assertTrue(body.grounded)
+                walk(self, body, (*reversed(points[:-1]), (-12.95, 0, 8.6)), fps)
+                self.assertAlmostEqual(body.position.y, 0.0, places=4)
+                self.assertTrue(body.grounded)
+
+    def test_ground_floor_rooms_connect_through_doorways(self):
+        level = create_level("start")
+        for obj in level.objects:
+            if "open" in obj.states:
+                obj.set_state("open")
+                obj.update(1)
+        world = CollisionWorld3D((b.collider for b in level.boxes), level.floor_bounds,
+                                 objects=level.objects)
+        body = make_body(world, (-0.5, 0, 12.2))
+        walk(self, body, ((-12, 0, 11), (-12, 0, 8.5), (-12, 0, 6.5), (-19, 0, 6.5),
+                         (-19, 0, 0), (-13, 0, 0), (-13, 0, -3.5)))
+        for x in OFFICE_DOORS:
+            walk(self, body, ((x, 0, -3.5), (x, 0, -8), (x, 0, -3.5)))
+        # Регистрация, проход в охрану и возвращение в главный холл.
+        walk(self, body, ((11, 0, -3.5), (11, 0, 0), (8, 0, 0), (8, 0, 6.5),
+                         (12, 0, 6.5), (12, 0, 10.2), (-1, 0, 10.2), (-1, 0, 7),
+                         (2, 0, 7), (2, 0, 0), (-1, 0, 0), (-1, 0, -3.5)))
+        self.assertAlmostEqual(body.position.y, 0, places=4)
+
+    def test_invalid_stair_dimensions_are_rejected(self):
+        for values in ({"steps": 0}, {"inner_radius": -1}, {"height": float("nan")},
+                       {"inner_radius": 5, "outer_radius": 4}):
+            with self.subTest(values=values), self.assertRaises(ValueError):
+                SpiralStair(**values)
+
+
+if __name__ == "__main__":
+    unittest.main()

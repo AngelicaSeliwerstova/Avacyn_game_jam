@@ -40,7 +40,7 @@ def load_location(path: Path) -> Level:
     cameras = load_fixed_cameras(cameras_path)
     creator_objects = load_creator_objects(objects_path)
     lighting = data.get("lighting", {})
-    return Level(
+    level = Level(
         floor_size=tuple(data["floor_size"]),
         floor_tile_size=data.get("floor_tile_size", settings.FLOOR_TILE_SIZE),
         floor_colors=tuple(tuple(color) for color in data.get("floor_colors", settings.FLOOR_COLORS)),
@@ -69,3 +69,9 @@ def load_location(path: Path) -> Level:
         fixed_cameras_authored=cameras is not None,
         camera_save_path=cameras_path,
     )
+    if data.get("layout") == "hospital_first_floor":
+        from game.levels.hospital import build_hospital
+        level = build_hospital(level)
+    elif data.get("layout") is not None:
+        raise ValueError(f"Unknown location layout: {data['layout']!r}")
+    return level

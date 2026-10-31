@@ -223,6 +223,8 @@ class InteractionController:
             if not self.inventory.has_key(action.argument):
                 return "Locked. Find the matching key."
             target.set_state("open")
+        elif action.command == "open_door":
+            target.set_state("open")
         else:
             raise ValueError(f"Unknown interaction command: {action.command}")
         return action.message

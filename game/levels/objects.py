@@ -86,8 +86,8 @@ def _door(data, position):
     axis = data.get("axis", "x")  # Ось ширины; другая горизонтальная ось - толщина.
     if axis not in ("x", "z"):
         raise ValueError("Door width axis must be x or z")
-    key_id = data["key_id"]
-    if not isinstance(key_id, str) or not key_id.strip():
+    key_id = data.get("key_id")
+    if key_id is not None and (not isinstance(key_id, str) or not key_id.strip()):
         raise ValueError("Door key ID must not be empty")
     x, y, z = position
 
@@ -123,8 +123,8 @@ def _door(data, position):
     u = sign * width / 2
     pivot = (x + u, y, z + normal_offset) if axis == "x" else (x + normal_offset, y, z + u)
     opened = tuple(b.rotated_around(pivot, angle) for b in panel)
-    action = Interaction(data.get("name", "Locked door"), "Unlocked. The door opens.",
-                         "Open", "unlock_door", key_id)
+    action = Interaction(data.get("name", "Door"), "The door opens.",
+                         "Open", "unlock_door" if key_id else "open_door", key_id or "")
     return (
         SceneObject(data["id"] + "_frame", {"default": ObjectState(frame)}),
         SceneObject(data["id"], {"default": ObjectState(panel, interaction=action),
