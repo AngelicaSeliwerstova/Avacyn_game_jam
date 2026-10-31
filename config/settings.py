@@ -106,6 +106,7 @@ MATERIAL_TEXTURES = {
     "concrete": ("walls/cracked_concrete_{size}.png", 2.0),
     "plaster": ("walls/dirty_plaster_128.png", 2.0),
     "hospital_tiles": ("walls/hospital_tiles_128.png", 2.0),
+    "hospital_floor": ("walls/hospital_tiles_128.png", 5.0),
     "brick": ("walls/red_brick_128.png", 2.0),
     "rust": ("metals/rust_{size}.png", 2.0),
 }

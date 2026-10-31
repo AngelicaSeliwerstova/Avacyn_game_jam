@@ -56,7 +56,7 @@ class TextureSettingsTests(unittest.TestCase):
             self.assertTrue(material.path.is_file(), material.path)
 
     def test_both_texture_resolutions_have_complete_catalogs(self):
-        fixed_small = {"brick", "plaster", "hospital_tiles"}
+        fixed_small = {"brick", "plaster", "hospital_tiles", "hospital_floor"}
         for size in (128, 256):
             with patch.object(settings, "TEXTURE_RESOLUTION", size):
                 materials = create_texture_settings()

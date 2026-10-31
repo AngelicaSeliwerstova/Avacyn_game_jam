@@ -24,6 +24,7 @@ python main.py --creator
 - `game/campaign.py` — переходы между локациями и прогресс прохождения.
 - `game/levels/location.py` — загрузка самостоятельных JSON-карт.
 - `game/levels/hospital.py` — планировка и мебель первого этажа больницы.
+- `game/levels/hospital_props.py` — диваны, растения, шкафы, тележки и детали рабочих мест.
 - `game/levels/spiral.py` — винтовой марш, ограждения и верхняя площадка.
 - `game/levels/objects.py` — ключи, двери, враги и области выхода.
 - `game/levels/cameras.py`, `creator.py`, `creator_lights.py` — данные редактора.

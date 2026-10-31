@@ -9,13 +9,11 @@ from engine.scene.level import Level
 from engine.scene.lighting import Lighting, PointLight
 from game.levels.objects import build_objects
 from game.levels.spiral import SpiralStair
+from game.levels.hospital_props import HospitalProps
 
 
 OFFICE_DOORS = (-17, -10, -3, 4, 11, 18)
-CORRIDOR_DOORS = (-13, -1, 11)
-LOBBY_DOORS = (-12, -1, 12)
-ROOM_NAMES = ("Treatment room", "Examination room", "Patient ward 01",
-              "Patient ward 02", "Doctor's office", "Medical storage")
+ROOM_NAMES = ("Кабинет врача", "Процедурная", "Смотровая", "Палата 01", "Склад", "Палата 02")
 
 
 def build_hospital(level: Level) -> Level:
@@ -23,6 +21,7 @@ def build_hospital(level: Level) -> Level:
     height = 4.8
     stair = SpiralStair()
     base_lights = level.lighting.lights if level.lighting else ()
+    props = HospitalProps()
 
     def box(position, size, material="concrete", color=None, yaw=0):
         item = Box(position, size, material=material, color=color, yaw_degrees=yaw)
@@ -65,19 +64,13 @@ def build_hospital(level: Level) -> Level:
     def lamp(x, z, y=4.45, warm=False):
         color = (1.0, 0.83, 0.61) if warm else (0.72, 0.87, 0.84)
         index = len(base_lights) + len(lights)
-        lights.append(PointLight((x, y, z), color, 2.8 if warm else 2.2, 7.0))
+        lights.append(PointLight((x, y, z), color, 3.5 if warm else 2.7, 8.5))
         decorations.append(Box((x, y + 0.12, z), (1.5, 0.1, 0.36), material="rust"))
         decorations.append(Box((x, y + 0.06, z), (1.32, 0.025, 0.24),
                                emission=tuple(c * 1.5 for c in color), emission_light=index))
 
-    def bench(x, z, width=4.6):
-        box((x, 0.48, z), (width, 0.25, 0.9), "wood", (0.34, 0.4, 0.34))
-        box((x, 0.94, z + 0.4), (width, 0.7, 0.15), "wood", (0.34, 0.4, 0.34))
-        for side in (-1, 1):
-            box((x + side * (width / 2 - 0.12), 0.5, z), (0.18, 0.9, 1.0), "rust", (0.25, 0.28, 0.26))
-
     def desk(x, z, width=2.4, depth=0.9):
-        box((x, 0.91, z), (width, 0.14, depth), "wood", (0.51, 0.42, 0.3))
+        box((x, 0.91, z), (width, 0.14, depth), "wood")
         for side in (-1, 1):
             box((x + side * (width / 2 - 0.27), 0.43, z), (0.4, 0.86, depth * 0.85), "plaster")
 
@@ -99,10 +92,17 @@ def build_hospital(level: Level) -> Level:
     for x in (-14, -7, 0, 7, 14):
         wall("z", x, -14, -6)
     partition("x", -6, -21, 21, OFFICE_DOORS, "office", ROOM_NAMES)
-    partition("x", -1, -21, 21, CORRIDOR_DOORS, "corridor")
-    partition("x", 9, -21, 21, LOBBY_DOORS, "lobby")
-    wall("z", -5, -1, 9)
-    partition("z", 5, -1, 9, (5,), "registration")
+    partition("x", -1, -21, -5, (-13,), "corridor_stair")
+    partition("x", -1, 9, 21, (11,), "corridor_right")
+    # Центральная зона открыта из коридора до холла; служебные комнаты компактные.
+    partition("z", -5, -1, 14, (10.5,), "stair_lounge", ("Лестничный зал",))
+    partition("x", 3, -5, 2, (-1,), "security", ("Охрана",))
+    wall("x", 9, -5, 2)
+    wall("z", 2, 3, 9)
+    partition("x", 3, 9, 19, (12,), "registration", ("Регистрация",))
+    wall("x", 9, 9, 19)
+    wall("z", 9, 3, 9)
+    wall("z", 19, 3, 9)
 
     # Потолок первого этажа оставляет лестничный зал открытым на два уровня.
     box((0, 4.94, -7.5), (42, 0.28, 13), "concrete")
@@ -143,28 +143,65 @@ def build_hospital(level: Level) -> Level:
             if i % 3 == 0:
                 box(stair.point(angle, radius, 5.28), (0.06, 1.0, 0.06), "rust")
 
-    # Холл, стойка регистрации и охрана.
-    bench(-15, 11.7)
-    bench(14.5, 11.7, 5.5)
-    desk(12, 2.0, 6.5, 1.15)
-    desk(15.8, 4.1, 1.1, 5.3)
-    for x in (9, 12, 15):
-        box((x, 1.45, 1.95), (0.7, 0.55, 0.12), "rust", (0.23, 0.27, 0.24))
-    desk(-0.7, 2.4, 3.2)
-    box((-3.8, 1.05, 0.1), (0.65, 2.1, 1.6), "rust", (0.47, 0.53, 0.48))
-    box((-0.7, 1.36, 2.35), (0.7, 0.6, 0.16), "rust", (0.23, 0.27, 0.24))
-    bench(16.8, 6.8, 3.0)
+    # Отдельная гостиная под лестничным залом и несколько небольших зон ожидания.
+    props.sofa(-19.5, 11.5, 2.6, -90)
+    props.sofa(-6.8, 12.0, 2.1, 90)
+    props.sofa(-13, 12.8, 3.0)
+    props.table(-13, 11.2, 2.0)
+    props.plant(-12.6, 11.2, small=True, base=0.6)
+    props.sofa(6.6, 12.8, 2.6)
+    props.sofa(12.0, 12.8, 3.0)
+    props.sofa(19.7, 11.2, 2.6, 90)
+    props.sofa(15.8, 0.35, 3.0)
+    props.sofa(-7.7, -1.65, 2.6)
+    props.sofa(5.5, -1.65, 2.6)
+    props.table(11.7, 10.9, 1.8)
+    props.table(1.0, 0.9, 2.4, 0.95)
+    props.table(5.8, 6.3, 0.7, 1.25)
+    # Стойка регистрации — дерево, рабочие места, шкафы и боковое крыло.
+    desk(14, 7.3, 7.3, 1.0)
+    desk(17.4, 5.7, 0.8, 3.2)
+    for x in (11.5, 14.5, 16.6):
+        props.desk_details(x, 7.3)
+        props.chair(x, 8.25, 180)
+    props.cabinet(18.25, 4.4, 1.1)
+    props.plant(10.2, 4.15)
+    # Охрана со столом, стулом, монитором и шкафом для документов.
+    desk(-1.4, 7.1, 3.2)
+    props.desk_details(-1.4, 7.1)
+    props.chair(-1.4, 8.15, 180)
+    props.cabinet(-4.35, 5.1, 1.15)
+
+    for x, z in ((-20, -2), (-15, -1.7), (-6.0, 1), (7.8, -1.65),
+                 (19.8, -1.7), (-19.5, 8.7), (-6.5, 13.0), (3, 12.7),
+                 (8.3, 10.7), (17.2, 12.9), (19.9, 8.4)):
+        props.plant(x, z)
 
     for i, x in enumerate(OFFICE_DOORS):
-        if i in (0, 1, 2, 3):
+        # Светлая плитка и разная обстановка отличают кабинеты друг от друга.
+        props.part(x, -10, (0, 0.006, 0), (6.65, 0.012, 7.65),
+                   "hospital_floor" if i in (0, 3, 5) else "hospital_tiles", detail=True)
+        if i in (1, 2, 3, 5):
             bed(x - 1.45, -10.6)
-            if i in (2, 3):
+            if i in (3, 5):
                 bed(x + 1.45, -10.6)
-        if i in (0, 1, 4):
-            desk(x + 1.4, -12.1, 2.0)
-        if i == 5:
+                props.table(x, -12.6, 0.75, 0.6, 0.72)
+        if i == 0:
+            desk(x - 1.6, -10.6, 2.2)
+            props.desk_details(x - 1.6, -10.6)
+            props.chair(x - 1.6, -9.35)
+            props.chair(x + 0.2, -9.8, -90)
+            props.cabinet(x + 1.9, -12.7, 1.2, medical=False)
+            props.plant(x + 1.9, -8.0)
+        if i in (1, 2):
+            desk(x + 1.5, -12.0, 2.0)
+            props.cart(x + 1.8, -9.8)
+            props.cabinet(x + 1.8, -7.4, 1.2)
+        if i == 4:
             for offset in (-1.9, 0, 1.9):
-                box((x + offset, 1.15, -12.5), (1.4, 2.3, 0.65), "rust", (0.48, 0.56, 0.51))
+                props.cabinet(x + offset, -12.7, 1.6, 2.3)
+            props.cart(x + 1.8, -9)
+        props.radiator(x, -13.65)
         plaque = Box((x + 1.35, 1.7, -5.84), (0.75, 0.28, 0.035), material="rust",
                      color=(0.27, 0.36, 0.31),
                      interaction=Interaction(ROOM_NAMES[i], ROOM_NAMES[i] + "."))
@@ -188,8 +225,8 @@ def build_hospital(level: Level) -> Level:
             box((-20.81, 4.2, z + offset), (0.08, 4.8, 0.07), "rust", (0.2, 0.24, 0.22))
         for y in (1.85, 3.0, 4.2, 5.4, 6.55):
             box((-20.81, y, z), (0.08, 0.07, 1.85), "rust", (0.2, 0.24, 0.22))
-    return replace(level, boxes=tuple(boxes) + level.boxes,
-                   decorations=tuple(decorations) + level.decorations,
+    return replace(level, boxes=tuple(boxes) + tuple(props.boxes) + level.boxes,
+                   decorations=tuple(decorations) + tuple(props.decorations) + level.decorations,
                    objects=build_objects(definitions) + level.objects,
                    lighting=Lighting(level.lighting.ambient if level.lighting else (0.14, 0.16, 0.15),
                                      base_lights + tuple(lights)),

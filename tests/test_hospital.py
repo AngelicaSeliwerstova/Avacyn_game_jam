@@ -93,14 +93,17 @@ class HospitalTests(unittest.TestCase):
         world = CollisionWorld3D((b.collider for b in level.boxes), level.floor_bounds,
                                  objects=level.objects)
         body = make_body(world, (-0.5, 0, 12.2))
-        walk(self, body, ((-12, 0, 11), (-12, 0, 8.5), (-12, 0, 6.5), (-19, 0, 6.5),
+        walk(self, body, ((-5, 0, 10.5), (-9, 0, 10.5), (-12.95, 0, 8.6),
+                         (-12, 0, 8.5), (-12, 0, 6.5), (-19, 0, 6.5),
                          (-19, 0, 0), (-13, 0, 0), (-13, 0, -3.5)))
         for x in OFFICE_DOORS:
             walk(self, body, ((x, 0, -3.5), (x, 0, -8), (x, 0, -3.5)))
         # Регистрация, проход в охрану и возвращение в главный холл.
-        walk(self, body, ((11, 0, -3.5), (11, 0, 0), (8, 0, 0), (8, 0, 6.5),
-                         (12, 0, 6.5), (12, 0, 10.2), (-1, 0, 10.2), (-1, 0, 7),
-                         (2, 0, 7), (2, 0, 0), (-1, 0, 0), (-1, 0, -3.5)))
+        walk(self, body, ((11, 0, -3.5), (11, 0, 0), (12, 0, 0), (12, 0, 4.3),
+                         (14.3, 0, 4.3), (14.3, 0, 5.3), (12, 0, 4.3), (12, 0, 0),
+                         (3.5, 0, 0), (3.5, 0, 10.5), (-0.5, 0, 10.5), (3.5, 0, 10.5),
+                         (3.5, 0, 2.2), (-1, 0, 2.2), (-1, 0, 4.5), (-1, 0, 2.2),
+                         (-1, 0, -3.5)))
         self.assertAlmostEqual(body.position.y, 0, places=4)
 
     def test_invalid_stair_dimensions_are_rejected(self):

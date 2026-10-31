@@ -1,12 +1,12 @@
 {
   "layout": "hospital_first_floor",
   "floor_size": [43.0, 29.0],
-  "floor_material": "dirty_tiles",
+  "floor_material": "hospital_floor",
   "room_height": 4.8,
   "spawn_position": [-0.5, 1.6, 12.2],
   "spawn_target": [-0.5, 1.6, 8.0],
   "snow_enabled": false,
-  "lighting": {"ambient": [0.14, 0.16, 0.15], "lights": []},
+  "lighting": {"ambient": [0.23, 0.25, 0.23], "lights": []},
   "boxes": [],
   "objects": []
 }
