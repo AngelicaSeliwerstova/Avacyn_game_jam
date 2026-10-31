@@ -225,6 +225,8 @@ class InteractionController:
             target.set_state("open")
         elif action.command == "open_door":
             target.set_state("open")
+        elif action.command == "close_door":
+            target.set_state("default")
         else:
             raise ValueError(f"Unknown interaction command: {action.command}")
         return action.message

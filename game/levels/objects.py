@@ -123,11 +123,16 @@ def _door(data, position):
     u = sign * width / 2
     pivot = (x + u, y, z + normal_offset) if axis == "x" else (x + normal_offset, y, z + u)
     opened = tuple(b.rotated_around(pivot, angle) for b in panel)
-    action = Interaction(data.get("name", "Door"), "The door opens.",
-                         "Open", "unlock_door" if key_id else "open_door", key_id or "")
+    name = data.get("name", "Дверь")
+    action = Interaction(name, "Дверь открывается.",
+                         "Открыть", "unlock_door" if key_id else "open_door", key_id or "")
+    close_action = Interaction(name, "Дверь закрывается.", "Закрыть", "close_door")
+    open_seconds = data.get("open_seconds", 0.9)
     return (
         SceneObject(data["id"] + "_frame", {"default": ObjectState(frame)}),
         SceneObject(data["id"], {"default": ObjectState(panel, interaction=action),
-                                 "open": ObjectState(opened)},
-                    transition_seconds={"open": data.get("open_seconds", 0.9)}, rotation_pivot=pivot),
+                                 "open": ObjectState(opened, interaction=close_action)},
+                    transition_seconds={"open": open_seconds,
+                                        "default": data.get("close_seconds", open_seconds)},
+                    rotation_pivot=pivot),
     )
