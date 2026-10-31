@@ -27,6 +27,15 @@ def fixture(boxes=(), graph=None, objects=(), position=(-4, 0, 0)):
 
 
 class CompanionTests(unittest.TestCase):
+    def test_player_can_walk_through_companion_without_removing_it_from_scene(self):
+        scene = Campaign().load_level("start")
+        ally = scene.session.companions[0]
+
+        self.assertIn(ally.scene_object, scene.level.objects)
+        self.assertFalse(scene.player.body.world.is_blocked(
+            ally.body.position, scene.player.body.radius, scene.player.body.height,
+        ))
+
     def test_follows_stops_near_player_and_resumes_without_jitter(self):
         ally, player, system = fixture()
         for _ in range(180):
@@ -54,6 +63,17 @@ class CompanionTests(unittest.TestCase):
             self.assertFalse(ally.body.world.is_blocked(ally.body.position, 0.249, 1.799))
         self.assertGreater(farthest_z, 2.25)
         self.assertLess(glm.distance(ally.body.position, player.body.position), 1.5)
+
+    def test_astar_search_can_be_advanced_in_bounded_steps(self):
+        graph = NavigationGraph(((-3, 0, 0), (-3, 0, 3), (3, 0, 3), (3, 0, 0)),
+                                ((0, 1, False), (1, 2, False), (2, 3, False)), connection_distance=4)
+        ally, player, _ = fixture((Box((0, 1.5, 0), (0.5, 3, 4)),), graph)
+        search = graph.start_path_search(ally.body.position, player.body.position, ally._navigation)
+        self.assertFalse(search.done)
+        while not search.done:
+            self.assertLessEqual(search.advance(max_expansions=1, max_seconds=0.1), 1)
+        self.assertTrue(search.result.complete)
+        self.assertGreater(len(search.result.points), 2)
 
     def test_replans_when_closed_door_opens(self):
         doors = build_objects([{"id": "door", "type": "door", "position": (0, 0, 0),

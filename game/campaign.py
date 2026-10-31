@@ -5,6 +5,7 @@ from engine.collision.world3d import CollisionWorld3D
 from engine.particles.snow import Snowfall, SnowSettings
 from engine.scene.runtime import RuntimeScene
 from game.entities.player import create_player
+from game.entities.companion import Companion
 from game.enemies import EnemySystem
 from game.companions import CompanionSystem
 from game.inventory import Inventory
@@ -34,7 +35,7 @@ class Campaign:
         world = CollisionWorld3D(
             colliders=(box.collider for box in level.collision_boxes),
             bounds=level.floor_bounds, ground_height=level.base_height,
-            objects=level.objects,
+            objects=tuple(obj for obj in level.objects if not isinstance(obj.entity, Companion)),
         )
         player = create_player(level, world, creator_mode=self.creator_mode,
                                inventory=self.progress.inventory)

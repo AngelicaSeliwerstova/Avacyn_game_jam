@@ -50,11 +50,12 @@ class CompanionSystem:
         if boxes != self._creator_boxes:
             self._creator_boxes = boxes
             self._creator_obstacle.set_geometry(boxes)
+            for ally in self.companions:
+                ally.body.world.set_creator_colliders(self._creator_boxes)
         target = self.player.body.position
         if not self.player.body.grounded:
             target.y = self.player.body.world.support_height(target, self.player.body.radius, target.y)
         for ally in self.companions:
-            ally.body.world.set_creator_colliders(self._creator_boxes)
             ally.update(min(delta_time, settings.MAX_DELTA_TIME), target)
 
     def debug_paths(self):

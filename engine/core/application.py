@@ -1,7 +1,9 @@
-import pygame
+import gc
 from time import perf_counter
 from collections.abc import Callable
 from pathlib import Path
+
+import pygame
 
 from engine.core.window import Window
 from engine.debug.panel import DebugSettings, DeveloperPanel
@@ -112,8 +114,13 @@ class Application:
 
             while self._running:
                 frame_started = perf_counter() if self._debug_mode else 0.0
+                gc_before = (
+                    tuple(generation["collections"] for generation in gc.get_stats())
+                    if self._debug_mode else ()
+                )
                 # Clock возвращает миллисекунды, контроллер работает с секундами.
                 delta_time = clock.tick(self._fps_limit) / 1000.0
+                pacing_finished = perf_counter() if self._debug_mode else 0.0
                 self._handle_events(input_device, window, renderer)
                 if not self._running:
                     break
@@ -127,6 +134,7 @@ class Application:
                 inputs = input_device.read()
                 profiling = self._debug_mode
                 started = perf_counter() if profiling else 0.0
+                system_timings = {}
                 renderer.profile_enabled = profiling
                 objects_updated = player_updated = systems_updated = animation_updated = started
                 if not self._simulation_paused:
@@ -145,8 +153,13 @@ class Application:
                         renderer.recalculate_shadows()
                     player_updated = perf_counter() if profiling else 0.0
                     if not creator_was_active and not creator_is_being_toggled:
-                        for system in self._systems:
+                        for index, system in enumerate(self._systems):
+                            system_started = perf_counter() if profiling else 0.0
                             system.update(delta_time)
+                            if profiling:
+                                system_timings[
+                                    f"system_{index}_{type(system).__name__}"
+                                ] = perf_counter() - system_started
                             if self._session.next_level is not None:
                                 break
                             if self._session.dialog is not None:
@@ -200,16 +213,30 @@ class Application:
                 if frame_log is not None:
                     presented = perf_counter()
                     frame_log.record(presented - frame_started, {
-                        "pacing_input": started - frame_started,
+                        "frame_pacing": pacing_finished - frame_started,
+                        "events_input": started - pacing_finished,
                         "objects_doors": objects_updated - started,
                         "player_camera_collision": player_updated - objects_updated,
                         "systems_actors_session": systems_updated - player_updated,
+                        **system_timings,
                         "animation_particles": animation_updated - systems_updated,
                         **renderer.frame_timings,
                         "present": presented - rendered,
                     }, lambda: {"scene": self._level.visual_style,
+                                "delta_time_s": round(delta_time, 4),
                                 "update_total_ms": round((updated - started) * 1000, 3),
                                 "render_total_ms": round((rendered - updated) * 1000, 3),
+                                "level_counts": {
+                                    "collision_boxes": len(self._level.collision_boxes),
+                                    "objects": len(self._level.objects),
+                                    "render_boxes": len(self._level.object_boxes),
+                                },
+                                "gc_collections": [
+                                    after - before for before, after in zip(
+                                        gc_before,
+                                        (generation["collections"] for generation in gc.get_stats()),
+                                    )
+                                ],
                                 "position": tuple(self._controlled_entity.transform.position),
                                 "camera": tuple(self._controlled_entity.camera.position),
                                 "paused": self._simulation_paused,

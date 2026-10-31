@@ -36,12 +36,18 @@ class SlowFrameLog:
             return
         now = perf_counter()
         # Details are gathered only for slow frames, never every normal frame.
+        stage_timings = timings
+        if any(key.startswith("system_") for key in timings):
+            stage_timings = {
+                key: value for key, value in timings.items()
+                if key != "systems_actors_session"
+            }
         self._write({"event": "slow_frame", "frame": self._frame,
                      "elapsed_s": round(now - self._started, 3),
                      "fps": round(1 / frame_seconds, 2),
                      "frame_ms": round(frame_seconds * 1000, 3),
                      "timings_ms": {key: round(value * 1000, 3) for key, value in timings.items()},
-                     "largest_stage": max(timings, key=timings.get) if timings else None,
+                     "largest_stage": max(stage_timings, key=stage_timings.get) if stage_timings else None,
                      **details()})
 
     def close(self):

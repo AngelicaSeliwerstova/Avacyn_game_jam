@@ -49,6 +49,7 @@ class Companion(Entity):
         self.state = CompanionState.CHASE
         self._yaw = 0.0
         self._path = []
+        self._path_search = None
         self.path_complete = False
         self._path_timer = self._blocked_time = 0.0
         self._planned_goal = None
@@ -125,8 +126,16 @@ class Companion(Entity):
         moved = self._planned_goal is None or math.dist(target, self._planned_goal) > 0.5
         changed = self._navigation.revision != self._planned_revision
         arrived_far = not self._path and self.path_complete and math.dist(position, target) > self.tuning.stop_distance
-        if self._path_timer <= 0 and (moved or changed or arrived_far or self._blocked_time > 0.4 or not self._path):
+        if (self._path_timer <= 0
+                and (changed or (self._path_search is None
+                                 and (moved or arrived_far or self._blocked_time > 0.4 or not self._path)))):
             self._replan(position, target)
+        if self._path_search is not None:
+            self._path_search.advance(max_expansions=32, max_seconds=0.002)
+            if self._path_search.done:
+                result = self._path_search.result
+                self._path, self.path_complete = list(result.points), result.complete
+                self._path_search = None
 
         advanced = False
         while self._path and self._near(position, self._path[0], 0.14):
@@ -172,17 +181,15 @@ class Companion(Entity):
 
     def _replan(self, position, target):
         clear = abs(position[1] - target[1]) < 0.01 and self._navigation.can_walk(position, target, cache=False)
-        if clear:
-            self._path, self.path_complete = [target], True
-        elif self._graph is not None:
-            path = self._graph.find_path(position, target, self._navigation)
-            self._path, self.path_complete = list(path.points), path.complete
-        else:
-            self._path, self.path_complete = [], False
         self._path_timer = self.tuning.repath_interval
         self._planned_goal, self._planned_revision = target, self._navigation.revision
         self._blocked_time = 0
-        self._smooth(position)
+        self._path_search = None
+        if clear:
+            self._path, self.path_complete = [target], True
+            self._smooth(position)
+        elif self._graph is not None:
+            self._path_search = self._graph.start_path_search(position, target, self._navigation)
 
     def _smooth(self, position):
         furthest = 0

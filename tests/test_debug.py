@@ -93,6 +93,20 @@ class DebugTests(unittest.TestCase):
             self.assertIn("elapsed_s", slow)
             self.assertEqual(slow["details"], ["FEET XYZ: 1 2 3"])
 
+    def test_slow_frame_log_identifies_slowest_named_system(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = SlowFrameLog(Path(directory))
+            log.record(1 / 20, {
+                "systems_actors_session": 0.04,
+                "system_0_CompanionSystem": 0.003,
+                "system_1_EnemySystem": 0.031,
+                "world_character": 0.01,
+            }, lambda: {})
+            log.close()
+            records = [json.loads(line) for line in log.path.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(records[1]["largest_stage"], "system_1_EnemySystem")
+            self.assertEqual(records[1]["timings_ms"]["systems_actors_session"], 40)
+
     def test_command_line_passes_explicit_debug_mode(self):
         from main import main
         for flags, enabled in (([], False), (["--debug"], True)):

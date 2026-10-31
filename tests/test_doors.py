@@ -33,6 +33,17 @@ class DoorTests(unittest.TestCase):
             self.assertEqual(door.current_state, door.states["default"])
             self.assertEqual(door.interaction.command, "open_door")
 
+    def test_collision_index_rebuilds_when_door_changes_but_not_for_same_creator_boxes(self):
+        objects, door, _ = self.make_door()
+        world = CollisionWorld3D((), objects=objects)
+        closed_colliders = world.colliders
+        world.set_creator_colliders(())
+        self.assertIs(world.colliders, closed_colliders)
+
+        door.set_state("open")
+        door.update(1)
+        self.assertFalse(world.is_blocked(glm.vec3(0, 0, 0), 0.25, 1.8))
+
     def test_locked_door_still_needs_key_and_can_be_closed_then_reopened(self):
         _, door, controller = self.make_door(key_id="office")
         self.assertIn("Locked", controller._activate(door))
