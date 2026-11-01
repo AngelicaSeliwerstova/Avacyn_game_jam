@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 from config import controls, settings
 from engine.core.application import Application
@@ -7,10 +8,12 @@ from game.effects import create_postprocess_presets
 from game.materials import create_texture_settings
 from game.ui import create_debug_settings, create_hud_style
 from game.campaign import Campaign
+from game.puzzles.cctv_puzzle import CCTVProgressStore
 
 
 def run_session(creator_mode: bool = False, debug_mode: bool = False, level_name: str | None = None):
-    campaign = Campaign(creator_mode=creator_mode)
+    campaign = Campaign(creator_mode=creator_mode, puzzle_store=CCTVProgressStore(
+        Path(__file__).resolve().parent / "saves/hospital_archives.json"))
     scene = campaign.load_level(settings.LEVEL_NAME if level_name is None else level_name)
     app = Application(
         window_size=settings.WINDOW_SIZE,

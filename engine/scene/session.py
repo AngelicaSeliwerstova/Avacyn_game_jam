@@ -31,6 +31,14 @@ class Session:
     dialog: Dialog | None = None
     next_level: str | None = None
     controls_locked: bool = False
+    puzzle_view: object | None = None
+
+    @property
+    def puzzle_active(self):
+        return self.puzzle_view is not None
+
+    def handle_puzzle_action(self, action: str) -> bool:
+        return False
 
     def tick_presentation(self, delta_time: float):
         """Advance timed overlays even while a dialog pauses the simulation."""

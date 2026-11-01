@@ -156,6 +156,7 @@ class _ActValidator:
             "sound": (("profile", "volume"), ()), "complete_act": ((), ()), "next_act": ((), ()),
             "object_state": (("object", "state"), ()), "wait_object": (("object", "state"), ()),
             "wait": (("seconds",), ()), "end": (("title", "text"), ()),
+            "puzzle": (("id",), ()), "puzzle_checkpoint": (("id",), ()),
         }
         for i, step in enumerate(steps):
             loc = f"{where}[{i}]"
@@ -164,7 +165,9 @@ class _ActValidator:
             _check(isinstance(kind, str) and kind in specs, loc + ".type", f"unknown step {kind!r}")
             required, optional = specs[kind]
             _fields(step, loc, ("type", *required), optional)
-            if kind == "dialogue":
+            if kind in ("puzzle", "puzzle_checkpoint"):
+                self.ref(step["id"], self.book.data.get("puzzles", {}), loc + ".id")
+            elif kind == "dialogue":
                 self.ref(step["id"], self.act.dialogues, loc + ".id")
                 _check(step.get("presentation", "conversation") in ("conversation", "memory"), loc, "invalid dialogue presentation")
             elif kind in ("object_state", "wait_object"):
@@ -350,7 +353,7 @@ def load_story(story_id, root=None):
     _check(isinstance(story_id, str) and bool(_ID.fullmatch(story_id)), root, "invalid story ID")
     path = root / story_id / "campaign.json"
     data = _read(path)
-    _fields(data, str(path), ("version", "id", "start_act", "characters", "entries", "acts"))
+    _fields(data, str(path), ("version", "id", "start_act", "characters", "entries", "acts"), ("puzzles",))
     _check(type(data["version"]) is int and data["version"] == 1, path, "unsupported story format version")
     _check(data["id"] == story_id, path, "campaign ID does not match its folder")
     _check(isinstance(data["characters"], dict), path, "characters must be named objects")
@@ -365,6 +368,14 @@ def load_story(story_id, root=None):
                 DialogueVoiceProfile.from_data(character["voice"])
             except ValueError as error:
                 raise StoryFormatError(f"{path}:characters.{name}.voice: {error}") from error
+    puzzles = data.get("puzzles", {})
+    _check(isinstance(puzzles, dict), path, "puzzles must be named resource files")
+    from game.puzzles.cctv_puzzle import load_cctv_definition
+    for name, filename in puzzles.items():
+        try:
+            load_cctv_definition(filename, data["characters"])
+        except (ValueError, OSError, TypeError) as error:
+            raise StoryFormatError(f"{path}:puzzles.{name}: {error}") from error
     _check(isinstance(data["acts"], list) and bool(data["acts"]), path, "campaign needs acts")
     acts = {}
     for item in data["acts"]:

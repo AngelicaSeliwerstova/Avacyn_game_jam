@@ -162,6 +162,14 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
     with props.authored_group("security_desk", -3, 4.9, extra_boxes=boxes):
         desk(-3, 4.9, 3.2, 0.9)
         props.desk_details(-3, 4.9)
+    definitions.extend((
+        {"id": "security_archive", "type": "story_prop", "name": "Архив камер", "action": "Изучить записи камер",
+         "position": (-2.75, 1.22, 4.923), "size": (0.52, 0.35, 0.015),
+         "color": (0.14, 0.24, 0.19), "emission": (0.035, 0.07, 0.045)},
+        {"id": "incident_report", "type": "story_document", "name": "Отчёт о происшествии",
+         "position": (-3.55, 1.06, 4.86), "size": (0.37, 0.035, 0.29),
+         "selection_size": (0.5, 0.15, 0.38), "initial": "unavailable"},
+    ))
     props.chair(-3, 3.65)
     with props.against_wall("z", 0.12):
         props.cabinet(-0.9, 1.1, 1.2, 2.0, yaw=180)

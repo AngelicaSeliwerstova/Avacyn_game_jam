@@ -14,7 +14,7 @@ from game.dialogue_voice import DialogueVoiceProfile
 
 
 class StorySession(GameSession):
-    def __init__(self, level, player, flags, book, level_name):
+    def __init__(self, level, player, flags, book, level_name, *, puzzle_store=None):
         self.level, self.book, self.level_name = level, book, level_name
         self._active_prefix = f"story:{book.id}:active:"
         active = next((name for name in book.acts if self._active_prefix + name in flags), None)
@@ -25,6 +25,13 @@ class StorySession(GameSession):
             flags.add(self._active_prefix + active)
         self.act = book.acts[active]
         super().__init__(level, player, flags)
+        from game.puzzles.cctv_puzzle import CCTVPuzzle, CCTVProgressStore, load_cctv_definition
+        store = CCTVProgressStore() if puzzle_store is None else puzzle_store
+        self._puzzles = {name: CCTVPuzzle(name, load_cctv_definition(filename, book.data["characters"]), store,
+                                         book.data["characters"])
+                         for name, filename in book.data.get("puzzles", {}).items()}
+        self._puzzle = None
+        self._sync_puzzle_flags()
         for act in book.acts.values():
             for document_id, document in act.documents.items():
                 if document["read_flag"] in flags and not player.inventory.has_item(document_id):
@@ -37,7 +44,7 @@ class StorySession(GameSession):
                 if actor.scene_object.interaction is not None:
                     actor.scene_object.set_interaction(replace(actor.scene_object.interaction, name=actor.display_name))
         for obj in level.objects:
-            if isinstance(obj.entity, StoryDocument):
+            if isinstance(obj.entity, StoryDocument) and obj.interaction is not None:
                 _, document = book.document(obj.name)
                 obj.set_interaction(replace(obj.interaction, name=document["title"], message=document["title"]))
         self._queue = deque()
@@ -125,6 +132,21 @@ class StorySession(GameSession):
             elif kind == "object_state":
                 obj = self._object(step["object"])
                 obj.set_state(step["state"])
+                if isinstance(obj.entity, StoryDocument) and obj.interaction is not None:
+                    _, document = self.book.document(obj.name)
+                    obj.set_interaction(replace(obj.interaction, name=document["title"], message=document["title"]))
+            elif kind == "puzzle":
+                self.stop_dialogue_voice()
+                self._puzzle = self._puzzles[step["id"]]
+                if self._puzzle.progress.solved:
+                    self._puzzle.play()
+                self.puzzle_view = self._puzzle.view()
+                break
+            elif kind == "puzzle_checkpoint":
+                puzzle = self._puzzles[step["id"]]
+                puzzle.progress.aftermath_done = True
+                puzzle.save()
+                self._sync_puzzle_flags()
             elif kind == "wait":
                 self._wait_seconds = step["seconds"]
                 self.controls_locked = True
@@ -134,7 +156,12 @@ class StorySession(GameSession):
                 self.controls_locked = True
                 break
             elif kind == "end":
-                self.dialog = Dialog(step["title"], step["text"], self._buttons(), presentation="ending")
+                buttons = self._buttons()
+                target = act.data.get("next_act")
+                if target and self.book.enabled(target):
+                    buttons = (DialogButton("Продолжить   E / Enter", "story_continue", ("e", "return")),
+                               DialogButton("Выйти   Esc", "quit", ("escape",)))
+                self.dialog = Dialog(step["title"], step["text"], buttons, presentation="ending")
                 break
             elif kind == "level":
                 self.preserve_scene_on_transition = step.get("preserve_scene", False)
@@ -166,6 +193,7 @@ class StorySession(GameSession):
                     self._flags.difference_update(flag for flag in tuple(self._flags) if flag.startswith(self._active_prefix))
                     self._flags.add(self._active_prefix + target)
                     self.act = self.book.acts[target]
+                    self._sync_puzzle_flags()
                     self._previous_zones.clear()
                     self._visited_zones.clear()
                     self._dispatch({"load": True, "talk": set(), "interact": set(), "zones": set(), "entered": set(), "revisited": set()}, advance=False)
@@ -183,6 +211,16 @@ class StorySession(GameSession):
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("Story delta time must be finite and nonnegative")
         super().tick_presentation(delta_time)
+        if self._puzzle is not None:
+            if self._puzzle.tick(delta_time):
+                puzzle = self._puzzle
+                self._sync_puzzle_flags()
+                if not puzzle.progress.aftermath_done:
+                    self.player.story_events.add(f"watched:{puzzle.id}")
+                self._close_puzzle()
+            else:
+                self.puzzle_view = self._puzzle.view()
+            return
         if self._timed is None:
             return
         self._elapsed += delta_time
@@ -240,7 +278,7 @@ class StorySession(GameSession):
             self.player.story_events.discard(trigger["name"])
 
     def update(self, delta_time):
-        if self.dialog is not None or self.next_level is not None or self.player.creator_mode:
+        if self.dialog is not None or self.puzzle_active or self.next_level is not None or self.player.creator_mode:
             return
         if self._wait_seconds > 0:
             self._wait_seconds = max(0, self._wait_seconds - delta_time)
@@ -336,10 +374,14 @@ class StorySession(GameSession):
             self._flags.add(doc["read_flag"])
             self.player.inventory.add_item(document_id, doc["title"])
             self._prepend(act, doc.get("on_first_read", []))
+        for puzzle in self._puzzles.values():
+            if doc["read_flag"] == puzzle.data["report_flag"]:
+                puzzle.progress.report_read = True
+                puzzle.save()
         self._advance()
 
     def handle_gameplay_key(self, key):
-        if self.dialog is not None or self.controls_locked:
+        if self.dialog is not None or self.puzzle_active or self.controls_locked:
             return False
         for act in self.book.acts.values():
             for document_id, doc in act.documents.items():
@@ -352,7 +394,12 @@ class StorySession(GameSession):
     def handle_action(self, action):
         if self.dialog is None or action not in {button.action for button in self.dialog.buttons}:
             return False
-        if action == "story_next" and self._node:
+        if action == "story_continue":
+            if self.act.data["complete_flag"] not in self._flags:
+                return False
+            self._prepend(self.act, [{"type": "next_act"}])
+            self._advance()
+        elif action == "story_next" and self._node:
             if not self.reveal_dialogue():
                 self._advance()
         elif action.startswith("story_choice:") and self._node and "choice" in self._node:
@@ -372,7 +419,58 @@ class StorySession(GameSession):
             return super().handle_action(action)
         return True
 
+    def _sync_puzzle_flags(self):
+        active = {step["id"] for scene in self.act.data["scenes"] for step in scene["steps"]
+                  if step["type"] == "puzzle"}
+        for puzzle in self._puzzles.values():
+            if puzzle.id not in active:
+                continue
+            for field, flag in (("solved", puzzle.data["solved_flag"]), ("watched", puzzle.data["watched_flag"]),
+                                ("report_read", puzzle.data["report_flag"]), ("aftermath_done", f"{puzzle.id}:aftermath_done")):
+                if getattr(puzzle.progress, field):
+                    self._flags.add(flag)
+        for document_id, document in self.act.documents.items():
+            if document["read_flag"] in self._flags and not self.player.inventory.has_item(document_id):
+                self.player.inventory.add_item(document_id, document["title"])
+
+    def _close_puzzle(self):
+        self._puzzle.save()
+        self._puzzle.stop()
+        self._puzzle = None
+        self.puzzle_view = None
+        self._advance()
+
+    def handle_puzzle_action(self, action):
+        if self._puzzle is None:
+            return False
+        puzzle = self._puzzle
+        if action == "archive_close":
+            self._close_puzzle()
+            return True
+        if puzzle.playing:
+            return False
+        if action.startswith("archive_frame:"):
+            value = action.partition(":")[2]
+            if value not in ("0", "1", "2", "3"):
+                return False
+            puzzle.click(int(value))
+        elif action == "archive_check":
+            puzzle.check()
+        elif action == "archive_reset":
+            puzzle.reset()
+        elif action == "archive_hint":
+            puzzle.hint()
+        elif action == "archive_play":
+            puzzle.play()
+        else:
+            return False
+        self._sync_puzzle_flags()
+        self.puzzle_view = puzzle.view()
+        return True
+
     def release(self):
         super().release()
+        for puzzle in self._puzzles.values():
+            puzzle.release()
         if hasattr(self, "_sounds"):
             self._sounds.stop()

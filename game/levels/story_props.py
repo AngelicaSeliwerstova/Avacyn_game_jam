@@ -21,7 +21,7 @@ class StoryDocument(StoryProp):
 
 
 def build_story_prop(data, position):
-    action = Interaction(data["name"], data["name"], "Осмотреть", "story", data["id"])
+    action = Interaction(data["name"], data["name"], data.get("action", "Осмотреть"), "story", data["id"])
     states = {}
     for name, material in data.get("materials", {"default": data.get("material")}).items():
         box = Box(position, tuple(data["size"]), material=material,
@@ -66,5 +66,6 @@ def build_story_document(data, position):
     title, name = data["name"], data["id"]
     selection = Box(position, tuple(data.get("selection_size", size)))
     return SceneObject(name, {"default": ObjectState(boxes, collidable=False,
-        interaction=Interaction(title, title, "Изучить", "story", name), selection_box=selection)},
+        interaction=Interaction(title, title, "Изучить", "story", name), selection_box=selection),
+        "unavailable": ObjectState(boxes, collidable=False)}, initial=data.get("initial", "default"),
         entity=StoryDocument(name=name))

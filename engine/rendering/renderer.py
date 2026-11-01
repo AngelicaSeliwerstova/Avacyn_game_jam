@@ -15,6 +15,7 @@ from engine.rendering.snow import SnowRenderer
 from engine.rendering.texture import Texture2D, TextureSettings
 from engine.rendering.hud import AimOverlay, CreatorSidebarOverlay, HudStyle, TextOverlay
 from engine.rendering.dialog import DialogOverlay
+from engine.rendering.cctv_overlay import CCTVOverlay
 from engine.rendering.debug_lines import DebugLineRenderer
 from engine.debug.geometry import DebugPath
 from engine.rendering.postprocess import PostProcessor, PostProcessSettings
@@ -94,6 +95,7 @@ class Renderer:
         self._aim_hud = None
         self._creator_sidebar = None
         self._dialog = None
+        self._archive = None
         self._inventory = None
         self._debug_lines = None
         self._postprocess = None
@@ -200,6 +202,7 @@ class Renderer:
             self._aim_hud = AimOverlay(self.context, hud_style or HudStyle())
             self._creator_sidebar = CreatorSidebarOverlay(self.context, hud_style or HudStyle())
             self._dialog = DialogOverlay(self.context, hud_style or HudStyle())
+            self._archive = CCTVOverlay(self.context, hud_style or HudStyle())
             self._inventory = InventoryOverlay(self.context, hud_style or HudStyle())
             if snow is not None and snow.settings.count > 0:
                 self._snow = SnowRenderer(self.context, snow, camera, render_size, fog=fog)
@@ -317,6 +320,7 @@ class Renderer:
 
     def render(self, window_size: tuple[int, int], hud_text: str = "", debug_text: str = "",
                *, aim_text: str | None = None, dialog: Dialog | None = None,
+               puzzle_view=None,
                inventory: InventoryView | None = None,
                debug_paths: tuple[DebugPath, ...] = (),
                player_transform: Transform | None = None,
@@ -436,7 +440,7 @@ class Renderer:
             )
         self._profile_mark("effects_particles")
         target = self.output_target
-        if dialog is None and inventory is None:
+        if dialog is None and inventory is None and puzzle_view is None:
             if debug_paths:
                 if self._debug_lines is None:
                     self._debug_lines = DebugLineRenderer(self.context)
@@ -447,13 +451,15 @@ class Renderer:
             if aim_text is not None:
                 self._aim_hud.draw(aim_text, target.size)
             self._debug_hud.draw(debug_text, target.size, anchor="bottom_right")
+        elif puzzle_view is not None:
+            self._archive.draw(puzzle_view, target.size, window_size)
         elif dialog is not None:
             self._dialog.draw(dialog, target.size, window_size)
         else:
             self._inventory.draw(inventory, target.size)
         self._profile_mark("hud")
         self._presenter.present(target.color, self.context.screen, window_size)
-        if creator_help_text is not None and dialog is None and inventory is None:
+        if creator_help_text is not None and dialog is None and inventory is None and puzzle_view is None:
             self._creator_sidebar.draw(window_size, target.size, creator_help_text)
         self._profile_mark("compose")
 
@@ -552,6 +558,9 @@ class Renderer:
             texture.use(location=0)
 
     def release(self, release_context: bool = True):
+        if self._archive is not None:
+            self._archive.release()
+            self._archive = None
         for _, mesh in self._entity_models:
             mesh.release()
         self._entity_models.clear()

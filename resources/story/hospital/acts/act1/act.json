@@ -484,5 +484,6 @@
         "act1:started"
       ]
     }
-  ]
+  ],
+  "next_act": "act2"
 }

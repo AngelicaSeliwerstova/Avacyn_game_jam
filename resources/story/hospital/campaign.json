@@ -39,6 +39,22 @@
         "volume": 0.7,
         "chars_per_second": 30
       }
+    },
+    "archive_friend": {
+      "name": "Подруга · запись",
+      "voice": {
+        "pitch_hz": 700,
+        "volume": 0.65,
+        "chars_per_second": 32
+      }
+    },
+    "archive_unknown": {
+      "name": "Неизвестная девушка · запись",
+      "voice": {
+        "pitch_hz": 660,
+        "volume": 0.65,
+        "chars_per_second": 32
+      }
     }
   },
   "entries": {
@@ -61,6 +77,16 @@
         "act0:transformed",
         "act0:met_doctor"
       ]
+    },
+    "act2": {
+      "act": "act2",
+      "set_flags": [
+        "act0:complete",
+        "act0:map",
+        "act0:letter_read",
+        "act0:transformed",
+        "act1:complete"
+      ]
     }
   },
   "acts": [
@@ -73,6 +99,14 @@
       "id": "act1",
       "file": "acts/act1/act.json",
       "enabled": true
+    },
+    {
+      "id": "act2",
+      "file": "acts/act2/act.json",
+      "enabled": true
     }
-  ]
+  ],
+  "puzzles": {
+    "cctv_archive": "cctv/archive.json"
+  }
 }

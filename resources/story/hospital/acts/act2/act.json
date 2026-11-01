@@ -1,0 +1,145 @@
+{
+  "id": "act2",
+  "title": "Последние минуты",
+  "complete_flag": "act2:complete",
+  "dialogues_file": "dialogue.json",
+  "documents_file": "documents.json",
+  "zones": {},
+  "objectives": [
+    {
+      "requires": [
+        "archive_puzzle_solved",
+        "archive_recording_watched",
+        "incident_report_read"
+      ],
+      "title": "Архив изучен",
+      "description": "Запись восстановлена, отчёт о происшествии прочитан."
+    },
+    {
+      "requires": [
+        "archive_recording_watched"
+      ],
+      "title": "Прочитать отчёт о происшествии",
+      "description": "Осмотрите папку рядом с видеорегистратором в комнате охраны."
+    },
+    {
+      "requires": [
+        "archive_puzzle_solved"
+      ],
+      "title": "Посмотреть восстановленную запись",
+      "description": "Запустите просмотр на терминале в комнате охраны."
+    },
+    {
+      "title": "Изучить записи камер",
+      "description": "Найдите монитор в комнате охраны на первом этаже. Восстановите порядок четырёх фрагментов."
+    }
+  ],
+  "scenes": [
+    {
+      "id": "intro",
+      "trigger": {
+        "type": "load"
+      },
+      "unless": [
+        "act2:started",
+        "archive_recording_watched"
+      ],
+      "steps": [
+        {
+          "type": "title",
+          "title": "АКТ 2",
+          "text": "«Последние минуты»",
+          "seconds": 4
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act2:started"
+          ]
+        },
+        {
+          "type": "follow",
+          "actor": "doctor",
+          "enabled": true
+        },
+        {
+          "type": "dialogue",
+          "id": "arrival"
+        }
+      ]
+    },
+    {
+      "id": "report_resume",
+      "trigger": {
+        "type": "load"
+      },
+      "requires": [
+        "archive_recording_watched"
+      ],
+      "once": false,
+      "steps": [
+        {
+          "type": "object_state",
+          "object": "incident_report",
+          "state": "default"
+        }
+      ]
+    },
+    {
+      "id": "terminal",
+      "trigger": {
+        "type": "interact",
+        "object": "security_archive"
+      },
+      "once": false,
+      "steps": [
+        {
+          "type": "puzzle",
+          "id": "cctv_archive"
+        }
+      ]
+    },
+    {
+      "id": "after_recording",
+      "trigger": {
+        "type": "event",
+        "name": "watched:cctv_archive"
+      },
+      "unless": [
+        "cctv_archive:aftermath_done"
+      ],
+      "steps": [
+        {
+          "type": "dialogue",
+          "id": "after_recording"
+        },
+        {
+          "type": "puzzle_checkpoint",
+          "id": "cctv_archive"
+        },
+        {
+          "type": "object_state",
+          "object": "incident_report",
+          "state": "default"
+        }
+      ]
+    },
+    {
+      "id": "report",
+      "trigger": {
+        "type": "interact",
+        "object": "incident_report"
+      },
+      "once": false,
+      "requires": [
+        "archive_recording_watched"
+      ],
+      "steps": [
+        {
+          "type": "document",
+          "id": "incident_report"
+        }
+      ]
+    }
+  ]
+}

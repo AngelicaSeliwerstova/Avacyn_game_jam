@@ -27,7 +27,9 @@ class CampaignProgress:
 
 
 class Campaign:
-    def __init__(self, creator_mode: bool = False):
+    def __init__(self, creator_mode: bool = False, *, puzzle_store=None):
+        from game.puzzles.cctv_puzzle import CCTVProgressStore
+        self.puzzle_store = CCTVProgressStore() if puzzle_store is None else puzzle_store
         self.progress = CampaignProgress()
         self.creator_mode = creator_mode
         self._scene: RuntimeScene | None = None
@@ -72,7 +74,8 @@ class Campaign:
         if level.story is not None and not self.creator_mode:
             from game.story import StorySession
             from game.story_loader import load_story
-            session = StorySession(level, player, self.progress.flags, load_story(level.story), name)
+            session = StorySession(level, player, self.progress.flags, load_story(level.story), name,
+                                   puzzle_store=self.puzzle_store)
         else:
             session = GameSession(level, player, flags=self.progress.flags)
         enemies = EnemySystem(level, player, on_caught=session.lose)

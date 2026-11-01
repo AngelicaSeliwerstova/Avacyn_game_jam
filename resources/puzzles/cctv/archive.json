@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "title": "Последние 30 секунд",
+  "instruction": "Выберите два фрагмента, чтобы поменять их местами.",
+  "incorrect": "Хронология нарушена. Проверьте порядок событий.",
+  "correct": "Последовательность восстановлена. Теперь можно посмотреть запись.",
+  "hint": "Попробуй посмотреть, как меняется положение девушек возле лестницы.",
+  "solved_flag": "archive_puzzle_solved",
+  "watched_flag": "archive_recording_watched",
+  "report_flag": "incident_report_read",
+  "correct_order": [
+    "A",
+    "B",
+    "C",
+    "D"
+  ],
+  "initial_order": [
+    "C",
+    "A",
+    "D",
+    "B"
+  ],
+  "frames": [
+    {
+      "id": "A",
+      "image": "frame_01.png",
+      "time": "21:43:05",
+      "title": "Две девушки входят на лестницу",
+      "description": "Обе ещё у входа на площадку. Одна идёт немного позади другой."
+    },
+    {
+      "id": "B",
+      "image": "frame_02.png",
+      "time": "21:43:1?",
+      "title": "Между девушками начинается ссора",
+      "description": "Они стоят лицом друг к другу. Одна жестикулирует, другая отступает."
+    },
+    {
+      "id": "C",
+      "image": "frame_03.png",
+      "time": "21:43:??",
+      "title": "Резкое движение возле перил",
+      "description": "Одна из фигур протягивает руки. Другая теряет равновесие у лестницы."
+    },
+    {
+      "id": "D",
+      "image": "frame_04.png",
+      "time": "21:43:32",
+      "title": "На площадке осталась одна девушка",
+      "description": "Вторая исчезла из кадра. Оставшаяся девушка смотрит вниз по лестнице."
+    }
+  ],
+  "sounds": {
+    "click": "cctv/button_click.wav",
+    "correct": "cctv/correct.wav",
+    "incorrect": "cctv/incorrect.wav",
+    "static": "cctv/static.wav",
+    "impact": "cctv/impact.wav",
+    "footsteps": "footsteps/doctor_step_01.wav"
+  },
+  "recording": [
+    {
+      "frame": "A",
+      "seconds": 3.0,
+      "sound": "footsteps"
+    },
+    {
+      "frame": "B",
+      "seconds": 3.5,
+      "speaker": "archive_friend",
+      "text": "Подожди, пожалуйста. Давай поговорим."
+    },
+    {
+      "frame": "B",
+      "seconds": 3.0,
+      "speaker": "archive_unknown",
+      "text": "Я не хочу больше это обсуждать!"
+    },
+    {
+      "frame": "B",
+      "seconds": 2.8,
+      "speaker": "archive_friend",
+      "text": "Я просто хочу тебе помочь."
+    },
+    {
+      "frame": "C",
+      "seconds": 2.6,
+      "speaker": "archive_friend",
+      "text": "Пожалуйста, остановись!"
+    },
+    {
+      "frame": "C",
+      "seconds": 2.5,
+      "speaker": "hero",
+      "text": "Оставь меня в покое..."
+    },
+    {
+      "frame": "C",
+      "seconds": 2.5,
+      "speaker": "archive_unknown",
+      "text": "Оставь меня в покое!"
+    },
+    {
+      "frame": "C",
+      "seconds": 0.55,
+      "sound": "static",
+      "interference": true
+    },
+    {
+      "frame": "D",
+      "seconds": 3.2,
+      "sound": "impact"
+    },
+    {
+      "frame": "D",
+      "seconds": 0.8,
+      "sound": "static",
+      "interference": true
+    }
+  ]
+}
