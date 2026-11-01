@@ -104,6 +104,20 @@ class TextureSettingsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 create_texture_settings()
 
+    def test_ward_303_entire_plaque_is_visible_from_reported_corridor_position(self):
+        import math
+        from engine.raycasting.aabb import cast_ray
+        level = create_level("start")
+        sign = next(b for b in level.decorations if b.material == "sign_patient_room_2")
+        origin = (-14.87, 11.53, -3.66)
+        colliders = tuple(b.collider for b in level.collision_boxes)
+        # Both ends and both vertical corners must clear the nurse-office wall.
+        for dx in (-sign.size[0] / 2, sign.size[0] / 2):
+            for dy in (-sign.size[1] / 2, sign.size[1] / 2):
+                point = (sign.position[0] + dx, sign.position[1] + dy, sign.position[2] + 0.02)
+                direction = tuple(v - o for v, o in zip(point, origin))
+                self.assertIsNone(cast_ray(origin, direction, colliders, math.dist(origin, point)))
+
 
 if __name__ == "__main__":
     unittest.main()

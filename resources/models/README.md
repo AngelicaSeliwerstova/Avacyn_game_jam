@@ -1,5 +1,15 @@
 # Модели
 
+- `doctor/girl_white.glb` — беловолосая девочка для врача/союзника в обеих версиях
+  больницы. Создана из пользовательского `Девочка_ходьба_белая.glb`; оригинал сохранён.
+  Активный цикл ходьбы — `Girl Walk In Place - Straighter Stance 24f`.
+  Материалы с `BLEND` подготовлены как `MASK`, чтобы волосы и одежда не просвечивали.
+  Остальные анимации и встроенные текстуры сохранены в файле.
+- Модель врача задаётся через `DOCTOR_MODEL`, `DOCTOR_MODEL_OFFSET`,
+  `DOCTOR_MODEL_ROTATION`, `DOCTOR_MODEL_SCALE` в `config/settings.py`.
+  Для союзника в JSON-карте используется `"appearance": "doctor"`.
+  Подготовку можно повторить: `python tools/prepare_doctor_model.py`.
+
 - `player/girl_chestnut_black_stockings.glb` — текущая модель игрока с каштановыми волосами и чёрными чулками. Для корректной отрисовки прозрачные участки материалов переведены в маску; исходный файл пользователя не изменён.
 - Путь модели задаётся в `config/settings.py` относительно `resources/models` через `PLAYER_MODEL`.
 - `PLAYER_MODEL_OFFSET`, `PLAYER_MODEL_ROTATION`, `PLAYER_MODEL_SCALE` настраивают локальное положение, поворот в градусах и размер.

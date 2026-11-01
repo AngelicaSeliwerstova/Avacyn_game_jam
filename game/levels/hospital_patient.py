@@ -172,7 +172,10 @@ def build_patient_floor(*, peaceful=False):
         if data["axis"] == "x":
             # North rooms and the nurse office face south; southern wards face north.
             side = -1 if z == 14 else 1
-            position = (x + 1.9, 1.75, z + side * 0.16)
+            # The nurse-office return at X=-10 covers the right-hand plaque of 303.
+            # Center its sign above the door, without crowding the plaque of 302.
+            position = ((x, 2.95, z + side * 0.16) if data["id"] == "patient_room_2"
+                        else (x + 1.9, 1.75, z + side * 0.16))
             yaw = 180 if side == -1 else 0
         else:
             position = (x - 0.16, 1.75, z + 1.9)

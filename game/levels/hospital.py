@@ -140,11 +140,11 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
     # U-shaped reception with chamfered corners and a staff entrance on the east.
     with props.authored_group("reception", 11.6, 6.2, extra_boxes=boxes):
         for position, size, yaw in (
-            ((11.6, 0.9, 6.2), (9.6, 1.15, 0.6), 0),
-            ((6.1, 0.9, 5.35), (0.6, 1.15, 2.4), 35),
-            ((5.5, 0.9, 3.4), (0.6, 1.15, 2.2), 0),
-            ((17.1, 0.9, 5.35), (0.6, 1.15, 2.4), -35),
-            ((17.8, 0.9, 3.9), (0.6, 1.15, 0.9), 0),
+            ((11.6, 0.7375, 6.2), (9.6, 1.475, 0.6), 0),
+            ((6.1, 0.7375, 5.35), (0.6, 1.475, 2.4), 35),
+            ((5.5, 0.7375, 3.4), (0.6, 1.475, 2.2), 0),
+            ((17.1, 0.7375, 5.35), (0.6, 1.475, 2.4), -35),
+            ((17.8, 0.7375, 3.9), (0.6, 1.475, 0.9), 0),
         ):
             box(position, size, "wood", yaw=yaw)
             box((position[0], 1.5, position[2]), (size[0] + 0.12, 0.12, size[2] + 0.12), "wood", yaw=yaw)

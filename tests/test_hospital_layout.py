@@ -13,6 +13,19 @@ from test_hospital import make_body, walk
 
 
 class HospitalLayoutTests(unittest.TestCase):
+    def test_reception_front_and_sides_reach_floor_in_both_worlds_and_creator(self):
+        from game.levels.creator_presets import creator_presets
+        for peaceful in (False, True):
+            level = create_level("peaceful" if peaceful else "start")
+            panels = [b for b in level.boxes if b.authored_group and
+                      b.authored_group.startswith("floor_1/reception:") and b.size[1] > 1]
+            preset = next(p for p in creator_presets(peaceful) if p.name == "Стойка регистрации")
+            for source in (panels, [b for b in preset.boxes if b.size[1] > 1]):
+                self.assertEqual(len(source), 5)
+                for panel in source:
+                    self.assertAlmostEqual(panel.collider.bottom, 0)
+                    self.assertAlmostEqual(panel.collider.top, 1.475)
+
     @classmethod
     def setUpClass(cls):
         cls.level = create_level("start")

@@ -12,7 +12,7 @@ from engine.scene.entity import Entity
 from engine.scene.object import ObjectState, SceneObject
 from engine.scene.transform import Transform
 from engine.scene.interaction import Interaction
-from game.entities.appearance import create_character_model
+from game.entities.appearance import create_character_model, create_doctor_model
 
 
 class CompanionState(Enum):
@@ -62,9 +62,10 @@ class Companion(Entity):
         if next_level is not None and (not isinstance(next_level, str) or not next_level.strip()):
             raise ValueError("Conversation destination must be a nonempty level name")
         self.talk_requested = False
-        if appearance not in ("player", "boxes"):
-            raise ValueError("Companion appearance must be player or boxes")
-        self.model = create_character_model() if appearance == "player" else None
+        if appearance not in ("player", "doctor", "boxes"):
+            raise ValueError("Companion appearance must be player, doctor or boxes")
+        self.model = (create_doctor_model() if appearance == "doctor"
+                      else create_character_model() if appearance == "player" else None)
         self._parts = self._make_parts()
         action = Interaction(display_name, "...", "Говорить", "talk") if self.dialogue else None
         self.scene_object = SceneObject(name, {"default": ObjectState(self._geometry(), interaction=action)},

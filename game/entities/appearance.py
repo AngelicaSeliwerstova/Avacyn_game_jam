@@ -13,3 +13,13 @@ def create_character_model():
                                   rotation=settings.PLAYER_MODEL_ROTATION,
                                   scale=(settings.PLAYER_MODEL_SCALE,) * 3),
     )
+
+
+def create_doctor_model():
+    root = Path(__file__).resolve().parents[2] / "resources/models"
+    return ModelComponent(
+        source_path=None if settings.DOCTOR_MODEL is None else root / settings.DOCTOR_MODEL,
+        local_transform=Transform(position=settings.DOCTOR_MODEL_OFFSET,
+                                  rotation=settings.DOCTOR_MODEL_ROTATION,
+                                  scale=(settings.DOCTOR_MODEL_SCALE,) * 3),
+    )

@@ -180,7 +180,9 @@ class CompanionTests(unittest.TestCase):
         scene = campaign.load_level("peaceful")
         ally = scene.session.companions[0]
         self.assertFalse(ally.following)
-        self.assertEqual(ally.model, scene.player.model)
+        self.assertNotEqual(ally.model, scene.player.model)
+        self.assertEqual(ally.model.source_path.name, "girl_white.glb")
+        self.assertTrue(ally.model.source_path.is_file())
         self.assertEqual(ally.scene_object.render_boxes, ())
         scene.session.update(0)
         self.assertIsNone(scene.session.next_level)

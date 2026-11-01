@@ -13,6 +13,7 @@
       "id": "hospital_companion",
       "name": "Союзник",
       "type": "companion",
+      "appearance": "doctor",
       "position": [-16.0, 0.0, -11.8],
       "following": true
     }

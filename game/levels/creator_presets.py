@@ -93,11 +93,11 @@ def creator_presets(peaceful=False):
     result[index] = CreatorPreset(result[index].name, result[index].boxes + tuple(props.boxes + props.decorations))
     reception = []
     for position, size, yaw in (
-        ((0, 0.9, 0), (9.6, 1.15, 0.6), 0),
-        ((-5.5, 0.9, -0.85), (0.6, 1.15, 2.4), 35),
-        ((-6.1, 0.9, -2.8), (0.6, 1.15, 2.2), 0),
-        ((5.5, 0.9, -0.85), (0.6, 1.15, 2.4), -35),
-        ((6.2, 0.9, -2.3), (0.6, 1.15, 0.9), 0),
+        ((0, 0.7375, 0), (9.6, 1.475, 0.6), 0),
+        ((-5.5, 0.7375, -0.85), (0.6, 1.475, 2.4), 35),
+        ((-6.1, 0.7375, -2.8), (0.6, 1.475, 2.2), 0),
+        ((5.5, 0.7375, -0.85), (0.6, 1.475, 2.4), -35),
+        ((6.2, 0.7375, -2.3), (0.6, 1.475, 0.9), 0),
     ):
         reception.append(Box(position, size, material="wood", yaw_degrees=yaw))
         reception.append(Box((position[0], 1.5, position[2]),
