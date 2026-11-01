@@ -310,6 +310,7 @@ class CCTVTests(unittest.TestCase):
         puzzle.data['speech_enabled'] = True
         self.addCleanup(puzzle.release)
         puzzle._sounds = Mock()
+        puzzle._voice = Mock()
         puzzle.progress.order = list('ABCD')
         with patch.object(settings, 'AUDIO_ENABLED', True):
             puzzle.check()
@@ -318,6 +319,7 @@ class CCTVTests(unittest.TestCase):
                 if puzzle.tick(.25):
                     break
         self.assertTrue(puzzle.progress.watched)
+        puzzle._voice.play.assert_called()
         puzzle._sounds.play_voice.assert_not_called()
 
 

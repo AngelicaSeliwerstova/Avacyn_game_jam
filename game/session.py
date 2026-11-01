@@ -1,9 +1,10 @@
 from dataclasses import replace
 
+from config import settings
 from engine.scene.session import Dialog, DialogButton, Session
 from game.entities.escape import EscapeGoal
 from game.entities.companion import Companion
-from game.dialogue_voice import DialogueTyper, DialogueVoiceProfile
+from game.dialogue_voice import DialogueTyper, DialogueVoice, DialogueVoiceProfile
 
 
 class GameSession(Session):
@@ -18,6 +19,7 @@ class GameSession(Session):
         self._speaker = None
         self._dialogue_index = 0
         self._typing = None
+        self._voice = DialogueVoice()
         self._spoken_buttons = ()
         self.goals = tuple(obj.entity for obj in level.objects if isinstance(obj.entity, EscapeGoal)) if level else ()
         self._key_names = {obj.interaction.argument: obj.interaction.name for obj in level.objects
@@ -93,6 +95,7 @@ class GameSession(Session):
 
     def stop_dialogue_voice(self):
         self._typing = None
+        self._voice.stop()
 
     def reveal_dialogue(self):
         """First continue press reveals the line; the next advances the story."""
@@ -104,16 +107,21 @@ class GameSession(Session):
         return True
 
     def tick_presentation(self, delta_time):
+        if not settings.AUDIO_ENABLED or not settings.DIALOGUE_BEEPS_ENABLED:
+            self._voice.stop()
         if self._typing is None or self.dialog is None:
             return
-        self._typing.update(delta_time)
+        cue = self._typing.update(delta_time)
+        if (cue and settings.AUDIO_ENABLED and settings.DIALOGUE_BEEPS_ENABLED
+                and self._typing.profile.enabled):
+            self._voice.play(self._typing.profile, *cue)
         self.dialog = replace(self.dialog, visible_characters=self._typing.visible,
                               buttons=self._spoken_buttons if self._typing.finished else self.dialog.buttons)
         if self._typing.finished:
             self._typing = None
 
     def release(self):
-        self._typing = None
+        self._voice.release()
 
     def handle_action(self, action):
         if self._speaker is None or self.dialog is None:

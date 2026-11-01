@@ -5,6 +5,7 @@ import math
 from pathlib import Path
 
 from engine.scene.archive import ArchiveFrame, ArchiveView
+from game.dialogue_voice import DialogueTyper, DialogueVoice, DialogueVoiceProfile
 from game.hospital_audio import HospitalSoundBank
 from config import settings
 
@@ -128,6 +129,8 @@ class CCTVPuzzle:
         self.playing = False
         self._step = 0
         self._elapsed = 0.0
+        self._typer = None
+        self._voice = DialogueVoice()
         self._sounds = HospitalSoundBank(definition["sounds"])
 
     def save(self):
@@ -184,6 +187,8 @@ class CCTVPuzzle:
     def hint(self):
         if self.progress.attempts >= 2 and not self.progress.solved and not self.playing:
             self.message = self.characters["doctor"]["name"] + ": " + self.data["hint"]
+            self._voice.stop()
+            self._typer = DialogueTyper(self.data["hint"], DialogueVoiceProfile.from_data(self.characters["doctor"].get("voice")))
 
     def play(self):
         if not self.progress.solved:
@@ -194,15 +199,26 @@ class CCTVPuzzle:
         self._begin_step()
 
     def _begin_step(self):
+        self._voice.stop()
         step = self.data["recording"][self._step]
+        self._typer = None
+        if "speaker" in step:
+            profile = DialogueVoiceProfile.from_data(self.characters[step["speaker"]].get("voice"))
+            self._typer = DialogueTyper(step["text"], profile)
         if "sound" in step:
             self._cue(step["sound"])
 
     def tick(self, delta_time):
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("CCTV delta time must be finite and nonnegative")
+        if self._typer is not None:
+            cue = self._typer.update(delta_time)
+            if cue and settings.AUDIO_ENABLED and settings.DIALOGUE_BEEPS_ENABLED:
+                self._voice.play(self._typer.profile, *cue)
         if not settings.AUDIO_ENABLED:
             self._sounds.stop()
+        if not settings.AUDIO_ENABLED or not settings.DIALOGUE_BEEPS_ENABLED:
+            self._voice.stop()
         if not self.playing:
             return False
         self._elapsed += min(delta_time, 0.25)
@@ -232,7 +248,10 @@ class CCTVPuzzle:
 
     def stop(self):
         self.playing = False
+        self._voice.stop()
+        self._typer = None
         self._sounds.stop()
 
     def release(self):
         self.stop()
+        self._voice.release()
