@@ -59,7 +59,6 @@ class HospitalCameraTests(unittest.TestCase):
     def test_both_stair_flights_remain_visible_ascending_and_descending(self):
         _, player = player_for("start", open_doors=True)
         path = SpiralStair().walking_path()
-        player._movement_camera_lock = True
         for points in (path, path[::-1]):
             for point in points:
                 player.body._position = glm.vec3(point)
@@ -90,7 +89,7 @@ class HospitalCameraTests(unittest.TestCase):
         level, player = player_for("act1")
         checks = {
             "hospital_plan": (13.4, 0, 2.3),
-            "mother_letter": (11.6, 0, 7.4),
+            "archive_card": (11.6, 0, 7.4),
             "security_archive": (-1.8, 0, 3.2),
             "f3_ward_305_clock": (5, 9.6, -21.8),
             "f3_ward_306_tv": (11, 9.6, -20.7),
@@ -124,7 +123,7 @@ class HospitalCameraTests(unittest.TestCase):
         }
         for name, points in routes.items():
             _, player = player_for("start", open_doors=True)
-            # Keep the previous camera and movement lock while crossing zones;
+            # Keep the previous camera while holding movement across zones;
             # resetting the camera at each sample would miss arrival problems.
             for point in points:
                 player.body._position = glm.vec3(point)

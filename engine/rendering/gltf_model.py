@@ -300,7 +300,7 @@ class GLTFModel:
             return result.x, result.y, result.z, result.w
         return tuple(a + (b - a) * amount for a, b in zip(values[left], values[right]))
 
-    def update(self, delta_time: float, speed: float = 1.0):
+    def update(self, delta_time: float, speed: float = 1.0, *, seated=False):
         if not self._channels or self._duration <= 0:
             return
         self._time = (self._time + delta_time * speed) % self._duration if speed > 0 else 0.0
@@ -311,13 +311,22 @@ class GLTFModel:
             if value is not None:
                 animated.setdefault(node_index, {})[path] = value
         for index, node in enumerate(self._nodes):
-            if index not in animated or "matrix" in node:
+            name = node.get("name", "")
+            sitting_joint = seated and name in ("mixamorig:Hips", "mixamorig:LeftUpLeg", "mixamorig:RightUpLeg",
+                                                "mixamorig:LeftLeg", "mixamorig:RightLeg")
+            if (index not in animated and not sitting_joint) or "matrix" in node:
                 continue
-            current = animated[index]
+            current = animated.get(index, {})
             translation = current.get("translation", node.get("translation", (0.0, 0.0, 0.0)))
             rotation = current.get("rotation", node.get("rotation", (0.0, 0.0, 0.0, 1.0)))
             scale = current.get("scale", node.get("scale", (1.0, 1.0, 1.0)))
             quaternion = glm.quat(rotation[3], rotation[0], rotation[1], rotation[2])
+            if sitting_joint:
+                if name == "mixamorig:Hips":
+                    translation = (translation[0], translation[1] - 0.42, translation[2])
+                else:
+                    angle = 90 if "UpLeg" in name else -90
+                    quaternion *= glm.angleAxis(glm.radians(float(angle)), glm.vec3(1, 0, 0))
             self._local_matrices[index] = (
                 glm.translate(glm.mat4(1.0), glm.vec3(translation)) * glm.mat4_cast(quaternion)
                 * glm.scale(glm.mat4(1.0), glm.vec3(scale))

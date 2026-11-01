@@ -15,7 +15,7 @@ from game.levels.hospital_finishes import hospital_palette
 
 
 OFFICE_DOORS = (-17, -10, -3, 4, 11, 18)
-ROOM_NAMES = ("Кабинет врача", "Процедурная", "Смотровая", "Склад", "Палата 01", "Палата 02")
+ROOM_NAMES = ("Кабинет №104", "Процедурная", "Смотровая", "Склад", "Палата 01", "Палата 02")
 FLOOR_HEIGHT = 4.8
 FLOOR_COUNT = 3
 SLAB_THICKNESS = 0.24
@@ -153,7 +153,6 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
     props.chair(11.5, 4.8, 180)
     with props.against_wall("z", 0.12):
         props.cabinet(7.0, 0.8, 1.8, 1.7, yaw=180)
-        props.linen_shelf(11, 0.8, 2.0)
         props.cabinet(16, 0.9, 1.4, 2.1, yaw=180)
     props.table(8.1, 2.0, 1.2, 0.7, 0.8)
     props.plant(6.3, 3.2)
@@ -194,12 +193,18 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
             props.privacy_screen(x, -12.0, yaw=90, width=2.2)
             props.table(x + 2.55, -6.55, 0.45, 0.45, 0.72)
         if i == 0:
-            with props.against_wall("z", -13.88, extra_boxes=boxes):
-                with props.authored_group("office_desk", -19, -10.6, extra_boxes=boxes):
-                    desk(-19, -10.6, 2.2)
-                    with props.rotated_group(-19, -10.6, 180):
-                        props.desk_details(-19, -10.6)
+            decorations.append(Box((-15.6, 1.73, -5.83), (1.1, 0.28, 0.025),
+                                   material="archive_office_104", local_texture=True))
+            with props.authored_group("office_desk", -19, -10.6, extra_boxes=boxes):
+                desk(-19, -10.6, 2.2)
+                with props.rotated_group(-19, -10.6, 180):
+                    props.desk_details(-19, -10.6)
+            chair_start = len(props.boxes)
             props.chair(-19, -12.0, 180)
+            # The doctor occupies this visual chair and must be able to stand
+            # up at the same position when the hospital transforms.
+            props.decorations.extend(props.boxes[chair_start:])
+            del props.boxes[chair_start:]
             props.chair(-17.4, -12.0, 180)
             with props.against_wall("z", -13.88):
                 props.cabinet(-14.8, -12.7, 1.2, yaw=180, medical=False)
@@ -294,6 +299,10 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
             floor_labels=("1", "2 — хирургия", "3 — пациентское отделение"),
             floor_hints=("", "Хирургическое отделение", "Пациентское отделение"),
         )
+    from game.levels.patient_archive import build_patient_archive
+    result = replace(result, objects=build_patient_archive() + result.objects)
+    from game.levels.under_spotlights import damaged_stair_rail
+    result = replace(result, decorations=damaged_stair_rail(stair) + result.decorations)
     if not peaceful:
         from game.levels.stair_blood import stair_blood
         blood = stair_blood(stair)

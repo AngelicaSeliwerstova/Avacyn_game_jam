@@ -8,8 +8,10 @@ from unittest.mock import patch
 
 from config import settings
 from game.campaign import Campaign
+from game.levels.patient_archive import ARCHIVE_DRAWER_ID
+from game.levels.story_props import StoryPropSystem
 from game.story_loader import STORY_ROOT, StoryFormatError, load_story
-from support_story import finish_conversation
+from support_story import finish_conversation, read_document
 
 
 class StoryResourceTests(unittest.TestCase):
@@ -51,6 +53,7 @@ class StoryResourceTests(unittest.TestCase):
         session = scene.session
         self.assertIn("Новая задача", scene.player.objective_status)
         session.tick_presentation(0.25)
+        finish_conversation(session)
         session.actors["doctor"].request_talk()
         session.update(0)
         self.assertEqual(session.dialog.title, "Анна")
@@ -63,7 +66,9 @@ class StoryResourceTests(unittest.TestCase):
         session.handle_action("story_choice:0")
         self.assertEqual(session.dialog.message, "Изменённая ветка.")
         finish_conversation(session)
-        session.tick_presentation(4)
+        read_document(session)
+        session.tick_presentation(1.8)
+        session.tick_presentation(2.2)
         self.assertIn("custom_answer", session._flags)
         self.assertEqual(session.next_level, "peaceful")
 
@@ -78,13 +83,24 @@ class StoryResourceTests(unittest.TestCase):
         session.open_document("hospital_plan")
         self.assertTrue(session.handle_action("map_close"))
         finish_conversation(session)
+        self.assertIsNone(session.dialog)
+        session._flags.update(("act0:archive_card_read", "act0:assessment_read"))
+        session._files.show()
+        session.handle_action("files_year:1981")
+        session.handle_action("files_case")
+        session.handle_action("files_letter")
         self.assertEqual(session.dialog.title, "Новая записка · 1 / 1")
         self.assertEqual(session.dialog.message, "Единственная новая страница.")
         self.assertTrue(session.handle_action("document_close"))
         finish_conversation(session)
-        self.assertIn("act0:complete", session._flags)
+        self.assertIn("act0:archive_reviewed", session._flags)
+        self.assertNotIn("act0:complete", session._flags)
 
     def test_second_act_is_enabled_and_started_entirely_from_resources(self):
+        self.edit(self.act, lambda data: data.update(next_act="act1"))
+        self.edit(self.act, lambda data: data["scenes"].append({"id": "custom_next", "trigger":
+            {"type": "event", "name": "act_complete:act0"}, "requires": ["act0:complete"],
+            "steps": [{"type": "next_act"}]}))
         self.edit(self.campaign, lambda data: data["acts"][1].update(enabled=True))
         next_path = self.act.parent.parent / "act1/act.json"
         self.edit(next_path.with_name("dialogue.json"), lambda data: data.update({
@@ -124,6 +140,7 @@ class StoryResourceTests(unittest.TestCase):
         self.edit(self.act, act)
         session = Campaign().load_level("peaceful").session
         session.tick_presentation(4)
+        finish_conversation(session)
         session.update(0)
         self.assertIn("custom_scene", session._flags)
         self.assertEqual(session.dialog.message, session.act.dialogues["reception"][0]["text"])
@@ -131,7 +148,10 @@ class StoryResourceTests(unittest.TestCase):
     def test_reference_and_format_errors_identify_the_file_and_field(self):
         cases = [
             (self.dialogue, lambda data: data["meeting"][0].update(speaker="missing"), "speaker"),
-            (self.dialogue, lambda data: data["meeting"][6].update(options=[]), "options"),
+            (self.dialogue, lambda data: data["after_letter"][2].update(options=[]), "options"),
+            (self.dialogue, lambda data: data["cradle_memory"][0].update(audio="../outside.wav"), "inside"),
+            (self.dialogue, lambda data: data["cradle_memory"][0].update(seconds=-1), "seconds"),
+            (self.act, lambda data: data["scenes"][-4]["steps"].append({"type": "ambience", "gain": 2, "seconds": 1}), "gain"),
             (self.documents, lambda data: data["mother_letter"].update(pages=[]), "pages"),
             (self.act, lambda data: data["scenes"][0]["steps"].append({"type": "python", "code": "pass"}), "unknown step"),
             (self.act, lambda data: data["scenes"][1].update(trigger={"type": "zone", "zone": "missing"}), "zone"),
@@ -165,6 +185,7 @@ class StoryResourceTests(unittest.TestCase):
         self.edit(self.dialogue, lambda data: data.update(meeting=[{"speaker": "doctor", "text": text}]))
         session = Campaign().load_level("peaceful").session
         session.tick_presentation(4)
+        finish_conversation(session)
         session.actors["doctor"].request_talk()
         session.update(0)
         pages = []

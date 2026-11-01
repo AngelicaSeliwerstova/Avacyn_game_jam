@@ -9,7 +9,7 @@ import pygame
 
 from config import settings
 from game.audio_channels import (DISCOVERY_CHANNEL, ENVIRONMENT_CHANNELS, MIXER_CHANNELS,
-                                 MUSIC_CHANNEL, RESERVED_CHANNELS, STORY_LOOP_CHANNELS)
+                                 MUSIC_CHANNEL, RESERVED_CHANNELS, STORY_LOOP_CHANNELS, RECORDED_VOICE_CHANNEL)
 from game.levels.stair_blood import StairBloodDiscovery
 
 
@@ -140,10 +140,16 @@ class HospitalSoundBank:
 
     def play_discovery(self, sound_id, volume):
         """A reserved cue cannot be dropped when all environmental voices are busy."""
+        self._play_reserved(DISCOVERY_CHANNEL, sound_id, volume)
+
+    def play_voice(self, sound_id, volume):
+        self._play_reserved(RECORDED_VOICE_CHANNEL, sound_id, volume)
+
+    def _play_reserved(self, channel_id, sound_id, volume):
         if volume < 0.005 or not self._ensure():
             return
         try:
-            channel = pygame.mixer.Channel(DISCOVERY_CHANNEL)
+            channel = pygame.mixer.Channel(channel_id)
             channel.set_volume(volume, volume)
             channel.play(self._sound(sound_id))
             channel.set_volume(volume, volume)
@@ -218,7 +224,8 @@ class HospitalAudioSystem:
             return 0.0
         if dialog is not None and dialog.presentation == "interference":
             return settings.AMBIENCE_VOLUME * max(0, 1 - dialog.effect_time / 1.2)
-        return settings.AMBIENCE_VOLUME * (settings.AMBIENCE_DIALOGUE_GAIN if self._paused else 1.0)
+        return (settings.AMBIENCE_VOLUME * getattr(self.player, "story_audio_gain", 1.0)
+                * (settings.AMBIENCE_DIALOGUE_GAIN if self._paused else 1.0))
 
     def _loops(self):
         if not self._started:

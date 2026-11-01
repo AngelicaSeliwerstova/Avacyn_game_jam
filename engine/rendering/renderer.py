@@ -164,6 +164,8 @@ class Renderer:
                 entity = obj.entity
                 if entity is not None and entity.model is not None and entity.model.source_path is not None:
                     mesh = GLTFModel(self.context, self._program, entity.model.source_path, self._fallback_texture)
+                    if getattr(entity, "seated", False) and not getattr(entity, "following", False):
+                        mesh.update(0, speed=0, seated=True)
                     self._entity_models.append((entity, mesh))
                     self._program["skin_matrices"].value = 10
             if textures is not None:
@@ -220,7 +222,8 @@ class Renderer:
         for entity, mesh in self._entity_models:
             body = getattr(entity, "body", None)
             speed = 1.0 if body is not None and body.horizontal_speed > 0.05 else 0.0
-            mesh.update(delta_time, speed=speed)
+            mesh.update(delta_time, speed=speed,
+                        seated=getattr(entity, "seated", False) and not getattr(entity, "following", False))
 
     def set_camera_markers(self, boxes: tuple[Box, ...]):
         if boxes == self._camera_marker_boxes:

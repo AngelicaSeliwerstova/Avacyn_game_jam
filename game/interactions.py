@@ -56,10 +56,13 @@ class InteractionController:
                 visible_score = self._visible_score(camera, origin, collider, target)
                 if visible_score is not None:
                     alignment, view_distance = visible_score
-                    candidates.append((alignment, self._surface_distance(reach_origin, collider),
+                    # A nearby companion must not steal E from a visible document,
+                    # key or door simply because the fixed camera centres on them.
+                    candidates.append((target.interaction.command == "talk", alignment,
+                                       self._surface_distance(reach_origin, collider),
                                        view_distance, target))
             if candidates:
-                self.focused = min(candidates, key=lambda item: (item[0], item[1], item[2]))[3]
+                self.focused = min(candidates, key=lambda item: item[:4])[-1]
         if pressed and self.focused is not None:
             self._message = self._activate(self.focused)
             self._remaining = self._message_seconds
@@ -220,6 +223,8 @@ class InteractionController:
 
     def _activate(self, target: Box | SceneObject) -> str:
         action = target.interaction
+        if action is None:
+            return ""
         if action.command == "inspect":
             return action.message
         if not isinstance(target, SceneObject):
@@ -249,8 +254,10 @@ class InteractionController:
     @property
     def text(self) -> str:
         lines = []
-        if self.focused is not None:
-            action = self.focused.interaction
+        # Story actions and modal input can start an animation after the last
+        # targeting update. Its prompt disappears until that motion finishes.
+        action = self.focused.interaction if self.focused is not None else None
+        if action is not None:
             label = ("Использовать ключ" if action.command == "unlock_door"
                      and self.inventory.has_key(action.argument) else action.action)
             lines.append(f"[{self._key_label}] {label} - {action.name}")

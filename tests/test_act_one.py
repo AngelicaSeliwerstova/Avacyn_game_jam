@@ -30,7 +30,7 @@ class ActOneTests(unittest.TestCase):
         session.tick_presentation(4)
         finish_conversation(session, choice)
         self.assertTrue(session.actors["doctor"].following)
-        self.assertEqual(len(scene.player.inventory.items), 2)
+        self.assertEqual(len(scene.player.inventory.items), 4)
         return scene
 
     def obj(self, scene, name):
@@ -90,7 +90,7 @@ class ActOneTests(unittest.TestCase):
                 self.enter_child_room(scene, choice)
                 self.interact(scene, "f3_ward_313_key", (26, 9.6, -18.8))
                 self.assertEqual(session.dialog.presentation, "memory")
-                self.assertEqual(session.dialog.title, "Голос девочки")
+                self.assertEqual(session.dialog.title, "Дочь")
                 finish_conversation(session, choice)
                 self.assertIn("act1:memory_done", session._flags)
                 self.assertTrue(scene.player.inventory.has_key("ward_313"))

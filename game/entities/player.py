@@ -84,7 +84,9 @@ class Player(Entity):
         self._active_camera_zone = None
         self._camera_selection_initialized = False
         self._camera_transition_remaining = 0.0
-        self._movement_camera_lock = False
+        self.story_camera = None
+        self.story_audio_gain = 1.0
+        self.story_distortion = 0.0
         self._creator_mode = False
         self._camera_editor_message = ""
         self._creator_yaw = math.radians(controller.yaw_degrees)
@@ -116,6 +118,7 @@ class Player(Entity):
         self.inventory = inventory if inventory is not None else Inventory()
         self.enemy_status = ""
         self.objective_status = ""
+        self.act_title = ""
         self.story_status = ""
         self.story_controls = ""
         self.story_events: set[str] = set()
@@ -261,7 +264,7 @@ class Player(Entity):
     def camera_transition_strength(self) -> float:
         if self._creator_mode:
             return 0.0
-        return self._camera_transition_remaining / self._CAMERA_TRANSITION_DURATION
+        return max(self.story_distortion, self._camera_transition_remaining / self._CAMERA_TRANSITION_DURATION)
 
     @property
     def stair_stress_strength(self) -> float:
@@ -273,6 +276,9 @@ class Player(Entity):
 
     @property
     def status_text(self) -> str:
+        if self.act_title and not self._creator_mode:
+            objective = self.objective_status.partition("\n")[0]
+            return "\n".join(part for part in (self.act_title, objective) if part)
         text = self._location_text()
         if self._creator_mode:
             camera_count = len(self._authored_camera_zones)
@@ -374,12 +380,9 @@ class Player(Entity):
             return
 
         previous_position = self.body.position
-        self._movement_camera_lock = inputs.forward != 0 or inputs.right != 0
         # Fixed shots never define the character's heading. A/D turn the body,
         # W/S move along that heading, and backing up keeps the model facing forward.
         tank_controls = bool(self._camera_zones)
-        if tank_controls:
-            self._active_fixed_camera()
         self.controller.update(
             delta_time, inputs.forward, 0.0 if tank_controls else inputs.right,
             (0, 0) if tank_controls else inputs.mouse_delta,
@@ -492,6 +495,10 @@ class Player(Entity):
     def _sync_fixed_camera(self):
         if self._level is None or self._creator_mode:
             return
+        if self.story_camera is not None:
+            position, target = self.story_camera
+            self.camera.position, self.camera.target = glm.vec3(position), glm.vec3(target)
+            return
         zone = self._active_fixed_camera()
         if zone is None:
             return
@@ -530,8 +537,6 @@ class Player(Entity):
             return best
 
         active_score = score(active) if active is not None and active in candidates else None
-        if active_score is not None and self._movement_camera_lock:
-            return active
         if (active_score is not None
                 and self._camera_zone_contains(active, position, self._CAMERA_ZONE_HYSTERESIS)):
             self._camera_selection_initialized = True
@@ -586,11 +591,7 @@ class Player(Entity):
             vertical = glm.dot(relative, up) / (depth * vertical_tangent)
             if abs(horizontal) > 1 or abs(vertical) > 1:
                 continue
-            distance = glm.length(relative)
-            blocker = cast_ray(
-                tuple(camera_position), tuple(relative), self.body.world.colliders, distance,
-            )
-            if blocker is not None and blocker.distance < distance - 0.05:
+            if self.body.world.is_occluded(tuple(camera_position), tuple(body_point)):
                 continue
             scores.append(horizontal * horizontal + vertical * vertical)
         return min(scores) if scores else None

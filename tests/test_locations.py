@@ -32,7 +32,7 @@ class LocationTests(unittest.TestCase):
             scene.player.body.position, scene.player.body.radius, scene.player.body.height))
         scene.player.update(1 / 60, InputState())
         scene.session.update(1 / 60)
-        self.assertIn("Найти свой кабинет", scene.player.objective_status)
+        self.assertIn("Добраться до кабинета №104", scene.player.objective_status)
         self.assertIsNone(scene.session.next_level)
 
     def test_retired_levels_are_unavailable(self):

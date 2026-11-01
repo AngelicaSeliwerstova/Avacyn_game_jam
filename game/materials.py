@@ -4,6 +4,7 @@ from config import settings
 from engine.rendering.texture import TextureMaterial, TextureSettings
 from game.levels.room_signs import PATIENT_SIGNS, PATIENT_SIGN_WIDTH, PATIENT_SIGN_HEIGHT
 from game.levels.hospital_story import STORY_SURFACE_SIZES
+from game.levels.patient_archive import ARCHIVE_YEARS, ARCHIVE_LABEL_SIZE, ARCHIVE_HEADING_SIZE, ARCHIVE_OFFICE_SIZE
 
 
 def create_texture_settings() -> TextureSettings | None:
@@ -29,5 +30,10 @@ def create_texture_settings() -> TextureSettings | None:
             for name in PATIENT_SIGNS) + tuple(
             TextureMaterial(name, root / f"story/{name.removeprefix('story_')}.png", 1.0,
                             (1 / size[0], 1 / size[1]), (0.5, 0.5))
-            for name, size in STORY_SURFACE_SIZES.items()),
+            for name, size in STORY_SURFACE_SIZES.items()) + tuple(
+            TextureMaterial(name, root / f"signs/{name}_{settings.TEXTURE_RESOLUTION}.png", 1.0,
+                            (1 / size[0], 1 / size[1]), (0.5, 0.5))
+            for name, size in (("archive_heading", ARCHIVE_HEADING_SIZE),
+                               ("archive_office_104", ARCHIVE_OFFICE_SIZE),
+                               *((f"archive_year_{year}", ARCHIVE_LABEL_SIZE) for year in ARCHIVE_YEARS))),
     )

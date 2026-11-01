@@ -37,8 +37,9 @@ class DialogueVoiceTests(unittest.TestCase):
         session.tick_presentation(0.1)
         first = session._voice.play.call_args.args[0]
         self.assertEqual(first.pitch_hz, session.book.data["characters"]["hero"]["voice"]["pitch_hz"])
-        session.reveal_dialogue()
-        session.handle_action("story_next")
+        while session._node['speaker'] != 'doctor':
+            session.reveal_dialogue()
+            session.handle_action("story_next")
         session.tick_presentation(0.1)
         second = session._voice.play.call_args.args[0]
         self.assertEqual(second.pitch_hz, session.book.data["characters"]["doctor"]["voice"]["pitch_hz"])
@@ -53,6 +54,9 @@ class DialogueVoiceTests(unittest.TestCase):
         for _ in range(30):
             session.tick_presentation(0.1)
         self.assertEqual(session._voice.play.call_count, calls)
+        session._queue.clear()
+        session._prepend(session.act,[{'type':'dialogue','id':'after_letter'}])
+        session._advance()
         for _ in range(30):
             if any(button.action.startswith("story_choice:") for button in session.dialog.buttons):
                 break

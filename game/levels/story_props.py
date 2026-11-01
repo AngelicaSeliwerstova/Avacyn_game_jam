@@ -13,6 +13,7 @@ class StoryProp(Entity):
     requested: bool = False
     animated_states: tuple[str, ...] = ()
     animation_seconds: float = 0.12
+    reveal_after_open: str | None = None
 
 
 @dataclass
@@ -28,8 +29,12 @@ def build_story_prop(data, position):
                   color=tuple(data["color"]) if "color" in data else None,
                   local_texture=True, emission=tuple(data.get("emission", (0, 0, 0))),
                   yaw_degrees=data.get("yaw", 0))
-        states[name] = ObjectState((box,), collidable=False, interaction=action, selection_box=box)
-    return SceneObject(data["id"], states, static_shadows=not bool(data.get("animated_states")), entity=StoryProp(name=data["id"],
+        selection = Box(position, tuple(data.get("selection_size", data["size"])))
+        states[name] = ObjectState((box,), collidable=False, interaction=action, selection_box=selection)
+    states["hidden"] = ObjectState()
+    states["removed"] = ObjectState()
+    return SceneObject(data["id"], states, initial=data.get("initial", "default"),
+        static_shadows=not bool(data.get("animated_states")), entity=StoryProp(name=data["id"],
         animated_states=tuple(data.get("animated_states", ())), animation_seconds=data.get("animation_seconds", 0.12)))
 
 
@@ -38,6 +43,9 @@ class StoryPropSystem:
         self._time = 0.0
         self._objects = tuple(obj for obj in level.objects if isinstance(obj.entity, StoryProp)
                               and obj.entity.animated_states)
+        by_name = {obj.name: obj for obj in level.objects}
+        self._reveals = tuple((obj, by_name[obj.entity.reveal_after_open]) for obj in level.objects
+                              if isinstance(obj.entity, StoryProp) and obj.entity.reveal_after_open)
 
     def update(self, delta_time):
         self._time += delta_time
@@ -47,6 +55,9 @@ class StoryPropSystem:
                 state = frames[int(self._time / obj.entity.animation_seconds) % len(frames)]
                 if state != obj.state_name:
                     obj.set_state(state)
+        for source, target in self._reveals:
+            if source.state_name == "open" and not source.transitioning and target.state_name == "hidden":
+                target.set_state("default")
 
 
 def build_story_document(data, position):
@@ -67,5 +78,5 @@ def build_story_document(data, position):
     selection = Box(position, tuple(data.get("selection_size", size)))
     return SceneObject(name, {"default": ObjectState(boxes, collidable=False,
         interaction=Interaction(title, title, "Изучить", "story", name), selection_box=selection),
-        "unavailable": ObjectState(boxes, collidable=False)}, initial=data.get("initial", "default"),
+        "unavailable": ObjectState(boxes, collidable=False), "hidden": ObjectState()}, initial=data.get("initial", "default"),
         entity=StoryDocument(name=name))

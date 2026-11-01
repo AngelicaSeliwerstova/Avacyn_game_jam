@@ -22,6 +22,32 @@ def make_player(boxes=()):
 
 
 class TankControlTests(unittest.TestCase):
+    def test_camera_switches_without_releasing_forward_backward_or_turn_keys(self):
+        first = FixedCameraZone((-5, -1, -5), (0, 3, 5), (-3, 3, 4), (0, 1, 0))
+        second = FixedCameraZone((0, -1, -5), (5, 3, 5), (3, 3, -4), (0, 1, 0))
+        for fps in (30, 60, 120):
+            for forward, turn in ((1, 0), (-1, 0), (1, 1)):
+                with self.subTest(fps=fps, forward=forward, turn=turn):
+                    start_x = -0.35 if forward > 0 else 0.35
+                    level = Level((20, 20), 1, (), (start_x, settings.PLAYER_EYE_HEIGHT, 0),
+                                  (start_x + 1, settings.PLAYER_EYE_HEIGHT, 0), ((80, 80, 80),) * 2,
+                                  fixed_cameras=(first, second), authored_fixed_cameras=(first, second),
+                                  fixed_cameras_authored=True)
+                    player = create_player(level, CollisionWorld3D((), level.floor_bounds))
+                    initial = first if forward > 0 else second
+                    expected = second if forward > 0 else first
+                    self.assertIs(player._active_fixed_camera(), initial)
+                    crossed = False
+                    for _ in range(round(fps * 0.4)):
+                        previous_x = player.body.position.x
+                        player.update(1 / fps, InputState(forward=forward, right=turn))
+                        self.assertGreater((player.body.position.x - previous_x) * forward, 0)
+                        crossed |= player._active_camera_zone is expected
+                    self.assertTrue(crossed)
+                    self.assertIs(player._active_camera_zone, expected)
+                    self.assertAlmostEqual(player.controller.yaw_degrees,
+                                           turn * settings.PLAYER_TURN_SPEED_DEGREES * 0.4, places=4)
+
     def test_left_and_right_rotate_body_and_flashlight_without_strafing(self):
         for axis in (-1, 1):
             player = make_player()

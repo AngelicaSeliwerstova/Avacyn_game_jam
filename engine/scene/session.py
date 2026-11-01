@@ -22,6 +22,8 @@ class Dialog:
     plan_stair: tuple[float, float, float] | None = None
     plan_highlights: tuple[str, ...] = ()
     visible_characters: int | None = None
+    filing_year: int | None = None
+    filing_case: bool = False
 
 
 @dataclass

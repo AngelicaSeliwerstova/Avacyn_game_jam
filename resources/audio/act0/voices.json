@@ -1,0 +1,56 @@
+[
+  {
+    "file": "cradle_memory_01.wav",
+    "seconds": 15.544965986394558,
+    "speaker": "child",
+    "text": "Мам, ты опять заклеила все окна газетами?! Я даже днём не могу нормально посмотреть на улицу! Ты запрещаешь мне гулять одной, проверяешь каждый мой шаг, а теперь ещё и камеры в комнате поставила!",
+    "voice": "Microsoft Irina Desktop (ru-RU), Windows System.Speech",
+    "processing": "Offline synthesized voice; daughter +18% pitch/+7% rate; mother -10%/-4%; hero -3%/-14%.",
+    "sha256": "3f5e1b792c8b87df5bcd31c25997dd4f17f8a437b1d51dc7885e884e4382767d"
+  },
+  {
+    "file": "cradle_memory_02.wav",
+    "seconds": 22.52859410430839,
+    "speaker": "mother",
+    "text": "Я не хочу, чтобы кто-нибудь следил за тобой с улицы. Ты даже не представляешь, сколько опасностей вокруг! А если с тобой что-нибудь случится, пока меня нет рядом? Я должна знать, что ты в безопасности. Я ведь только ради тебя всё это делаю!",
+    "voice": "Microsoft Irina Desktop (ru-RU), Windows System.Speech",
+    "processing": "Offline synthesized voice; daughter +18% pitch/+7% rate; mother -10%/-4%; hero -3%/-14%.",
+    "sha256": "43a0e5d97f7f927d5812341799f4bb57ce775f35c42f7897061f06b8657125b9"
+  },
+  {
+    "file": "cradle_memory_03.wav",
+    "seconds": 16.3218820861678,
+    "speaker": "child",
+    "text": "Мам, послушай себя! Ты заклеила окна, чтобы за мной никто не следил, но сама наблюдаешь за мной даже пока я сплю! Я уже не маленькая! Я хочу жить нормально, а не сидеть взаперти всю жизнь!",
+    "voice": "Microsoft Irina Desktop (ru-RU), Windows System.Speech",
+    "processing": "Offline synthesized voice; daughter +18% pitch/+7% rate; mother -10%/-4%; hero -3%/-14%.",
+    "sha256": "522630c28ae13c7910dfe3a4bd367b1d74077e0c21ff5ffc35210fe932a79bfc"
+  },
+  {
+    "file": "cradle_memory_04.wav",
+    "seconds": 11.358979591836734,
+    "speaker": "mother",
+    "text": "Я просто не переживу, если потеряю тебя. Лучше ты будешь ненавидеть меня за эту заботу, чем однажды я не смогу тебя защитить...",
+    "voice": "Microsoft Irina Desktop (ru-RU), Windows System.Speech",
+    "processing": "Offline synthesized voice; daughter +18% pitch/+7% rate; mother -10%/-4%; hero -3%/-14%.",
+    "sha256": "1b7fe614e0b36790c09b3f5b26235fea6a583911391466feb253f93c4ab3bdd3"
+  },
+  {
+    "file": "memory_outro_first_01.wav",
+    "seconds": 3.1743764172335602,
+    "speaker": "hero",
+    "text": "Мама всегда меня находила...",
+    "voice": "Microsoft Irina Desktop (ru-RU), Windows System.Speech",
+    "processing": "Offline synthesized voice; daughter +18% pitch/+7% rate; mother -10%/-4%; hero -3%/-14%.",
+    "sha256": "a8d06b2e527b5b9634cec5416b57d06ecc1ef36101ef457c46020ea36c73f46e"
+  },
+  {
+    "file": "memory_outro_second_01.wav",
+    "seconds": 2.7629478458049888,
+    "speaker": "hero",
+    "text": "Но откуда я это помню?..",
+    "voice": "Microsoft Irina Desktop (ru-RU), Windows System.Speech",
+    "processing": "Offline synthesized voice; daughter +18% pitch/+7% rate; mother -10%/-4%; hero -3%/-14%.",
+    "sha256": "006b6254a8d31022ffbc9eed99f77ef8df7b3c244f7d684931ccfc4b5141fa3d"
+  }
+]

@@ -1,10 +1,10 @@
 {
   "id": "act0",
-  "title": "Обычный рабочий день",
+  "title": "Под софитами",
   "complete_flag": "act0:complete",
-  "next_act": "act1",
   "dialogues_file": "dialogue.json",
   "documents_file": "documents.json",
+  "notes": "Displayed Act 1. Internal act0 IDs preserve the engine entry point. The old act1/act2 remain separate development entries.",
   "zones": {
     "office": {
       "min": [
@@ -30,88 +30,16 @@
         8.8
       ]
     },
-    "near_reception": {
+    "damaged_rail": {
       "min": [
-        3,
-        -0.5,
-        0
+        -11.5,
+        0.2,
+        1
       ],
       "max": [
-        21,
-        0.5,
-        11
-      ]
-    },
-    "room_0": {
-      "min": [
-        -21,
-        -0.5,
-        -14
-      ],
-      "max": [
-        -14,
-        0.5,
-        -7
-      ]
-    },
-    "room_1": {
-      "min": [
-        -14,
-        -0.5,
-        -14
-      ],
-      "max": [
-        -7,
-        0.5,
-        -7
-      ]
-    },
-    "room_2": {
-      "min": [
-        -7,
-        -0.5,
-        -14
-      ],
-      "max": [
-        0,
-        0.5,
-        -7
-      ]
-    },
-    "room_3": {
-      "min": [
-        0,
-        -0.5,
-        -14
-      ],
-      "max": [
-        7,
-        0.5,
-        -7
-      ]
-    },
-    "room_4": {
-      "min": [
-        7,
-        -0.5,
-        -14
-      ],
-      "max": [
-        14,
-        0.5,
-        -7
-      ]
-    },
-    "room_5": {
-      "min": [
-        14,
-        -0.5,
-        -14
-      ],
-      "max": [
-        21,
-        0.5,
-        -7
+        -8.7,
+        2.7,
+        6
       ]
     }
   },
@@ -120,26 +48,70 @@
       "levels": [
         "peaceful"
       ],
-      "title": "Найти свой кабинет",
-      "description": "Осмотрите первый этаж больницы."
+      "title": "Добраться до кабинета №104",
+      "description": "Вас вызвали в кабинет. Найдите его на первом этаже."
     },
     {
       "requires": [
         "act0:complete"
       ],
-      "title": "Найти палату 313",
-      "description": "Поднимитесь с врачом на третий этаж."
+      "title": "Акт 1 завершён",
+      "description": "Под софитами."
     },
     {
       "requires": [
-        "act0:map"
+        "act0:nursery_open"
       ],
-      "title": "Найти регистратуру",
-      "description": "Прочитайте письмо и поговорите с врачом."
+      "title": "Осмотреть люльку",
+      "description": "Войдите в пустую комнату и осмотрите старую люльку."
+    },
+    {
+      "requires": [
+        "act0:cry_started"
+      ],
+      "title": "Найти плачущего ребёнка",
+      "description": "Поднимитесь на второй этаж и найдите источник плача."
+    },
+    {
+      "requires": [
+        "act0:archive_reviewed"
+      ],
+      "title": "Осмотреть папку",
+      "description": "Закройте папку и проверьте, что находится под ней."
+    },
+    {
+      "requires": [
+        "act0:reception"
+      ],
+      "title": "Изучить архив за 1981 год",
+      "description": "Найдите нужный ящик и осмотрите медицинские документы."
     },
     {
       "title": "Найти регистратуру",
-      "description": "Найдите план больницы вместе с врачом."
+      "description": "Доберитесь до регистратуры вместе с доктором и найдите ключи от второго этажа."
+    }
+  ],
+  "audio_sources": [
+    {
+      "id": "crying_child",
+      "file": "act0/baby_cry.wav",
+      "position": [
+        -16,
+        5.9,
+        -19.5
+      ],
+      "radius": 60,
+      "volume": 0.9,
+      "loop": true,
+      "levels": [
+        "start"
+      ],
+      "requires": [
+        "act0:cry_started"
+      ],
+      "unless": [
+        "act0:cry_stopped"
+      ]
     }
   ],
   "scenes": [
@@ -148,17 +120,11 @@
       "trigger": {
         "type": "load"
       },
-      "levels": [
-        "peaceful"
-      ],
-      "unless": [
-        "act0:intro"
-      ],
       "steps": [
         {
           "type": "title",
-          "title": "АКТ 0",
-          "text": "«Обычный рабочий день»",
+          "title": "АКТ 1",
+          "text": "«Под софитами»",
           "seconds": 4,
           "fade_seconds": 1.2
         },
@@ -167,7 +133,17 @@
           "add": [
             "act0:intro"
           ]
+        },
+        {
+          "type": "dialogue",
+          "id": "opening"
         }
+      ],
+      "levels": [
+        "peaceful"
+      ],
+      "unless": [
+        "act0:intro"
       ]
     },
     {
@@ -184,21 +160,24 @@
           }
         ]
       },
-      "levels": [
-        "peaceful"
-      ],
-      "unless": [
-        "act0:met_doctor"
-      ],
       "steps": [
         {
           "type": "dialogue",
           "id": "meeting"
         },
         {
+          "type": "document",
+          "id": "office_case"
+        },
+        {
+          "type": "dialogue",
+          "id": "case_reading"
+        },
+        {
           "type": "flags",
           "add": [
             "act0:met_doctor",
+            "act0:medical_heard",
             "recruited:hospital_companion"
           ]
         },
@@ -208,15 +187,31 @@
           "enabled": true
         },
         {
+          "type": "audio",
+          "file": "act0/monster_growl.wav",
+          "volume": 0.65
+        },
+        {
           "type": "effect",
           "effect": "interference",
-          "seconds": 3.6
+          "seconds": 1.8
+        },
+        {
+          "type": "effect",
+          "effect": "blackout",
+          "seconds": 2.2
         },
         {
           "type": "level",
           "level": "start",
           "preserve_scene": true
         }
+      ],
+      "levels": [
+        "peaceful"
+      ],
+      "unless": [
+        "act0:met_doctor"
       ]
     },
     {
@@ -224,12 +219,6 @@
       "trigger": {
         "type": "load"
       },
-      "levels": [
-        "start"
-      ],
-      "unless": [
-        "act0:transformed"
-      ],
       "steps": [
         {
           "type": "flags",
@@ -244,8 +233,23 @@
         },
         {
           "type": "dialogue",
+          "id": "transformation_first"
+        },
+        {
+          "type": "audio",
+          "file": "act0/monster_growl.wav",
+          "volume": 0.52
+        },
+        {
+          "type": "dialogue",
           "id": "after_transformation"
         }
+      ],
+      "levels": [
+        "start"
+      ],
+      "unless": [
+        "act0:transformed"
       ]
     },
     {
@@ -254,24 +258,102 @@
         "type": "zone",
         "zone": "reception"
       },
-      "requires": [
-        "act0:transformed"
-      ],
-      "unless": [
-        "act0:reception"
-      ],
       "steps": [
+        {
+          "type": "dialogue",
+          "id": "reception"
+        },
         {
           "type": "flags",
           "add": [
             "act0:reception"
           ]
-        },
-        {
-          "type": "dialogue",
-          "id": "reception"
         }
+      ],
+      "requires": [
+        "act0:transformed"
+      ],
+      "unless": [
+        "act0:reception"
       ]
+    },
+    {
+      "id": "archive_browser",
+      "trigger": {
+        "any": [
+          {
+            "type": "interact",
+            "object": "patient_archive"
+          },
+          {
+            "type": "interact",
+            "object": "archive_case_081"
+          },
+          {
+            "type": "interact",
+            "object": "patient_archive_1975"
+          },
+          {
+            "type": "interact",
+            "object": "patient_archive_1978"
+          },
+          {
+            "type": "interact",
+            "object": "patient_archive_1981"
+          },
+          {
+            "type": "interact",
+            "object": "patient_archive_1985"
+          },
+          {
+            "type": "interact",
+            "object": "patient_archive_1990"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "type": "archive"
+        }
+      ],
+      "requires": [
+        "act0:transformed"
+      ],
+      "once": false
+    },
+    {
+      "id": "archive_card",
+      "trigger": {
+        "type": "interact",
+        "object": "archive_card"
+      },
+      "steps": [
+        {
+          "type": "document",
+          "id": "archive_card"
+        }
+      ],
+      "requires": [
+        "act0:transformed"
+      ],
+      "once": false
+    },
+    {
+      "id": "office_case",
+      "trigger": {
+        "type": "interact",
+        "object": "office_case"
+      },
+      "steps": [
+        {
+          "type": "document",
+          "id": "office_case"
+        }
+      ],
+      "requires": [
+        "act0:medical_heard"
+      ],
+      "once": false
     },
     {
       "id": "plan",
@@ -279,75 +361,156 @@
         "type": "interact",
         "object": "hospital_plan"
       },
-      "requires": [
-        "act0:transformed"
-      ],
-      "once": false,
       "steps": [
-        {
-          "type": "flags",
-          "add": [
-            "act0:reception"
-          ]
-        },
         {
           "type": "map",
           "id": "hospital_plan"
         }
-      ]
-    },
-    {
-      "id": "letter_locked",
-      "trigger": {
-        "type": "interact",
-        "object": "mother_letter"
-      },
+      ],
       "requires": [
         "act0:transformed"
       ],
-      "unless": [
-        "act0:map"
-      ],
-      "once": false,
+      "once": false
+    },
+    {
+      "id": "rusty_nail",
+      "trigger": {
+        "type": "zone",
+        "zone": "damaged_rail"
+      },
       "steps": [
+        {
+          "type": "flags",
+          "add": [
+            "act0:scratched"
+          ]
+        },
+        {
+          "type": "audio",
+          "file": "act0/rust_scratch.wav",
+          "volume": 0.5
+        },
         {
           "type": "say",
-          "speaker": "doctor",
-          "text": "Сначала посмотрим план больницы на стене.",
-          "seconds": 5.5
+          "speaker": "hero",
+          "text": "Ай, чёрт! Поцарапалась об какой-то гвоздь... Ещё и ржавый и окровавленный. Интересно, почему он в крови?",
+          "seconds": 9
         }
-      ]
-    },
-    {
-      "id": "letter",
-      "trigger": {
-        "type": "interact",
-        "object": "mother_letter"
-      },
-      "requires": [
-        "act0:map"
       ],
-      "once": false,
-      "steps": [
-        {
-          "type": "document",
-          "id": "mother_letter"
-        }
+      "requires": [
+        "act0:key_taken"
       ]
     },
     {
-      "id": "ending",
+      "id": "nursery_unlocked",
       "trigger": {
         "type": "event",
-        "name": "act_complete:act0"
+        "name": "opened:f2_surgery_preop"
       },
-      "requires": [
-        "act0:complete"
-      ],
-      "unless": [
-        "act0:ending"
-      ],
       "steps": [
+        {
+          "type": "flags",
+          "add": [
+            "act0:nursery_open",
+            "act0:cry_stopped"
+          ]
+        },
+        {
+          "type": "audio",
+          "file": "act0/lock_click.wav",
+          "volume": 0.45
+        }
+      ],
+      "requires": [
+        "act0:key_taken"
+      ]
+    },
+    {
+      "id": "cradle_memory",
+      "trigger": {
+        "type": "interact",
+        "object": "f2_nursery_cradle"
+      },
+      "steps": [
+        {
+          "type": "flags",
+          "add": [
+            "act0:cradle_inspected"
+          ]
+        },
+        {
+          "type": "focus_camera",
+          "position": [
+            -13.2,
+            6.65,
+            -17.8
+          ],
+          "target": [
+            -16,
+            5.6,
+            -20.5
+          ]
+        },
+        {
+          "type": "ambience",
+          "gain": 0.03,
+          "seconds": 1.2
+        },
+        {
+          "type": "effect",
+          "effect": "distortion",
+          "seconds": 1.2
+        },
+        {
+          "type": "voiceover",
+          "id": "cradle_memory"
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act0:memory_heard"
+          ]
+        },
+        {
+          "type": "ambience",
+          "gain": 1,
+          "seconds": 2
+        },
+        {
+          "type": "wait",
+          "seconds": 2.5
+        },
+        {
+          "type": "voiceover",
+          "id": "memory_outro_first"
+        },
+        {
+          "type": "wait",
+          "seconds": 1
+        },
+        {
+          "type": "voiceover",
+          "id": "memory_outro_second"
+        },
+        {
+          "type": "wait",
+          "seconds": 1.6
+        },
+        {
+          "type": "audio",
+          "file": "act0/corridor_unknown.wav",
+          "volume": 0.45
+        },
+        {
+          "type": "effect",
+          "effect": "interference",
+          "seconds": 0.7
+        },
+        {
+          "type": "effect",
+          "effect": "fade_to_black",
+          "seconds": 1.2
+        },
         {
           "type": "flags",
           "add": [
@@ -355,70 +518,69 @@
           ]
         },
         {
-          "type": "sound",
-          "profile": "doctor",
-          "volume": [
-            0.13,
-            0.24
-          ]
+          "type": "complete_act"
         },
         {
-          "type": "dialogue",
-          "id": "ending"
-        },
-        {
-          "type": "next_act"
+          "type": "end",
+          "title": "КОНЕЦ АКТА 1",
+          "text": "«Под софитами»"
         }
-      ]
-    },
-    {
-      "id": "stairs_fear",
-      "levels": [
-        "start"
       ],
       "requires": [
-        "act0:transformed"
-      ],
-      "trigger": {
-        "type": "event",
-        "name": "stairs_walk_finished"
-      },
-      "steps": [
-        {
-          "type": "flags",
-          "add": [
-            "hospital:stairs_fear"
-          ]
-        },
-        {
-          "type": "say",
-          "speaker": "hero",
-          "text": "Меня в дрожь бросает от лестниц… Это же такое опасное место.",
-          "seconds": 7
-        }
-      ],
-      "unless": [
-        "hospital:stairs_fear"
+        "act0:met_doctor",
+        "act0:medical_heard",
+        "act0:archive_1981_open",
+        "act0:case_081_open",
+        "act0:letter_read",
+        "act0:archive_reviewed",
+        "act0:key_taken",
+        "act0:cry_started",
+        "act0:nursery_open"
       ]
     },
     {
-      "id": "talk_after_letter",
+      "id": "talk_child_hint",
       "trigger": {
         "type": "talk",
         "actor": "doctor"
       },
-      "requires": [
-        "act0:complete"
-      ],
-      "once": false,
       "steps": [
         {
           "type": "say",
           "speaker": "doctor",
-          "text": "Пойдём. Нам нужно добраться до палаты.",
+          "text": "Давайте попробуем понять, откуда идёт звук.",
           "seconds": 5.5
         }
-      ]
+      ],
+      "requires": [
+        "act0:cry_started"
+      ],
+      "unless": [
+        "act0:nursery_open"
+      ],
+      "once": false
+    },
+    {
+      "id": "talk_archive_hint",
+      "trigger": {
+        "type": "talk",
+        "actor": "doctor"
+      },
+      "steps": [
+        {
+          "type": "say",
+          "speaker": "doctor",
+          "text": "Проверьте документы за 1981 год.",
+          "seconds": 5.5
+        }
+      ],
+      "requires": [
+        "act0:reception"
+      ],
+      "unless": [
+        "act0:key_taken"
+      ],
+      "once": false
     },
     {
       "id": "talk_hint",
@@ -426,90 +588,21 @@
         "type": "talk",
         "actor": "doctor"
       },
-      "requires": [
-        "act0:transformed"
-      ],
-      "unless": [
-        "act0:complete"
-      ],
-      "once": false,
       "steps": [
         {
           "type": "say",
           "speaker": "doctor",
-          "text": "Думаю, в регистратуре должен быть план здания.",
+          "text": "Ключи от кабинетов второго этажа обычно хранятся в регистратуре.",
           "seconds": 5.5
         }
-      ]
-    },
-    {
-      "id": "idle_hint",
-      "trigger": {
-        "type": "idle",
-        "seconds": 18
-      },
-      "requires": [
-        "act0:transformed"
       ],
-      "once": false,
-      "cooldown": 18,
-      "steps": [
-        {
-          "type": "say",
-          "speaker": "doctor",
-          "text": "Мы можем не спешить. Посмотри указатели.",
-          "seconds": 5.5
-        }
-      ]
-    },
-    {
-      "id": "near_reception_hint",
-      "trigger": {
-        "type": "zone_enter",
-        "zone": "near_reception"
-      },
       "requires": [
         "act0:transformed"
       ],
       "unless": [
         "act0:reception"
       ],
-      "once": false,
-      "steps": [
-        {
-          "type": "say",
-          "speaker": "doctor",
-          "text": "Вот, похоже, это то, что нам нужно.",
-          "seconds": 5.5
-        }
-      ]
-    },
-    {
-      "id": "revisit_hint",
-      "trigger": {
-        "type": "revisit",
-        "zones": [
-          "room_0",
-          "room_1",
-          "room_2",
-          "room_3",
-          "room_4",
-          "room_5"
-        ]
-      },
-      "requires": [
-        "act0:transformed"
-      ],
-      "once": false,
-      "cooldown": 6,
-      "steps": [
-        {
-          "type": "say",
-          "speaker": "doctor",
-          "text": "Кажется, мы здесь уже были.",
-          "seconds": 5.5
-        }
-      ]
+      "once": false
     }
   ]
 }

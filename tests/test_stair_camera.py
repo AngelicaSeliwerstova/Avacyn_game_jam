@@ -132,18 +132,18 @@ class StairCameraTests(unittest.TestCase):
     def test_story_comment_waits_for_dialogue_then_plays_once_as_the_heroine(self):
         scene = Campaign().load_level("start")
         session = scene.session
-        scene.player.story_events.add("stairs_walk_finished")
+        scene.session._flags.add("act0:key_taken")
+        scene.player.body._position = glm.vec3(-10.2, 1, 3.3)
         session.update(0)
-        self.assertIn("stairs_walk_finished", scene.player.story_events)
+        self.assertNotIn("act0:scratched", session._flags)
         self.assertEqual(scene.player.story_status, "")
         finish_conversation(session)
         session.update(0)
         self.assertIsNone(session.dialog)
         self.assertEqual(scene.player.story_status,
-                         "Героиня: Меня в дрожь бросает от лестниц… Это же такое опасное место.")
-        self.assertNotIn("stairs_walk_finished", scene.player.story_events)
-        session.update(8)
-        scene.player.story_events.add("stairs_walk_finished")
+                         "Героиня: Ай, чёрт! Поцарапалась об какой-то гвоздь... Ещё и ржавый и окровавленный. Интересно, почему он в крови?")
+        self.assertIn("act0:scratched", session._flags)
+        session.update(10)
         session.update(0)
         self.assertEqual(scene.player.story_status, "")
 

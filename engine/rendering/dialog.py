@@ -23,6 +23,15 @@ def conversation_rects(render_size, count):
 
 
 def dialog_button_rects(dialog, render_size):
+    if dialog.presentation == "filing_archive":
+        width, height = render_size
+        if dialog.filing_year is None:
+            cards = tuple(pygame.Rect(28 + i % 3 * ((width - 56) // 3), 154 + i // 3 * 60,
+                                      (width - 74) // 3, 48) for i in range(len(dialog.buttons) - 1))
+            return cards + (pygame.Rect(28, height - 52, width - 56, 34),)
+        count = len(dialog.buttons)
+        return tuple(pygame.Rect(36, height - 52 - (count - 1 - i) * 44, width - 72, 36)
+                     for i in range(count))
     if dialog.presentation in ("document", "plan"):
         count = len(dialog.buttons)
         width = (render_size[0] - 96) // max(1, count)
@@ -57,19 +66,42 @@ class DialogOverlay(TextOverlay):
         key = (dialog, render_size, hovered)
         if key != self._dialog_key:
             surface = pygame.Surface(render_size, pygame.SRCALPHA)
-            if dialog.presentation in ("title", "interference", "blackout"):
+            if dialog.presentation in ("title", "interference", "blackout", "distortion"):
                 self._draw_timed(surface, dialog, render_size)
             elif dialog.presentation in ("document", "plan"):
                 self._draw_document(surface, dialog, render_size, hovered)
-            elif dialog.presentation in ("conversation", "memory"):
+            elif dialog.presentation == "filing_archive":
+                self._draw_filing_archive(surface, dialog, render_size, hovered)
+            elif dialog.presentation in ("conversation", "memory", "voiceover"):
                 if dialog.presentation == "memory":
                     surface.fill((25, 15, 8, 155))
+                elif dialog.presentation == "voiceover":
+                    surface.fill((22, 25, 18, 28))
                 self._draw_conversation(surface, dialog, render_size, hovered)
             else:
                 self._draw_modal(surface, dialog, render_size, hovered)
             self._upload_surface(surface)
             self._dialog_key = key
         self._draw_texture(render_size, "center")
+
+    def _draw_filing_archive(self, surface, dialog, size, hovered):
+        surface.fill((13, 24, 24, 248))
+        title = self._title_font.render(dialog.title, True, (229, 218, 181))
+        surface.blit(title, (28, 22))
+        pygame.draw.line(surface, (115, 135, 112), (28, 62), (size[0] - 28, 62))
+        y = 76
+        for paragraph in dialog.message.split("\n"):
+            for line in self._wrap_line(paragraph, size[0] - 72, self._font):
+                surface.blit(self._font.render(line, True, (211, 216, 198)), (36, y))
+                y += self._font.get_linesize()
+        for button, rect in zip(dialog.buttons, dialog_button_rects(dialog, size)):
+            pygame.draw.rect(surface, (69, 88, 72) if hovered == button.action else (38, 54, 46), rect, border_radius=3)
+            pygame.draw.rect(surface, (121, 129, 101), rect, 1, border_radius=3)
+            if dialog.filing_year == 1981 and not dialog.filing_case and button.action == "files_case":
+                pygame.draw.rect(surface, (154, 53, 43), (rect.x, rect.y, 8, rect.height))
+            font = self._title_font if button.action.startswith("files_year:") else self._font
+            text = font.render(button.label, True, (239, 230, 204))
+            surface.blit(text, text.get_rect(center=rect.center))
 
     def _draw_modal(self, surface, dialog, render_size, hovered):
         surface.fill((0, 0, 0, 255 if dialog.presentation == "ending" else 235))
@@ -100,6 +132,11 @@ class DialogOverlay(TextOverlay):
                 offset = int(math.sin(y + frame * 0.7) * 80)
                 pygame.draw.line(surface, (intensity, intensity, intensity, 180),
                                  (max(0, offset), y), (render_size[0] + min(0, offset), y))
+        elif dialog.presentation == "distortion":
+            surface.fill((22, 29, 27, 25))
+            for y in range(0, render_size[1], 6):
+                offset = round(math.sin(y * 0.1 + dialog.effect_time * 18) * 12)
+                pygame.draw.line(surface, (115, 139, 121, 36), (max(0, offset), y), (render_size[0], y))
 
     def _draw_document(self, surface, dialog, render_size, hovered):
         surface.fill((0, 0, 0, 210))
@@ -116,8 +153,16 @@ class DialogOverlay(TextOverlay):
             y = 94
             for paragraph in dialog.message.split("\n"):
                 for line in self._wrap_line(paragraph, panel.width - 48, self._font):
-                    label = self._font.render(line, True, (42, 44, 38))
-                    surface.blit(label, (panel.left + 24, y))
+                    if "█" in line:
+                        prefix, redacted = line.split("█", 1)
+                        label = self._font.render(prefix, True, (42, 44, 38))
+                        surface.blit(label, (panel.left + 24, y))
+                        width = self._font.size("М" * (1 + redacted.count("█")))[0]
+                        pygame.draw.rect(surface, (30, 32, 28),
+                                         (panel.left + 24 + label.get_width(), y + 4, width, self._font.get_height() - 6))
+                    else:
+                        label = self._font.render(line, True, (42, 44, 38))
+                        surface.blit(label, (panel.left + 24, y))
                     y += self._font.get_linesize()
         for button, rect in zip(dialog.buttons, dialog_button_rects(dialog, render_size)):
             pygame.draw.rect(surface, (65, 91, 77) if hovered == button.action else (49, 68, 59), rect,

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, replace
+from functools import cached_property
 import math
 
 import glm
@@ -64,7 +65,7 @@ class Box:
         # Исходный CubeMesh имеет сторону 2.
         return glm.scale(translation, glm.vec3(self.size) * 0.5)
 
-    @property
+    @cached_property
     def footprint(self) -> AABB | OBB:
         x, _, z = self.position
         if self.orientation != (1.0, 0.0, 0.0, 0.0):
@@ -75,7 +76,7 @@ class Box:
             return OBB(x, z, width / 2, depth / 2, self.yaw_degrees)
         return AABB(x - width / 2, z - depth / 2, x + width / 2, z + depth / 2)
 
-    @property
+    @cached_property
     def bounds_half_size(self) -> tuple[float, float, float]:
         if self.orientation != (1.0, 0.0, 0.0, 0.0):
             matrix = self.model_matrix
@@ -93,7 +94,7 @@ class Box:
                                        pivot[2] - s * x + c * z),
                        yaw_degrees=self.yaw_degrees + angle_degrees)
 
-    @property
+    @cached_property
     def collider(self) -> AABB3D:
         return AABB3D(self.footprint, self.position[1] - self.bounds_half_size[1],
                       self.position[1] + self.bounds_half_size[1])

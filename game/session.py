@@ -12,6 +12,9 @@ class GameSession(Session):
         super().__init__()
         self.player = player
         self._flags = flags if flags is not None else set()
+        if level is not None:
+            from game.levels.patient_archive import restore_patient_archive
+            restore_patient_archive(level, self._flags)
         self.companions = tuple(obj.entity for obj in level.objects if isinstance(obj.entity, Companion)) if level else ()
         self._speaker = None
         self._dialogue_index = 0

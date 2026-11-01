@@ -56,6 +56,9 @@ class Companion(Entity):
         self._planned_goal = None
         self._planned_revision = -1
         self.following = following
+        self.seated = appearance == "doctor" and not following
+        if self.seated:
+            self._yaw = 180.0
         self.display_name = display_name
         from game.dialogue import validate_dialogue
         self.dialogue = validate_dialogue(dialogue)

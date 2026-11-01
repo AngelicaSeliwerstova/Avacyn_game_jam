@@ -5,6 +5,7 @@ import glm
 
 from engine.collision.aabb import AABB
 from engine.collision.obb import OBB
+from engine.collision.sweep import circle_contact
 
 
 class CollisionWorld:
@@ -16,6 +17,7 @@ class CollisionWorld:
     def __init__(self, colliders: Iterable[AABB | OBB], bounds: AABB | None = None):
         self.colliders = tuple(colliders)
         self.bounds = bounds
+        self._rotated = any(isinstance(box, OBB) for box in self.colliders)
 
     def is_blocked(self, position: glm.vec3, radius: float) -> bool:
         x, z = position.x, position.z
@@ -53,9 +55,46 @@ class CollisionWorld:
         dx, dz = displacement.x / steps, displacement.z / steps
         x, z = float(position.x), float(position.z)
         for _ in range(steps):
-            x = self._move_axis(x, z, dx, radius, axis=0)
-            z = self._move_axis(z, x, dz, radius, axis=1)
+            if self._rotated:
+                x, z = self._slide(x, z, dx, dz, radius)
+            else:
+                x = self._move_axis(x, z, dx, radius, axis=0)
+                z = self._move_axis(z, x, dz, radius, axis=1)
         return glm.vec3(x, position.y, z)
+
+    def _slide(self, x, z, dx, dz, radius):
+        for _ in range(5):
+            length = math.hypot(dx, dz)
+            if length < 1e-10:
+                break
+            hit = None
+            for box in self.colliders:
+                contact = circle_contact(box, x, z, dx, dz, radius)
+                if contact is not None and (hit is None or contact[0] < hit[0]):
+                    hit = contact
+            if self.bounds is not None:
+                b = self.bounds
+                for start, movement, low, high, nx, nz in (
+                        (x, dx, b.min_x + radius, b.max_x - radius, 1, 0),
+                        (z, dz, b.min_z + radius, b.max_z - radius, 0, 1)):
+                    if abs(movement) < 1e-12:
+                        continue
+                    t = ((low if movement < 0 else high) - start) / movement
+                    sign = 1 if movement < 0 else -1
+                    if 0 <= t <= 1 and (hit is None or t < hit[0]):
+                        hit = t, nx * sign, nz * sign
+            if hit is None:
+                x, z = x + dx, z + dz
+                break
+            t, nx, nz = hit
+            # Leave a tiny gap so conversion back to float32 cannot put the body
+            # inside the rail. Preserve only the motion tangent to the contact.
+            travel = max(0, t - 1e-6 / length)
+            x, z = x + dx * travel, z + dz * travel
+            dx, dz = dx * (1 - t), dz * (1 - t)
+            inward = min(0, dx * nx + dz * nz)
+            dx, dz = dx - inward * nx, dz - inward * nz
+        return x, z
 
     def _move_axis(
         self, origin: float, other: float, delta: float, radius: float, axis: int,

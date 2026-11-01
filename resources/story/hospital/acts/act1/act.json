@@ -66,6 +66,43 @@
   ],
   "scenes": [
     {
+      "id": "intro_from_archive",
+      "trigger": {
+        "type": "load"
+      },
+      "requires": [
+        "act0:locked_313"
+      ],
+      "unless": [
+        "act1:started"
+      ],
+      "steps": [
+        {
+          "type": "title",
+          "title": "АКТ 1",
+          "text": "«Она всегда меня находила»",
+          "seconds": 4
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act1:started",
+            "act1:door_found",
+            "act1:music"
+          ]
+        },
+        {
+          "type": "follow",
+          "actor": "doctor",
+          "enabled": true
+        },
+        {
+          "type": "dialogue",
+          "id": "melody"
+        }
+      ]
+    },
+    {
       "id": "intro",
       "trigger": {
         "type": "load"

@@ -1,0 +1,80 @@
+[
+  {
+    "id": "baby_cry",
+    "author": "eguaus",
+    "title": "baby crying",
+    "url": "https://freesound.org/people/eguaus/sounds/321712/",
+    "start": 8,
+    "seconds": 14,
+    "crossfade": 0.7,
+    "lowpass": 6000,
+    "license": "CC0-1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "verified_date": "2026-11-01",
+    "preview_url": "https://cdn.freesound.org/previews/321/321712_40875-hq.mp3",
+    "source_sha256": "23b3a6ff0768c1c379988a4c156ebfc7f40808de6bd517136cd181311121f388",
+    "file": "baby_cry.wav",
+    "sha256": "4baaf2cd66a391d87db0d2a92e38b383545d1ad2d0a7d6b28a68cf7d55bebfe8",
+    "duration": 13.3,
+    "processing": "HQ MP3 preview decoded to mono PCM 44.1 kHz/16-bit; excerpt, DC removal, low-pass, RMS/peak leveling; equal-power loop crossfade or edge fades."
+  },
+  {
+    "id": "monster_growl",
+    "author": "john129pats",
+    "title": "Hybrid Monster Growl",
+    "url": "https://freesound.org/people/john129pats/sounds/146558/",
+    "start": 0,
+    "seconds": 3.05,
+    "crossfade": 0,
+    "lowpass": 6500,
+    "license": "CC0-1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "verified_date": "2026-11-01",
+    "preview_url": "https://cdn.freesound.org/previews/146/146558_831330-hq.mp3",
+    "source_sha256": "d6f5b2537776310e06ebe6113cca10bda48e86f40d75afab58bd49510d5c558d",
+    "file": "monster_growl.wav",
+    "sha256": "d2844ae180b610e8a3245b59a97ae802644eb0d5d3bbcded005655a4eeed2fd0",
+    "duration": 3.05,
+    "processing": "HQ MP3 preview decoded to mono PCM 44.1 kHz/16-bit; excerpt, DC removal, low-pass, RMS/peak leveling; equal-power loop crossfade or edge fades."
+  },
+  {
+    "id": "baby_cry_short",
+    "author": "eguaus",
+    "title": "baby crying",
+    "url": "https://freesound.org/people/eguaus/sounds/321712/",
+    "start": 8,
+    "seconds": 2.7,
+    "crossfade": 0,
+    "lowpass": 6000,
+    "license": "CC0-1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "verified_date": "2026-11-01",
+    "preview_url": "https://cdn.freesound.org/previews/321/321712_40875-hq.mp3",
+    "source_sha256": "23b3a6ff0768c1c379988a4c156ebfc7f40808de6bd517136cd181311121f388",
+    "file": "baby_cry_short.wav",
+    "sha256": "0972d69b2d0f284b469eadc94cb497c43320355498093b514315dd8ed8417a63",
+    "duration": 2.7,
+    "processing": "HQ MP3 preview decoded to mono PCM 44.1 kHz/16-bit; excerpt, DC removal, low-pass, RMS/peak leveling; equal-power loop crossfade or edge fades."
+  },
+  {
+    "file": "rust_scratch.wav",
+    "author": "Avacyn game project",
+    "license": "CC0-1.0",
+    "processing": "Original procedural foley; fixed seed; mono PCM 44.1 kHz/16-bit.",
+    "sha256": "805c5f50b268dd3a1d0428ba8914f3853ff7d50eb7b896c0c7174762fd631bee"
+  },
+  {
+    "file": "lock_click.wav",
+    "author": "Avacyn game project",
+    "license": "CC0-1.0",
+    "processing": "Original procedural foley; fixed seed; mono PCM 44.1 kHz/16-bit.",
+    "sha256": "ae37285124b4cc92c4a61af1a8f8729ca60072d27ba3e68c6e2888b9a16a9c04"
+  },
+  {
+    "file": "corridor_unknown.wav",
+    "author": "Avacyn game project",
+    "license": "CC0-1.0",
+    "processing": "Original procedural foley; fixed seed; mono PCM 44.1 kHz/16-bit.",
+    "sha256": "585a6dd5463148afb30c52002ee7716820723db83df2ca942ba3e1362370adf3"
+  }
+]

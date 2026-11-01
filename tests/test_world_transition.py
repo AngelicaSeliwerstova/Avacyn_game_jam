@@ -3,10 +3,11 @@ import unittest
 import glm
 
 from game.campaign import Campaign
+from game.entities.companion import Companion
 from game.levels import create_level
 from test_hospital import make_body, walk
 from game.levels.spiral import SpiralStair
-from support_story import finish_conversation
+from support_story import finish_conversation, finish_office
 
 
 class WorldTransitionTests(unittest.TestCase):
@@ -56,7 +57,11 @@ class WorldTransitionTests(unittest.TestCase):
         # Creator edits are per-map overlays; compare the shared authored building.
         self.assertEqual(geometry(b for b in hospital.decorations if b not in hospital.creator_objects and not b.decal),
                          geometry(b for b in peaceful.decorations if b not in peaceful.creator_objects))
-        self.assertEqual(geometry(hospital.all_object_boxes), geometry(peaceful.all_object_boxes))
+        # The doctor starts seated behind the desk in the peaceful scene;
+        # the shared building and furniture still match in every state.
+        furniture = lambda level: (box for obj in level.objects if not isinstance(obj.entity, Companion)
+                                   for state in obj.states.values() for box in state.boxes)
+        self.assertEqual(geometry(furniture(hospital)), geometry(furniture(peaceful)))
         self.assertNotEqual(tuple(b.material for b in hospital.boxes),
                             tuple(b.material for b in peaceful.boxes))
         self.assertEqual(peaceful.floor_material, "terrazzo_gray")
@@ -67,6 +72,7 @@ class WorldTransitionTests(unittest.TestCase):
         campaign = Campaign()
         peaceful = campaign.load_level("peaceful")
         peaceful.session.tick_presentation(4)
+        finish_conversation(peaceful.session)
         self.assertIsNone(peaceful.fog)
         self.assertIsNone(peaceful.postprocess)
         peaceful.session.update(0)
@@ -84,8 +90,7 @@ class WorldTransitionTests(unittest.TestCase):
         peaceful.player._interactions._activate(speaker)
         peaceful.session.update(0)
         self.assertIsNotNone(peaceful.session.dialog)
-        finish_conversation(peaceful.session)
-        peaceful.session.tick_presentation(4)
+        finish_office(peaceful.session)
         self.assertEqual(peaceful.session.next_level, "start")
         peaceful.player.inventory.add_key("story", "Сюжетный ключ")
         hospital = campaign.load_level(peaceful.session.next_level)
@@ -101,6 +106,7 @@ class WorldTransitionTests(unittest.TestCase):
     def test_portal_does_not_fire_from_corridor_or_doorway(self):
         scene = Campaign().load_level("peaceful")
         scene.session.tick_presentation(4)
+        finish_conversation(scene.session)
         door = next(obj for obj in scene.level.objects if obj.name == "office_0")
         door.set_state("open")
         door.update(1)

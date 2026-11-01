@@ -159,7 +159,7 @@ class FixedCameraTests(unittest.TestCase):
         player.update(0.1, InputState(forward=1))
         crossed_boundary_x = player.body.position.x
         self.assertGreater(crossed_boundary_x, 0)
-        self.assertIs(player._active_fixed_camera(), first)
+        self.assertIs(player._active_fixed_camera(), second)
 
         player.update(0.1, InputState(forward=1))
 

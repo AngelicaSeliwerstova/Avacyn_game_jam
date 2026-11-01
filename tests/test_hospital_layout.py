@@ -61,7 +61,7 @@ class HospitalLayoutTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.level = create_level("start")
-        cls.doors = tuple(obj for obj in cls.level.objects if "open" in obj.states)
+        cls.doors = tuple(obj for obj in cls.level.objects if obj.rotation_pivot is not None and "open" in obj.states)
         for door in cls.doors:
             door.set_state("open")
             door.update(2)
@@ -83,7 +83,7 @@ class HospitalLayoutTests(unittest.TestCase):
                 walk(self, body, (b, a), fps=30)
 
     def test_reference_has_six_north_rooms_and_two_security_entrances(self):
-        self.assertEqual(ROOM_NAMES, ("Кабинет врача", "Процедурная", "Смотровая",
+        self.assertEqual(ROOM_NAMES, ("Кабинет №104", "Процедурная", "Смотровая",
                                       "Склад", "Палата 01", "Палата 02"))
         ground = {obj.name: obj for obj in self.doors
                   if not obj.name.startswith(("f2_", "f3_"))}

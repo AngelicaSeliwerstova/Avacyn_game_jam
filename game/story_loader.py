@@ -70,6 +70,13 @@ def _file(directory, name):
     return path
 
 
+def _audio_file(name, where):
+    try:
+        return _file(AUDIO_ROOT, name)
+    except StoryFormatError as error:
+        raise StoryFormatError(f"{where}: {error}") from error
+
+
 @dataclass(frozen=True)
 class StoryAct:
     data: dict
@@ -141,8 +148,11 @@ class _ActValidator:
                         _strings(option["set_flags"], opt + ".set_flags")
                     self.lines(option["lines"], opt + ".lines", depth + 1)
             else:
-                _fields(node, loc, ("speaker", "text"))
+                _fields(node, loc, ("speaker", "text"), ("audio", "seconds"))
                 _text(node["text"], loc + ".text")
+                if "audio" in node:
+                    _check(_audio_file(node["audio"], loc).is_file(), loc, "missing recorded voice")
+                    _number(node.get("seconds"), loc + ".seconds", 0.001)
             self.ref(node["speaker"], self.actors, loc + ".speaker")
 
     def steps(self, steps, where):
@@ -157,6 +167,12 @@ class _ActValidator:
             "object_state": (("object", "state"), ()), "wait_object": (("object", "state"), ()),
             "wait": (("seconds",), ()), "end": (("title", "text"), ()),
             "puzzle": (("id",), ()), "puzzle_checkpoint": (("id",), ()),
+            "archive": ((), ("case",)),
+            "audio": (("file",), ("volume",)),
+            "voiceover": (("id",), ()),
+            "grant_key": (("id", "name"), ()),
+            "focus_camera": (("position", "target"), ()),
+            "ambience": (("gain", "seconds"), ()),
         }
         for i, step in enumerate(steps):
             loc = f"{where}[{i}]"
@@ -167,6 +183,29 @@ class _ActValidator:
             _fields(step, loc, ("type", *required), optional)
             if kind in ("puzzle", "puzzle_checkpoint"):
                 self.ref(step["id"], self.book.data.get("puzzles", {}), loc + ".id")
+            elif kind == "archive":
+                _boolean(step.get("case", False), loc + ".case")
+            elif kind == "audio":
+                _check(_audio_file(step["file"], loc).is_file(), loc, "missing audio cue")
+                _number(step.get("volume", 1), loc + ".volume")
+                _check(step.get("volume", 1) <= 1, loc, "volume must be <= 1")
+            elif kind == "voiceover":
+                self.ref(step["id"], self.act.dialogues, loc + ".id")
+                _check(all("choice" not in line and "audio" in line for line in self.act.dialogues[step["id"]]),
+                       loc, "voiceover needs recorded lines without choices")
+            elif kind == "grant_key":
+                _text(step["id"], loc + ".id")
+                _text(step["name"], loc + ".name")
+            elif kind == "focus_camera":
+                for field in ("position", "target"):
+                    point = step[field]
+                    _check(isinstance(point, list) and len(point) == 3
+                           and all(type(v) in (int, float) and math.isfinite(v) for v in point), loc, "invalid camera point")
+                _check(step["position"] != step["target"], loc, "camera position and target must differ")
+            elif kind == "ambience":
+                _number(step["gain"], loc + ".gain")
+                _check(step["gain"] <= 1, loc, "gain must be <= 1")
+                _number(step["seconds"], loc + ".seconds", 0.001)
             elif kind == "dialogue":
                 self.ref(step["id"], self.act.dialogues, loc + ".id")
                 _check(step.get("presentation", "conversation") in ("conversation", "memory"), loc, "invalid dialogue presentation")
@@ -192,7 +231,7 @@ class _ActValidator:
                     _text(step["text"], loc + ".text")
                     _number(step.get("fade_seconds", 1), loc + ".fade_seconds", 0.001)
                 else:
-                    _check(step["effect"] in ("interference", "blackout", "fade_to_black"), loc, "unsupported visual effect")
+                    _check(step["effect"] in ("interference", "blackout", "fade_to_black", "distortion"), loc, "unsupported visual effect")
             elif kind == "level":
                 _check(isinstance(step["level"], str) and bool(_ID.fullmatch(step["level"])), loc, "invalid level ID")
                 _boolean(step.get("preserve_scene", False), loc + ".preserve_scene")
@@ -261,7 +300,7 @@ class _ActValidator:
             _text(source["id"], loc + ".id")
             _check(source["id"] not in names, loc, "duplicate audio source ID")
             names.add(source["id"])
-            audio_path = _file(AUDIO_ROOT, source["file"])
+            audio_path = _audio_file(source["file"], loc)
             _check(audio_path.is_file(), loc + ".file", "missing audio file")
             point = source["position"]
             _check(isinstance(point, list) and len(point) == 3

@@ -89,6 +89,10 @@ class TextureSettingsTests(unittest.TestCase):
                 if material.name.startswith("story_"):
                     shape = ((192, 192) if material.name == "story_clock" else
                              (256, 192) if material.name == "story_drawing" else (256, 144))
+                elif material.name.startswith("archive_year_") or material.name == "archive_office_104":
+                    shape = (expected * 4, expected)
+                elif material.name == "archive_heading":
+                    shape = (expected * 8, expected)
                 self.assertEqual(image.get_size(), shape, material.path)
 
     def test_third_floor_signs_cover_every_room_and_resolve_to_readable_materials(self):

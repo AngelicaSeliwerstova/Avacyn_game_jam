@@ -1,0 +1,124 @@
+{
+  "lights": [
+    {
+      "position": [
+        -25.944678672243086,
+        3.2484521198272707,
+        24.828580774354126
+      ],
+      "direction": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "color": [
+        1.0,
+        0.78,
+        0.52
+      ],
+      "intensity": 3.5,
+      "radius": 9.0,
+      "inner_angle": 30.0,
+      "outer_angle": 55.0,
+      "shadows": true,
+      "flicker": null
+    },
+    {
+      "position": [
+        -22.459156143848322,
+        3.0599999999999996,
+        22.836563052344527
+      ],
+      "direction": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "color": [
+        1.0,
+        0.78,
+        0.52
+      ],
+      "intensity": 3.5,
+      "radius": 9.0,
+      "inner_angle": 30.0,
+      "outer_angle": 55.0,
+      "shadows": true,
+      "flicker": null
+    },
+    {
+      "position": [
+        -25.792006812914458,
+        3.0599999999999996,
+        22.0179399357275
+      ],
+      "direction": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "color": [
+        1.0,
+        0.78,
+        0.52
+      ],
+      "intensity": 3.5,
+      "radius": 9.0,
+      "inner_angle": 30.0,
+      "outer_angle": 55.0,
+      "shadows": true,
+      "flicker": null
+    },
+    {
+      "position": [
+        -20.553681693895903,
+        3.0599999999999996,
+        23.304591547055626
+      ],
+      "direction": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "color": [
+        1.0,
+        0.78,
+        0.52
+      ],
+      "intensity": 3.5,
+      "radius": 9.0,
+      "inner_angle": 30.0,
+      "outer_angle": 55.0,
+      "shadows": true,
+      "flicker": null
+    },
+    {
+      "position": [
+        -23.205699358370108,
+        3.0599999999999996,
+        25.396069022456448
+      ],
+      "direction": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "color": [
+        1.0,
+        0.78,
+        0.52
+      ],
+      "intensity": 3.5,
+      "radius": 9.0,
+      "inner_angle": 30.0,
+      "outer_angle": 55.0,
+      "shadows": true,
+      "flicker": {
+        "interval": 3.2,
+        "duration": 1.0,
+        "minimum": 0.08,
+        "seed": 2
+      }
+    }
+  ]
+}

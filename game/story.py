@@ -59,6 +59,13 @@ class StorySession(GameSession):
         self._map_visits = set()
         self._wait_seconds = 0.0
         self._wait_object = None
+        self._voice_remaining = None
+        self._voiceover_elapsed = 0.0
+        self._ambience_tween = None
+        if "act0:key_taken" in flags and not player.inventory.has_key("second_floor_key"):
+            player.inventory.add_key("second_floor_key", "Ключ от второго этажа — номер стёрт")
+        from game.puzzles.patient_files import PatientFiles
+        self._files = PatientFiles(self)
         self.preserve_scene_on_transition = False
         self._dispatch({"load": True, "talk": set(), "interact": set(), "zones": set(), "entered": set(), "revisited": set()})
         self._update_hint()
@@ -69,6 +76,7 @@ class StorySession(GameSession):
                 and ("levels" not in data or self.level_name in data["levels"]))
 
     def _update_hint(self):
+        self.player.act_title = self.act.data["title"]
         self.player.objective_status = ""
         for objective in self.act.data["objectives"]:
             if self._conditions(objective):
@@ -86,6 +94,14 @@ class StorySession(GameSession):
         for node in nodes:
             is_choice = "choice" in node
             pages = text_pages(node["prompt"] if is_choice else node["text"], "conversation")
+            if presentation == "voiceover":
+                total = max(1, sum(len(page) for page in pages))
+                for index, page in enumerate(pages):
+                    steps.append({"type": "_voice_line", "node": {
+                        "speaker": node["speaker"], "text": page,
+                        "audio": node["audio"] if index == 0 else None,
+                        "seconds": node["seconds"] * len(page) / total}})
+                continue
             for page in pages[:-1]:
                 steps.append({"type": "_line", "node": {"speaker": node["speaker"], "text": page}, "presentation": presentation})
             steps.append({"type": "_choice" if is_choice else "_line",
@@ -101,6 +117,25 @@ class StorySession(GameSession):
             kind = step["type"]
             if kind == "dialogue":
                 self._dialogue_nodes(act, act.dialogues[step["id"]], step.get("presentation", "conversation"))
+            elif kind == "voiceover":
+                self._voiceover_elapsed = 0.0
+                self._dialogue_nodes(act, act.dialogues[step["id"]], "voiceover")
+            elif kind == "_voice_line":
+                node = step["node"]
+                self._voice_remaining = node["seconds"]
+                self.dialog = Dialog(self.book.data["characters"][node["speaker"]]["name"], node["text"], (),
+                                     presentation="voiceover", effect_time=self._voiceover_elapsed)
+                if node["audio"]:
+                    self._play_audio(node["audio"], 0.78, voice=True)
+                break
+            elif kind == "focus_camera":
+                self.player.story_camera = (tuple(step["position"]), tuple(step["target"]))
+                self.player.story_distortion = 0.12
+                self.player._sync_fixed_camera()
+            elif kind == "ambience":
+                self._ambience_tween = (self.player.story_audio_gain, step["gain"], step["seconds"], 0.0)
+            elif kind == "grant_key":
+                self.player.inventory.add_key(step["id"], step["name"])
             elif kind in ("_line", "_choice"):
                 node = step["node"]
                 self._node, self._node_act = node, act
@@ -147,6 +182,9 @@ class StorySession(GameSession):
                 puzzle.progress.aftermath_done = True
                 puzzle.save()
                 self._sync_puzzle_flags()
+            elif kind == "archive":
+                self._files.show(case=step.get("case", False))
+                break
             elif kind == "wait":
                 self._wait_seconds = step["seconds"]
                 self.controls_locked = True
@@ -182,6 +220,8 @@ class StorySession(GameSession):
                     if not hasattr(self, "_sounds"):
                         self._sounds = FootstepSounds()
                     self._sounds.play(step["profile"], *step["volume"], voice="story")
+            elif kind == "audio":
+                self._play_audio(step["file"], step.get("volume", 1))
             elif kind == "complete_act":
                 self._flags.add(act.data["complete_flag"])
                 self.player.story_events.add(f"act_complete:{act.id}")
@@ -207,10 +247,40 @@ class StorySession(GameSession):
             raise StoryFormatError(f"{self.act.path}: object {name!r} not found on {self.level_name}")
         return obj
 
+    def _play_audio(self, filename, volume, *, voice=False):
+        from config import settings
+        if not settings.AUDIO_ENABLED:
+            return
+        from game.hospital_audio import HospitalSoundBank
+        if not hasattr(self, "_cue_sounds"):
+            self._cue_sounds = HospitalSoundBank({})
+        self._cue_sounds._paths[filename] = filename
+        if voice:
+            self._cue_sounds.play_voice(filename, volume)
+        else:
+            self._cue_sounds.play_discovery(filename, volume)
+
     def tick_presentation(self, delta_time):
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("Story delta time must be finite and nonnegative")
         super().tick_presentation(delta_time)
+        from config import settings
+        if hasattr(self, "_cue_sounds") and not settings.AUDIO_ENABLED:
+            self._cue_sounds.stop_effects()
+        if self._ambience_tween is not None:
+            start, target, seconds, elapsed = self._ambience_tween
+            elapsed = min(seconds, elapsed + delta_time)
+            self.player.story_audio_gain = start + (target - start) * elapsed / seconds
+            self._ambience_tween = None if elapsed >= seconds else (start, target, seconds, elapsed)
+        if self._voice_remaining is not None:
+            self._voiceover_elapsed += delta_time
+            self._voice_remaining -= delta_time
+            if self._voice_remaining <= 0:
+                self._voice_remaining = None
+                self._advance()
+            else:
+                self.dialog = replace(self.dialog, effect_time=self._voiceover_elapsed)
+            return
         if self._puzzle is not None:
             if self._puzzle.tick(delta_time):
                 puzzle = self._puzzle
@@ -228,6 +298,8 @@ class StorySession(GameSession):
         opacity = min(1, max(0, (step["seconds"] - self._elapsed) / step.get("fade_seconds", 1))) if step["type"] == "title" else 1
         if step.get("effect") == "fade_to_black":
             opacity = min(1, self._elapsed / step["seconds"])
+        if step.get("effect") == "distortion":
+            self.player.story_distortion = 0.12 + 0.45 * max(0, 1 - self._elapsed / step["seconds"])
         self.dialog = replace(self.dialog, opacity=opacity, effect_time=self._elapsed)
         if self._elapsed >= step["seconds"]:
             self._timed = None
@@ -394,6 +466,8 @@ class StorySession(GameSession):
     def handle_action(self, action):
         if self.dialog is None or action not in {button.action for button in self.dialog.buttons}:
             return False
+        if action.startswith("files_"):
+            return self._files.handle(action)
         if action == "story_continue":
             if self.act.data["complete_flag"] not in self._flags:
                 return False
@@ -474,3 +548,5 @@ class StorySession(GameSession):
             puzzle.release()
         if hasattr(self, "_sounds"):
             self._sounds.stop()
+        if hasattr(self, "_cue_sounds"):
+            self._cue_sounds.stop()

@@ -116,13 +116,15 @@ def build_surgical_floor(*, peaceful=False):
     partition("z", -5, 14, 24, ((18, "surgery_staff", "Комната персонала"),))
     # Open into the staff room.
     next(data for data in definitions if data["id"] == "surgery_staff")["open_angle"] = 90
+    nursery_door = next(data for data in definitions if data["id"] == "surgery_preop")
+    nursery_door.update(key_id="second_floor_key", name="Кабинет — стёртая табличка")
 
     # Equipment is kept clear of the stair opening and the main walking routes.
     with props.against_wall("z", -23.86):
         props.cabinet(-26.7, -17, 1.1, 1.8, yaw=180)
         props.cart(-23, -17)
-    with props.against_wall("z", -23.86):
-        props.table(-16, -16, 2.2, 1.0, 0.85)
+    from game.levels.under_spotlights import add_nursery
+    add_nursery(props, boxes, definitions)
     operating_table(-8, -16)
     with props.against_wall("x", -3.88):
         props.cabinet(-2, -19, 1.2, 1.9, yaw=-90)
@@ -207,6 +209,8 @@ def build_surgical_floor(*, peaceful=False):
         lamp(x, z)
 
     for data in definitions:
+        if data["type"] != "door":
+            continue
         x, _, z = data["position"]
         if data["axis"] == "x":
             props.sign(x + 1.35, z + 0.16, data["name"], yaw=180)
