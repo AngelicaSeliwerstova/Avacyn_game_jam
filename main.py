@@ -11,9 +11,10 @@ from game.campaign import Campaign
 from game.puzzles.cctv_puzzle import CCTVProgressStore
 
 
-def run_session(creator_mode: bool = False, debug_mode: bool = False, level_name: str | None = None):
+def run_session(creator_mode: bool = False, debug_mode: bool = False, level_name: str | None = None,
+                *, resume_archive: bool = False):
     campaign = Campaign(creator_mode=creator_mode, puzzle_store=CCTVProgressStore(
-        Path(__file__).resolve().parent / "saves/hospital_archives.json"))
+        Path(__file__).resolve().parent / "saves/hospital_archives.json", resume=resume_archive))
     scene = campaign.load_level(settings.LEVEL_NAME if level_name is None else level_name)
     app = Application(
         window_size=settings.WINDOW_SIZE,
@@ -59,9 +60,13 @@ def main():
                         help="enable developer panel and log frames slower than 45 FPS")
     parser.add_argument("--level", default=settings.LEVEL_NAME,
                         help="starting map name from resources/levels (e.g. start or peaceful)")
+    parser.add_argument("--resume-archive", action="store_true",
+                        help="restore the previous CCTV archive checkpoint instead of starting a fresh puzzle")
     args = parser.parse_args()
-    while run_session(creator_mode=args.creator, debug_mode=args.debug, level_name=args.level) == "restart":
-        pass
+    resume_archive = args.resume_archive
+    while run_session(creator_mode=args.creator, debug_mode=args.debug, level_name=args.level,
+                      resume_archive=resume_archive) == "restart":
+        resume_archive = False
 
 
 if __name__ == "__main__":

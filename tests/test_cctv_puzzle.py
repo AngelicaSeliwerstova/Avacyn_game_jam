@@ -116,6 +116,71 @@ class CCTVTests(unittest.TestCase):
             restored.session.handle_puzzle_action("archive_close")
             self.assertNotIn("archive_recording_watched", restored.session._flags)
 
+    def test_new_session_starts_unsolved_and_only_explicit_resume_restores_checkpoint(self):
+        from main import run_session
+
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "archive.json"
+            puzzle = self.puzzle(CCTVProgressStore(path))
+            puzzle.progress.order = list(self.definition["correct_order"])
+            puzzle.check()
+            puzzle.progress.watched = puzzle.progress.report_read = puzzle.progress.aftermath_done = True
+            puzzle.save()
+            self.addCleanup(puzzle.release)
+
+            for resume in (False, True):
+                with self.subTest(resume=resume), \
+                        patch("main.CCTVProgressStore", side_effect=lambda _, **kwargs: CCTVProgressStore(path, **kwargs)), \
+                        patch("main.Application") as application:
+                    application.return_value.run.return_value = "quit"
+                    run_session(level_name="act2", **({"resume_archive": True} if resume else {}))
+                    session = application.call_args.kwargs["session"]
+                    self.addCleanup(session.release)
+                    self.assertEqual("archive_puzzle_solved" in session._flags, resume)
+                    self.assertEqual(session.player.inventory.has_item("incident_report"), resume)
+                    session.tick_presentation(4)
+                    finish_conversation(session)
+                    monitor = next(o for o in application.call_args.kwargs["level"].objects
+                                   if o.name == "security_archive")
+                    session.player._interactions._activate(monitor)
+                    session.update(0)
+                    self.assertTrue(session.puzzle_active)
+                    self.assertEqual(session.puzzle_view.solved, resume)
+                    self.assertEqual(session._puzzle.progress.order,
+                                     self.definition["correct_order"] if resume else self.definition["initial_order"])
+
+    def test_fresh_disk_store_saves_current_run_and_reopening_monitor_keeps_its_order(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "archive.json"
+            previous = self.puzzle(CCTVProgressStore(path))
+            previous.progress.order = list(self.definition["correct_order"])
+            previous.check()
+            self.addCleanup(previous.release)
+
+            store = CCTVProgressStore(path, resume=False)
+            _, scene = self.scene(store)
+            self.open(scene)
+            scene.session.handle_puzzle_action("archive_frame:0")
+            scene.session.handle_puzzle_action("archive_frame:1")
+            scene.session.handle_puzzle_action("archive_close")
+            self.open(scene)
+            self.assertEqual(scene.session._puzzle.progress.order, list("ACDB"))
+            self.assertFalse(scene.session.puzzle_view.solved)
+            saved = CCTVProgressStore(path).get("cctv_archive", self.definition)
+            self.assertEqual(saved.order, list("ACDB"))
+            self.assertFalse(saved.solved or saved.watched or saved.report_read or saved.aftermath_done)
+
+    def test_restart_starts_fresh_even_when_launching_with_saved_archive(self):
+        from main import main
+
+        with patch("sys.argv", ["main.py", "--level", "act2", "--resume-archive"]), \
+                patch("main.run_session", side_effect=("restart", "quit")) as run:
+            main()
+        self.assertEqual(run.call_count, 2)
+        self.assertTrue(run.call_args_list[0].kwargs["resume_archive"])
+        self.assertFalse(run.call_args_list[1].kwargs["resume_archive"])
+        self.assertTrue(all(call.kwargs["level_name"] == "act2" for call in run.call_args_list))
+
     def test_full_story_all_choices_unlock_report_and_dialogue_only_once(self):
         for choice in range(3):
             with self.subTest(choice=choice):
