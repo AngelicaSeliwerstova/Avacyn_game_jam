@@ -11,10 +11,15 @@ class TextureMaterial:
     name: str
     path: Path
     world_size: float
+    uv_scale: tuple[float, float] = (1.0, 1.0)
+    uv_offset: tuple[float, float] = (0.0, 0.0)
 
     def __post_init__(self):
         if not self.name or not math.isfinite(self.world_size) or self.world_size <= 0:
             raise ValueError("Material needs a name and a positive finite world size")
+        if any(len(values) != 2 or not all(math.isfinite(v) for v in values)
+               for values in (self.uv_scale, self.uv_offset)):
+            raise ValueError("Material UV transforms need two finite coordinates")
 
 
 @dataclass(frozen=True)

@@ -7,6 +7,8 @@ in vec3 world_point;
 in vec3 world_normal;
 flat in vec4 object_instance_color;
 flat in vec3 object_instance_emission;
+in vec2 decal_uv;
+flat in float decal_enabled;
 
 uniform sampler2D surface_texture;
 uniform bool textured;
@@ -15,6 +17,9 @@ uniform int material_alpha_mode;
 uniform float material_alpha;
 uniform float material_alpha_cutoff;
 uniform float texture_world_size;
+uniform vec2 texture_uv_scale = vec2(1.0);
+uniform vec2 texture_uv_offset = vec2(0.0);
+uniform bool use_uv;
 uniform vec3 emission;
 uniform bool object_color_enabled;
 uniform vec3 object_color;
@@ -108,11 +113,20 @@ float visibility(int index, vec3 delta, float radius, vec3 normal) {
 }
 
 void main() {
+    // The same cutout runs in the depth prepass so the rectangular carrier
+    // never hides the floor around the organic stain.
+    if (decal_enabled > 0.5) {
+        float angle = atan(decal_uv.y, decal_uv.x);
+        float radius = 0.76 + 0.09 * sin(angle * 5.0) + 0.06 * sin(angle * 9.0 + 1.7);
+        if (length(decal_uv) > radius) discard;
+    }
     if (depth_only) {
         fragment_color = vec4(0.0);
         return;
     }
-    vec4 surface = textured ? texture(surface_texture, texture_uv / texture_world_size) : vec4(1.0);
+    vec2 material_uv = texture_uv / texture_world_size;
+    if (!use_uv) material_uv = material_uv * texture_uv_scale + texture_uv_offset;
+    vec4 surface = textured ? texture(surface_texture, material_uv) : vec4(1.0);
     float alpha = surface.a * material_alpha;
     if (material_alpha_mode == 1 && alpha < material_alpha_cutoff) discard;
     float fog = fog_enabled ? smoothstep(fog_start, fog_end, length(world_point - camera_position)) : 0.0;

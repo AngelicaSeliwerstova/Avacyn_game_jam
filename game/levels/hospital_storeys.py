@@ -100,11 +100,14 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
             surgical_floor if custom else patient_floor if patient_custom
             else (boxes, decorations, lights, definitions)
         )
-        all_boxes.extend(move(box, offset) for box in storey_boxes)
+        def authored_move(box, light_offset=0):
+            moved = move(box, offset, light_offset)
+            return replace(moved, authored_group=f"floor_{floor + 1}/{box.authored_group}") if box.authored_group else moved
+        all_boxes.extend(authored_move(box) for box in storey_boxes)
         light_offset = floor * len(lights)
         if surgical_floor is not None and floor > 1:
             light_offset += len(surgical_floor[2]) - len(lights)
-        all_decorations.extend(move(box, offset, light_offset) for box in storey_decorations)
+        all_decorations.extend(authored_move(box, light_offset) for box in storey_decorations)
         all_lights.extend(replace(light, position=(light.position[0], light.position[1] + offset,
                                                   light.position[2])) for light in storey_lights)
         current_definitions = []

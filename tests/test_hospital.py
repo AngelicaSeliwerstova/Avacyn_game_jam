@@ -154,7 +154,7 @@ class HospitalTests(unittest.TestCase):
         self.assertTrue(all(obj.interaction.command == "open_door" for obj in patient_rooms))
         names = {obj.name for obj in level.objects}
         self.assertTrue({
-            "f3_patient_nurse_room", "f3_patient_nurse_inner",
+            "f3_patient_nurse_room",
             "f3_patient_east_entry", "f3_patient_south_west",
             "f3_patient_south_center", "f3_patient_south_east",
         } <= names)
@@ -257,6 +257,10 @@ class HospitalTests(unittest.TestCase):
 
     def test_reported_corridor_partition_is_clear_on_every_floor(self):
         level = create_level("start")
+        # Recovery now has its entrance on the room wall, directly off the hall.
+        recovery = next(obj for obj in level.objects if obj.name == "f2_surgery_recovery")
+        recovery.set_state("open")
+        recovery.update(1)
         world = CollisionWorld3D((b.collider for b in level.boxes), level.floor_bounds,
                                  objects=level.objects)
         # The ground floor now has reception's north wall at Z=0; its public

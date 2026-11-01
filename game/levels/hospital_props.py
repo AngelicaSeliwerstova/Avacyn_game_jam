@@ -1,6 +1,7 @@
 """Мебель и небольшие детали больницы, собранные из геометрии движка."""
 
 import math
+from functools import wraps
 from dataclasses import replace
 from contextlib import contextmanager
 
@@ -8,10 +9,35 @@ from engine.scene.box import Box
 from engine.scene.interaction import Interaction
 
 
+def authored_prop(method):
+    @wraps(method)
+    def build(self, x, z, *args, **kwargs):
+        with self.authored_group(method.__name__, x, z):
+            return method(self, x, z, *args, **kwargs)
+    return build
+
+
 class HospitalProps:
     def __init__(self):
         self.boxes = []
         self.decorations = []
+        self._group_counts = {}
+
+    @contextmanager
+    def authored_group(self, name, x, z, extra_boxes=None):
+        key = f"{name}:{x:.4f}:{z:.4f}"
+        count = self._group_counts.get(key, 0)
+        self._group_counts[key] = count + 1
+        group = f"{key}:{count}"
+        sources = [self.boxes, self.decorations]
+        if extra_boxes is not None:
+            sources.append(extra_boxes)
+        starts = [len(source) for source in sources]
+        yield
+        for source, start in zip(sources, starts):
+            for index in range(start, len(source)):
+                source[index] = replace(source[index], authored_group=group)
+
 
     @contextmanager
     def against_wall(self, axis, surface, inward=1, gap=0.06, extra_boxes=None):
@@ -53,6 +79,7 @@ class HospitalProps:
         (self.decorations if detail else self.boxes).append(item)
         return item
 
+    @authored_prop
     def sofa(self, x, z, width=2.6, yaw=0):
         leather = (0.29, 0.12, 0.09)
         self.part(x, z, (0, 0.35, 0), (width, 0.35, 0.92), "sofa_fabric", yaw=yaw)
@@ -68,6 +95,7 @@ class HospitalProps:
             self.part(x, z, (side * (width / 2 - 0.09), 0.65, 0), (0.22, 0.65, 1.03),
                       "sofa_fabric", color=leather, yaw=yaw)
 
+    @authored_prop
     def table(self, x, z, width=1.8, depth=0.8, height=0.6, yaw=0):
         self.part(x, z, (0, height - 0.05, 0), (width, 0.1, depth), "furniture_wood", yaw=yaw)
         for dx in (-width / 2 + 0.12, width / 2 - 0.12):
@@ -76,12 +104,14 @@ class HospitalProps:
         self.part(x, z, (-width * 0.2, height + 0.015, 0), (0.32, 0.025, 0.24),
                   color=(0.7, 0.67, 0.52), yaw=yaw, detail=True)
 
+    @authored_prop
     def chair(self, x, z, yaw=0):
         self.part(x, z, (0, 0.48, 0), (0.58, 0.13, 0.58), "chair_fabric", color=(0.27, 0.34, 0.3), yaw=yaw)
         self.part(x, z, (0, 0.85, 0.24), (0.58, 0.62, 0.1), "chair_fabric", color=(0.27, 0.34, 0.3), yaw=yaw)
         for dx in (-0.23, 0.23):
             self.part(x, z, (dx, 0.22, 0), (0.055, 0.44, 0.48), "rust", yaw=yaw)
 
+    @authored_prop
     def plant(self, x, z, small=False, base=0):
         scale = 0.4 if small else 1.0
         self.part(x, z, (0, base + 0.22 * scale, 0), (0.48 * scale, 0.44 * scale, 0.48 * scale),
@@ -100,6 +130,7 @@ class HospitalProps:
                       color=(0.17 + (i % 3) * 0.035, 0.27 + (i % 2) * 0.05, 0.12),
                       yaw=angle, detail=True)
 
+    @authored_prop
     def cabinet(self, x, z, width=1.2, height=2.0, yaw=0, medical=True):
         color = (0.48, 0.55, 0.5) if medical else None
         self.part(x, z, (0, height / 2, 0), (width, height, 0.62), "medical_enamel" if medical else "furniture_wood",
@@ -112,6 +143,7 @@ class HospitalProps:
             self.part(x, z, (side * 0.08, height * 0.56, -0.36), (0.025, 0.18, 0.04),
                       "brushed_metal", (0.18, 0.19, 0.17), yaw, True)
 
+    @authored_prop
     def cart(self, x, z):
         for y in (0.28, 0.86):
             self.part(x, z, (0, y, 0), (0.7, 0.055, 0.48), "rust", (0.56, 0.59, 0.54))
@@ -124,6 +156,7 @@ class HospitalProps:
             self.part(x, z, ((i - 1) * 0.18, 0.97, 0), (0.09, 0.18, 0.09),
                       color=(0.66, 0.71, 0.6), detail=True)
 
+    @authored_prop
     def desk_details(self, x, z, height=0.98):
         self.part(x, z, (0.25, height + 0.24, 0.1), (0.62, 0.46, 0.09),
                   "rust", (0.12, 0.15, 0.14), detail=True)
@@ -134,11 +167,13 @@ class HospitalProps:
         self.part(x, z, (-0.55, height + 0.035, -0.04), (0.37, 0.055, 0.29),
                   color=(0.7, 0.68, 0.57), detail=True)
 
+    @authored_prop
     def radiator(self, x, z):
         for i in range(9):
             self.part(x, z, ((i - 4) * 0.13, 0.57, 0), (0.09, 0.7, 0.18),
                       "rust", (0.48, 0.51, 0.45))
 
+    @authored_prop
     def bed_details(self, x, z, mattress_top=0.655):
         self.part(x, z, (0, mattress_top + 0.09, -0.64), (0.77, 0.17, 0.43),
                   "bed_linen", color=(0.75, 0.75, 0.65), detail=True)
@@ -148,6 +183,7 @@ class HospitalProps:
             self.part(x, z, (side * 0.57, mattress_top + 0.13, 0.18), (0.025, 0.035, 1.2),
                       "brushed_metal", (0.47, 0.5, 0.44), detail=True)
 
+    @authored_prop
     def iv_stand(self, x, z):
         self.part(x, z, (0, 0.83, 0), (0.045, 1.66, 0.045), "rust", (0.5, 0.55, 0.52))
         for yaw in (0, 90):
@@ -158,6 +194,7 @@ class HospitalProps:
         self.part(x, z, (0.15, 1.1, 0), (0.012, 0.55, 0.012),
                   color=(0.48, 0.59, 0.53), detail=True)
 
+    @authored_prop
     def monitor(self, x, z, yaw=0):
         self.part(x, z, (0, 0.48, 0), (0.64, 0.85, 0.5), "medical_enamel", (0.34, 0.43, 0.4), yaw)
         self.part(x, z, (0, 1.13, 0), (0.67, 0.46, 0.17), "medical_enamel", (0.16, 0.2, 0.19), yaw)
@@ -171,6 +208,7 @@ class HospitalProps:
             self.part(x, z, (dx, 1.14 + dy, -0.11), (0.065, 0.018, 0.012),
                       color=(0.36, 0.62, 0.41), yaw=yaw, detail=True)
 
+    @authored_prop
     def linen_shelf(self, x, z, width=2.0, yaw=0):
         for dx in (-width / 2 + 0.04, width / 2 - 0.04):
             self.part(x, z, (dx, 1, 0), (0.07, 2, 0.55), "rust", yaw=yaw)
@@ -180,6 +218,7 @@ class HospitalProps:
                 self.part(x, z, (dx, y + 0.14, 0), (width / 2 - 0.16, 0.22, 0.44),
                           "bed_linen", color=(0.63, 0.66, 0.56), yaw=yaw, detail=True)
 
+    @authored_prop
     def sink(self, x, z, yaw=0):
         self.part(x, z, (0, 0.45, 0), (0.75, 0.9, 0.5), "medical_enamel", (0.49, 0.56, 0.51), yaw)
         self.part(x, z, (0, 0.94, 0), (0.84, 0.12, 0.57), "ceramic", color=(0.68, 0.71, 0.63), yaw=yaw)
@@ -188,6 +227,7 @@ class HospitalProps:
         self.part(x, z, (0, 1.12, 0.2), (0.045, 0.27, 0.045), "rust", yaw=yaw, detail=True)
         self.part(x, z, (0, 1.24, 0.12), (0.045, 0.04, 0.2), "rust", yaw=yaw, detail=True)
 
+    @authored_prop
     def privacy_screen(self, x, z, yaw=0, width=2.0):
         self.part(x, z, (0, 1.22, 0), (width, 1.6, 0.045),
                   "privacy_fabric", color=(0.35, 0.48, 0.41), yaw=yaw)
@@ -198,6 +238,7 @@ class HospitalProps:
             self.part(x, z, (dx, 1.22, -0.028), (0.025, 1.5, 0.015),
                       "privacy_fabric", color=(0.29, 0.41, 0.35), yaw=yaw, detail=True)
 
+    @authored_prop
     def sign(self, x, z, text, yaw=0, width=1.05):
         board = self.part(x, z, (0, 1.72, 0), (width, 0.36, 0.035),
                           "rust", (0.21, 0.32, 0.29), yaw, True)

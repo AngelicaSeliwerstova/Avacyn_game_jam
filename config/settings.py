@@ -11,6 +11,11 @@ RENDER_SIZE = (640, 480)
 # Максимальная частота кадров.
 FPS_LIMIT = 60
 
+AUDIO_ENABLED = True
+FOOTSTEP_PLAYER_VOLUME = 0.28
+FOOTSTEP_DOCTOR_VOLUME = 0.72
+FOOTSTEP_HEARING_RANGE = 18.0
+
 # --debug включает диагностику, F3 скрывает панель. Интервал указан в секундах.
 DEBUG_REFRESH_INTERVAL = 0.25
 DEBUG_FONT_SIZE = 12
@@ -99,6 +104,8 @@ TEXTURE_RESOLUTION = 128       # 128 или 256; материалы без вт�
 
 # Имя материала: (путь, размер повторения в мире). {size} заменяется разрешением выше.
 MATERIAL_TEXTURES = {
+    "dead_bark": ("nature/dead_bark_{size}.png", 1.2),
+    "dead_wood": ("nature/dead_wood_{size}.png", 1.2),
     "asphalt": ("floors/asphalt_{size}.png", 2.0),
     "dirty_tiles": ("floors/dirty_tiles_{size}.png", 2.0),
     "wood": ("floors/rotten_wood_{size}.png", 2.0),

@@ -8,6 +8,7 @@ from game.entities.player import create_player
 from game.entities.companion import Companion
 from game.enemies import EnemySystem
 from game.companions import CompanionSystem
+from game.footsteps import FootstepSystem
 from game.inventory import Inventory
 from game.levels import create_level
 from game.session import GameSession
@@ -56,7 +57,8 @@ class Campaign:
                 obstacles=tuple(box.footprint for box in level.boxes),
             )
         fog, postprocess = create_scene_effects(level.visual_style)
-        scene = RuntimeScene(level, player, session, (companions, enemies, session), snow,
+        footsteps = FootstepSystem(level, player)
+        scene = RuntimeScene(level, player, session, (companions, enemies, footsteps, session), snow,
                              lambda: enemies.debug_paths() + companions.debug_paths(),
                              fog=fog, postprocess=postprocess)
         if self.progress.current_level is not None:

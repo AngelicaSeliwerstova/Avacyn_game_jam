@@ -46,11 +46,14 @@ class CubeMesh:
                      (instance_buffer, "4f 4f 4f 4f 4f 4f /i", "model_col0", "model_col1",
                       "model_col2", "model_col3", "instance_color", "instance_emission")],
                 )
+                # Depth uses the same per-instance inputs as color. In particular,
+                # emission.w carries the decal mask; a disabled attribute defaults
+                # to w=1 and would cut holes into every ordinary box in the prepass.
                 self._depth_instance_vertex_array = context.vertex_array(
                     program,
                     [(self._vertex_buffer, "3f 3f 3f", "in_position", "in_color", "in_normal"),
-                     (instance_buffer, "4f 4f 4f 4f 32x /i", "model_col0", "model_col1",
-                      "model_col2", "model_col3")],
+                     (instance_buffer, "4f 4f 4f 4f 4f 4f /i", "model_col0", "model_col1",
+                      "model_col2", "model_col3", "instance_color", "instance_emission")],
                 )
         except Exception:
             for name in ("_depth_instance_vertex_array", "_instance_vertex_array"):

@@ -56,9 +56,8 @@ class Companion(Entity):
         self._planned_revision = -1
         self.following = following
         self.display_name = display_name
-        self.dialogue = tuple(dialogue)
-        if any(not isinstance(line, str) or not line.strip() for line in self.dialogue):
-            raise ValueError("Dialogue lines must be nonempty strings")
+        from game.dialogue import validate_dialogue
+        self.dialogue = validate_dialogue(dialogue)
         self.next_level = next_level
         if next_level is not None and (not isinstance(next_level, str) or not next_level.strip()):
             raise ValueError("Conversation destination must be a nonempty level name")

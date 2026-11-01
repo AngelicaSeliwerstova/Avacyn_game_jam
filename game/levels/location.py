@@ -7,7 +7,7 @@ from engine.scene.level import Level
 from engine.scene.lighting import LightFlicker, Lighting, PointLight
 from engine.scene.interaction import Interaction
 from game.levels.cameras import load_fixed_cameras
-from game.levels.creator import load_creator_objects
+from game.levels.creator import load_creator_objects, load_removed_objects
 from game.levels.objects import build_objects
 
 
@@ -36,6 +36,7 @@ def load_location(path: Path) -> Level:
     data = json.loads(path.read_text(encoding="utf-8"))
     cameras_path = path.with_name(f"{path.stem}_cameras.json")
     objects_path = path.with_name(f"{path.stem}_objects.json")
+    removed_path = path.with_name(f"{path.stem}_removed.json")
     lights_path = path.with_name(f"{path.stem}_lights.json")
     cameras = load_fixed_cameras(cameras_path)
     creator_objects = load_creator_objects(objects_path)
@@ -62,6 +63,8 @@ def load_location(path: Path) -> Level:
         decorations=creator_objects,
         creator_objects=creator_objects,
         creator_objects_path=objects_path,
+        removed_objects_path=removed_path,
+        removed_object_groups=load_removed_objects(removed_path),
         creator_lights_path=lights_path,
         creator_room_height=data.get("room_height", 3.3),
         fixed_cameras=cameras or (),

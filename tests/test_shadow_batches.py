@@ -5,11 +5,22 @@ from unittest.mock import Mock
 import glm
 
 from engine.rendering.lighting import LevelLighting
+from engine.rendering.meshes.cube import CubeMesh
 from engine.scene.box import Box
 from engine.scene.lighting import Lighting, PointLight
 
 
 class ShadowBatchTests(unittest.TestCase):
+    def test_depth_and_color_receive_identical_instance_attributes_for_cutout_visibility(self):
+        context = Mock()
+        instances = Mock()
+        mesh = CubeMesh(context, Mock(), instance_buffer=instances, instance_attributes=True)
+        shaded = context.vertex_array.call_args_list[1].args[1]
+        depth = context.vertex_array.call_args_list[2].args[1]
+        self.assertEqual(depth, shaded)
+        self.assertIn("instance_emission", depth[1])
+        mesh.release()
+
     def lighting(self):
         lighting = LevelLighting.__new__(LevelLighting)
         lighting._context = Mock()

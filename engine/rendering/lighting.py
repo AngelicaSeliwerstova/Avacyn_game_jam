@@ -46,7 +46,8 @@ class LevelLighting:
         if level.creator_objects:
             static_decorations = static_decorations[:-len(level.creator_objects)]
         self._static_geometry = tuple((box, box.model_matrix.to_bytes(), box.bounds_half_size)
-                                      for box in level.boxes + static_decorations)
+                                      for box in level.boxes + static_decorations
+                                      if box.authored_group not in level.removed_object_groups and not box.decal)
         lighting = level.lighting
         program["lighting_enabled"].value = lighting is not None
         program["shadow_atlas"].value = 2
@@ -127,6 +128,15 @@ class LevelLighting:
         if affected:
             self._render_lights(affected, self._level.lighting.shadow_resolution,
                                 boxes + self._extra_shadow_boxes)
+
+    def set_removed_groups(self, groups):
+        if self._framebuffer is None:
+            return
+        self._static_geometry = tuple(item for item in self._static_geometry if item[0].authored_group not in groups)
+        self._static_nearby = tuple(tuple(model for box, model, half in self._static_geometry
+                                         if distance_to_box_squared(light.position, box.position, half) < light.radius ** 2)
+                                   for light in self._level.lighting.lights)
+        self.recalculate_shadows(self._extra_shadow_boxes)
 
     def recalculate_shadows(self, extra_boxes=()):
         if self._framebuffer is None:

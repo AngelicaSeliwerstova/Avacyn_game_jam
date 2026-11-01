@@ -1,4 +1,5 @@
 #version 330 core
+invariant gl_Position;
 
 in vec3 in_position;
 in vec3 in_color;
@@ -29,6 +30,8 @@ out vec3 world_point;
 out vec3 world_normal;
 flat out vec4 object_instance_color;
 flat out vec3 object_instance_emission;
+out vec2 decal_uv;
+flat out float decal_enabled;
 
 void main() {
     mat4 skin = mat4(1.0);
@@ -60,6 +63,10 @@ void main() {
     world_normal = normal;
     object_instance_color = use_instancing ? instance_color : vec4(1.0, 1.0, 1.0, 0.0);
     object_instance_emission = use_instancing ? instance_emission.rgb : vec3(0.0);
+    decal_enabled = use_instancing ? instance_emission.a : 0.0;
+    vec3 face_axis = abs(local_normal);
+    decal_uv = face_axis.y > 0.5 ? local_position.xz
+             : face_axis.x > 0.5 ? local_position.zy : local_position.xy;
     vec3 texture_point = world_position.xyz;
     vec3 texture_normal = normal;
     if (use_uv) {

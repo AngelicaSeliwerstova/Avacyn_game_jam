@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import math
 from pathlib import Path
 
@@ -38,6 +38,8 @@ class Level:
     authored_fixed_cameras: tuple[FixedCameraZone, ...] | None = None
     creator_objects: tuple[Box, ...] = ()
     creator_objects_path: Path | None = None
+    removed_objects_path: Path | None = None
+    removed_object_groups: set[str] = field(default_factory=set, compare=False)
     creator_lights_path: Path | None = None
     creator_room_height: float | None = None
     visual_style: str = "default"
@@ -71,7 +73,7 @@ class Level:
     @property
     def collision_boxes(self) -> tuple[Box, ...]:
         """Visible geometry and invisible passage blockers; rendering uses boxes only."""
-        return self.boxes + self.invisible_barriers
+        return tuple(b for b in self.boxes if b.authored_group not in self.removed_object_groups) + self.invisible_barriers
 
     @property
     def object_boxes(self) -> tuple[Box, ...]:

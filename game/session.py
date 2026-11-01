@@ -61,22 +61,50 @@ class GameSession(Session):
         self.player.objective_status = self.goals[0].hint or "Reach the exit."
 
     def _show_conversation(self):
+        node = self._speaker.dialogue[self._dialogue_index]
+        if isinstance(node, dict):
+            self.dialog = Dialog(self._speaker.display_name, node["text"], tuple(
+                DialogButton(f"{index + 1}. {choice['label']}", f"dialogue_choice:{index}",
+                             (str(index + 1), "escape") if choice.get("end") == "close" else (str(index + 1),))
+                for index, choice in enumerate(node["choices"])
+            ), presentation="conversation")
+            return
         last = self._dialogue_index == len(self._speaker.dialogue) - 1
         self.dialog = Dialog(self._speaker.display_name, self._speaker.dialogue[self._dialogue_index],
                              (DialogButton("Пойдём   E / Enter" if last else "Далее   E / Enter",
-                                           "dialogue_next", ("e", "return", "keypad enter")),))
+                                           "dialogue_next", ("e", "return", "keypad enter")),),
+                             presentation="conversation")
 
     def handle_action(self, action):
-        if action != "dialogue_next" or self._speaker is None:
+        if self._speaker is None or self.dialog is None:
+            return False
+        node = self._speaker.dialogue[self._dialogue_index]
+        if isinstance(node, dict):
+            if action not in {button.action for button in self.dialog.buttons}:
+                return False
+            choice = node["choices"][int(action.split(":")[1])]
+            if "flag" in choice:
+                self._flags.add(choice["flag"])
+            if "next" in choice:
+                self._dialogue_index = choice["next"]
+                self._show_conversation()
+            else:
+                self._finish_conversation(choice["end"] == "recruit")
+            return True
+        if action != "dialogue_next":
             return False
         self._dialogue_index += 1
         if self._dialogue_index < len(self._speaker.dialogue):
             self._show_conversation()
         else:
+            self._finish_conversation(True)
+        return True
+
+    def _finish_conversation(self, recruit):
+        if recruit:
             self._speaker.following = True
             self._flags.add(f"recruited:{self._speaker.name}")
             self.next_level = self._speaker.next_level
-            self._speaker = None
-            self.dialog = None
-            self._update_hint()
-        return True
+        self._speaker = None
+        self.dialog = None
+        self._update_hint()

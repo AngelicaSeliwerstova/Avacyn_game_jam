@@ -32,6 +32,14 @@ class InputBindings:
     cycle_creator_light_flicker: int | None = None
     toggle_inventory: int | None = None
 
+    previous_creator_preset: int | None = None
+    next_creator_preset: int | None = None
+    creator_axis_x: int | None = None
+    creator_axis_y: int | None = None
+    creator_axis_z: int | None = None
+    rotate_creator_object: int | None = None
+    move_creator_object: int | None = None
+
     def __post_init__(self):
         if self.zoom_mouse_button is not None and self.zoom_mouse_button not in range(1, 6):
             raise ValueError("Zoom mouse button must be between 1 and 5")

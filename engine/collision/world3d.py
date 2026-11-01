@@ -40,6 +40,12 @@ class CollisionWorld3D:
             self._rebuild_collider_grid()
         return self._colliders
 
+    def set_static_colliders(self, colliders) -> None:
+        colliders = tuple(colliders)
+        if colliders != self._static_colliders:
+            self._static_colliders = colliders
+            self._object_states = None
+
     def set_creator_colliders(self, boxes) -> None:
         colliders = tuple(box.collider for box in boxes)
         if colliders == self._creator_colliders:

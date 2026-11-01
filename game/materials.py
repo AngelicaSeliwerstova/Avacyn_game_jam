@@ -2,6 +2,7 @@ from pathlib import Path
 
 from config import settings
 from engine.rendering.texture import TextureMaterial, TextureSettings
+from game.levels.room_signs import PATIENT_SIGNS, PATIENT_SIGN_WIDTH, PATIENT_SIGN_HEIGHT
 
 
 def create_texture_settings() -> TextureSettings | None:
@@ -21,5 +22,8 @@ def create_texture_settings() -> TextureSettings | None:
         wall_world_size=settings.WALL_TEXTURE_WORLD_SIZE,
         mipmaps=settings.TEXTURE_MIPMAPS, anisotropy=settings.TEXTURE_ANISOTROPY,
         materials=tuple(TextureMaterial(name, resource(path), world_size)
-                        for name, (path, world_size) in settings.MATERIAL_TEXTURES.items()),
+                        for name, (path, world_size) in settings.MATERIAL_TEXTURES.items()) + tuple(
+            TextureMaterial(f"sign_{name}", root / f"signs/{name}_{settings.TEXTURE_RESOLUTION}.png", 1.0,
+                            (1 / PATIENT_SIGN_WIDTH, 1 / PATIENT_SIGN_HEIGHT), (0.5, 0.5))
+            for name in PATIENT_SIGNS),
     )

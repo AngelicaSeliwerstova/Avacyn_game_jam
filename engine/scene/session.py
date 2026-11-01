@@ -13,6 +13,7 @@ class Dialog:
     title: str
     message: str
     buttons: tuple[DialogButton, ...]
+    presentation: str = "modal"
 
 
 @dataclass

@@ -22,9 +22,24 @@ class Box:
     emission_light: int | None = None
     yaw_degrees: float = 0.0
     local_texture: bool = False
+    decal: bool = False
     color: tuple[float, float, float] | None = None
 
+    orientation: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
+    authored_group: str | None = None
+    creator_group: str | None = None
+    creator_pivot: tuple[float, float, float] | None = None
+
     def __post_init__(self):
+        if self.creator_group is not None and (not isinstance(self.creator_group, str) or not self.creator_group):
+            raise ValueError("Creator group must be a nonempty string")
+        if self.creator_pivot is not None and (
+            len(self.creator_pivot) != 3 or not all(math.isfinite(v) for v in self.creator_pivot)
+        ):
+            raise ValueError("Creator pivot must contain three finite coordinates")
+        if (len(self.orientation) != 4 or not all(math.isfinite(v) for v in self.orientation)
+                or abs(sum(v * v for v in self.orientation) - 1) > 1e-5):
+            raise ValueError("Box orientation must be a unit quaternion")
         validate_rgb(self.emission)
         if self.color is not None and (
             len(self.color) != 3 or any(not math.isfinite(channel) or not 0 <= channel <= 1
@@ -43,6 +58,8 @@ class Box:
     @property
     def model_matrix(self) -> glm.mat4:
         translation = glm.translate(glm.mat4(1.0), glm.vec3(self.position))
+        if self.orientation != (1.0, 0.0, 0.0, 0.0):
+            translation *= glm.mat4_cast(glm.quat(*self.orientation))
         translation = glm.rotate(translation, glm.radians(self.yaw_degrees), glm.vec3(0, 1, 0))
         # Исходный CubeMesh имеет сторону 2.
         return glm.scale(translation, glm.vec3(self.size) * 0.5)
@@ -50,6 +67,9 @@ class Box:
     @property
     def footprint(self) -> AABB | OBB:
         x, _, z = self.position
+        if self.orientation != (1.0, 0.0, 0.0, 0.0):
+            hx, _, hz = self.bounds_half_size
+            return AABB(x - hx, z - hz, x + hx, z + hz)
         width, _, depth = self.size
         if self.yaw_degrees % 360 != 0:
             return OBB(x, z, width / 2, depth / 2, self.yaw_degrees)
@@ -57,6 +77,9 @@ class Box:
 
     @property
     def bounds_half_size(self) -> tuple[float, float, float]:
+        if self.orientation != (1.0, 0.0, 0.0, 0.0):
+            matrix = self.model_matrix
+            return tuple(sum(abs(matrix[column][row]) for column in range(3)) for row in range(3))
         angle = math.radians(self.yaw_degrees)
         c, s = abs(math.cos(angle)), abs(math.sin(angle))
         x, y, z = (v / 2 for v in self.size)
@@ -72,5 +95,5 @@ class Box:
 
     @property
     def collider(self) -> AABB3D:
-        return AABB3D(self.footprint, self.position[1] - self.size[1] / 2,
-                      self.position[1] + self.size[1] / 2)
+        return AABB3D(self.footprint, self.position[1] - self.bounds_half_size[1],
+                      self.position[1] + self.bounds_half_size[1])

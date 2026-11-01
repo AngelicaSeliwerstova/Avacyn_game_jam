@@ -184,6 +184,10 @@ class Application:
                     # Loading time must not become the next physics step.
                     clock.tick()
                     continue
+                for system in self._systems:
+                    pause = getattr(system, "set_paused", None)
+                    if pause is not None:
+                        pause(self._simulation_paused or getattr(self._controlled_entity, "creator_mode", False))
                 updated = perf_counter() if profiling else 0.0
                 renderer.render(window.size, hud_text=self._controlled_entity.status_text,
                                 debug_text=self._debug.text, aim_text=self._controlled_entity.aim_text,
@@ -245,6 +249,10 @@ class Application:
                 self._debug.update(delta_time, updated - started, rendered - updated,
                                    lambda: self._debug_lines(renderer, input_device, window))
         finally:
+            for system in self._systems:
+                release = getattr(system, "release", None)
+                if release is not None:
+                    release()
             if frame_log is not None:
                 frame_log.close()
             self._running = False
@@ -286,6 +294,10 @@ class Application:
     def _change_level(self, renderer: Renderer, window: Window) -> Renderer:
         if self._scene_loader is None:
             raise RuntimeError("A level transition requires a scene loader")
+        for system in self._systems:
+            release = getattr(system, "release", None)
+            if release is not None:
+                release()
         # Keep the existing SDL window and context, showing black during loading.
         renderer.context.screen.use()
         renderer.context.viewport = (0, 0, *window.size)

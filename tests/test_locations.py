@@ -20,7 +20,10 @@ from game.levels.location import load_location
 class LocationTests(unittest.TestCase):
     def test_start_is_clear_and_has_no_old_objectives(self):
         campaign = Campaign()
-        scene = campaign.load_level(settings.LEVEL_NAME)
+        # Test the authored start, independently of the developer's saved layout.
+        with patch("game.levels.location.load_creator_objects", return_value=()), \
+                patch("game.levels.location.load_removed_objects", side_effect=lambda path: set()):
+            scene = campaign.load_level(settings.LEVEL_NAME)
         self.assertEqual(settings.LEVEL_NAME, "peaceful")
         self.assertTrue(scene.level.objects)
         self.assertEqual(scene.level.creator_objects, ())

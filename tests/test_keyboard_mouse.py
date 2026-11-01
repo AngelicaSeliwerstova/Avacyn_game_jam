@@ -39,6 +39,24 @@ class KeyboardMouseTests(unittest.TestCase):
             self.keys[key] = True
         self.assertEqual(self.input.read(), InputState())
 
+    def test_creator_preset_and_rotation_actions_are_one_shot_and_clear_on_focus_loss(self):
+        from dataclasses import replace
+        bindings = replace(self.bindings, next_creator_preset=pygame.K_RIGHTBRACKET,
+                           creator_axis_x=pygame.K_x, rotate_creator_object=pygame.K_r,
+                           move_creator_object=pygame.K_g)
+        source = KeyboardMouse(bindings)
+        for key in (pygame.K_RIGHTBRACKET, pygame.K_x, pygame.K_r, pygame.K_g):
+            source.handle_event(pygame.event.Event(pygame.KEYDOWN, key=key))
+        state = source.read()
+        self.assertTrue(state.next_creator_preset)
+        self.assertTrue(state.creator_axis_x)
+        self.assertTrue(state.rotate_creator_object)
+        self.assertTrue(state.move_creator_object)
+        self.assertEqual(source.read(), InputState())
+        source.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_r))
+        source.handle_event(pygame.event.Event(pygame.WINDOWFOCUSLOST))
+        self.assertEqual(source.read(), InputState())
+
     def test_modal_restores_capture_and_clears_queued_actions(self):
         self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
         self.input.begin_modal()

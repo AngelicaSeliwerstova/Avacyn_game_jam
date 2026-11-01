@@ -4,6 +4,13 @@ from engine.input.bindings import InputBindings
 from engine.input.state import InputState
 
 
+CREATOR_ACTIONS = (
+    "previous_creator_preset", "next_creator_preset",
+    "creator_axis_x", "creator_axis_y", "creator_axis_z",
+    "rotate_creator_object", "move_creator_object",
+)
+
+
 class KeyboardMouse:
     """Читает ввод и освобождает мышь при потере фокуса или по Esc."""
 
@@ -27,6 +34,7 @@ class KeyboardMouse:
         self._creator_light_queued = False
         self._creator_light_flicker_queued = False
         self._recalculate_shadows_queued = False
+        self._creator_actions = set()
         self._set_capture(self._focused)
 
     def _set_capture(self, captured: bool):
@@ -57,6 +65,7 @@ class KeyboardMouse:
         self._creator_light_queued = False
         self._creator_light_flicker_queued = False
         self._recalculate_shadows_queued = False
+        self._creator_actions = set()
         # Первый отсчёт после захвата может содержать смещение курсора ОС.
         self._discard_mouse_delta = True
 
@@ -91,6 +100,9 @@ class KeyboardMouse:
             self._jump_held = True
         elif event.type == pygame.KEYDOWN and not getattr(event, "repeat", False):
             if self._focused and self._captured:
+                for action in CREATOR_ACTIONS:
+                    if event.key == getattr(self._bindings, action):
+                        self._creator_actions.add(action)
                 if event.key == self._bindings.toggle_camera_editor:
                     self._camera_editor_queued = True
                 elif event.key == self._bindings.add_camera:
@@ -127,6 +139,7 @@ class KeyboardMouse:
         forward = int(keys[self._bindings.forward]) - int(keys[self._bindings.backward])
         right = int(keys[self._bindings.right]) - int(keys[self._bindings.left])
         state = InputState(
+            **{action: action in self._creator_actions for action in CREATOR_ACTIONS},
             forward=float(forward), right=float(right), mouse_delta=mouse_delta,
             sprint=any(keys[key] for key in self._bindings.sprint_keys),
             jump=self._jump_queued,
@@ -159,6 +172,7 @@ class KeyboardMouse:
         self._creator_light_queued = False
         self._creator_light_flicker_queued = False
         self._recalculate_shadows_queued = False
+        self._creator_actions = set()
         return state
 
     @property

@@ -1,8 +1,11 @@
 """Third-floor patient ward with small rooms and a shared ward corridor."""
 
 from engine.scene.box import Box
+from game.levels import furniture
 from engine.scene.lighting import PointLight
 from game.levels.hospital_props import HospitalProps
+from game.levels.room_signs import PATIENT_SIGNS, PATIENT_SIGN_WIDTH, PATIENT_SIGN_HEIGHT
+from engine.scene.interaction import Interaction
 
 
 PATIENT_FLOOR_SIZE = (60.0, 48.0)
@@ -70,17 +73,7 @@ def build_patient_floor(*, peaceful=False):
             add_bed(x, z)
 
     def add_bed(x, z):
-        boxes.extend((
-            Box((x, 0.42, z), (1.18, 0.2, 2.15), material="medical_enamel",
-                color=(0.31, 0.36, 0.32)),
-            Box((x, 0.58, z), (1.08, 0.15, 1.96), material="bed_linen",
-                color=(0.68, 0.67, 0.58)),
-            Box((x, 0.26, z - 0.75), (1.22, 0.52, 0.08), material="medical_enamel"),
-        ))
-        for dx in (-0.43, 0.43):
-            for dz in (-0.75, 0.75):
-                boxes.append(Box((x + dx, 0.16, z + dz), (0.08, 0.32, 0.08), material="rust"))
-        props.bed_details(x, z)
+        furniture.bed(boxes, props, x, z)
 
     # Close all four sides of the third-floor footprint.
     partition("x", -24, -30, 30)
@@ -89,52 +82,47 @@ def build_patient_floor(*, peaceful=False):
     partition("z", 30, -24, 24)
 
     # Eight compact patient rooms form the north side of the floor.
-    partition("x", -22, -28, 28)
-    partition("x", -10, -28, 28, tuple(
+    # Rooms share the exterior walls instead of leaving perimeter alleys.
+    partition("x", -10, -30, 30, tuple(
         (center, f"patient_room_{index}", f"Палата {index + 1:02}")
-        for index, center in enumerate((-24.5, -17.5, -10.5, -3.5, 3.5, 10.5, 17.5, 24.5))
+        for index, center in enumerate((-24.5, -17.5, -12, -2, 3.5, 10.5, 17.5, 24.5))
     ))
-    # Keep the hinge away from the nurse-office wall meeting this doorway.
-    next(data for data in definitions if data["id"] == "patient_room_3")["hinge_side"] = "right"
     for x in (-21, -14, -7, 0, 7, 14, 21):
-        partition("z", x, -22, -10)
-    for x in (-28, 28):
-        partition("z", x, -22, -10)
+        partition("z", x, -24, -10)
 
     # The long hall stays open in front of the north rooms and around the stair.
     # Compact rooms are placed to either side of the clear east-west route.
-    partition("z", -4, -10, -3, ((-7, "patient_nurse_room", "Кабинет дежурной медсестры"),))
-    partition("x", -4, -10, -3, ((-7, "patient_nurse_inner", "Пост медсестры"),))
-    partition("x", 8, 16, 28)
+    partition("z", -10, -10, -4)
+    # One entrance faces the hall; the side walls meet solid north-wall sections.
+    # The adjacent ward doors sit beyond the office corners, rather than across them.
+    partition("z", -4, -10, -4)
+    partition("x", -4, -10, -4, ((-7, "patient_nurse_room", "Пост медсестры"),))
+    partition("x", 8, 16, 30)
     partition("z", 16, -4, 8, ((1, "patient_east_entry", "Палата"),))
-    partition("x", -4, 16, 28)
-    partition("z", 28, -4, 8)
+    partition("x", -4, 16, 30)
 
     # Three southern wards face the cross-corridor; the center route to the stair
     # landing remains unobstructed.
-    partition("x", 14, -10, -1, ((-6, "patient_south_west", "Палата"),))
-    partition("x", 14, 5, 15, ((10, "patient_south_center", "Палата"),))
-    partition("x", 14, 18, 28, ((23, "patient_south_east", "Палата"),))
-    partition("z", -10, 14, 22)
-    partition("z", -1, 14, 22)
-    partition("z", 5, 14, 22)
-    partition("z", 15, 14, 22)
-    partition("z", 18, 14, 22)
-    partition("z", 28, 14, 22)
-    for start, end in ((-10, -1), (5, 15), (18, 28)):
-        partition("x", 22, start, end)
+    # A continuous row shares partitions and the south/west/east envelope.
+    partition("x", 14, -30, 2, ((-6, "patient_south_west", "Палата"),))
+    partition("x", 14, 2, 16, ((10, "patient_south_center", "Палата"),))
+    partition("x", 14, 16, 30, ((23, "patient_south_east", "Палата"),))
+    for x in (2, 16):
+        partition("z", x, 14, 24)
 
     # Bed, locker, and chair in each small room along the north wall.
     for center in (-24.5, -17.5, -10.5, -3.5, 3.5, 10.5, 17.5, 24.5):
         x = center - 2.67
-        with props.against_wall("x", center - 3.38, gap=0.1, extra_boxes=boxes):
-            with props.against_wall("z", -21.88, gap=0.08, extra_boxes=boxes):
+        left_surface = -29.86 if center == -24.5 else center - 3.38
+        with props.against_wall("x", left_surface, gap=0.1, extra_boxes=boxes):
+            with props.against_wall("z", -23.86, gap=0.08, extra_boxes=boxes):
                 bed(x, -17)
         props.cabinet(x + 1.05, -20.65, 0.45, 0.65)
         props.iv_stand(x + 1.9, -20.65)
-        with props.against_wall("z", -21.88):
+        with props.against_wall("z", -23.86):
             props.cabinet(center + 2.95, -19, 0.72, 1.55, yaw=180)
-        with props.against_wall("x", center + 3.38, inward=-1):
+        right_surface = 29.86 if center == 24.5 else center + 3.38
+        with props.against_wall("x", right_surface, inward=-1):
             props.chair(center + 2.95, -18.2, yaw=90)
 
     # Staff counter near the stair landing; chairs and desk face the hallway.
@@ -154,7 +142,7 @@ def build_patient_floor(*, peaceful=False):
                 bed(x, 0, yaw=yaw)
                 props.cart(x + 1.1, 0)
                 props.monitor(x - 1.15, 0, yaw=yaw)
-    with props.against_wall("x", 27.88, inward=-1):
+    with props.against_wall("x", 29.86, inward=-1):
         props.cabinet(26.5, 4.5, 0.9, 1.8, yaw=90)
     props.table(19, 9.5, 2.0, 0.85, 0.75)
     props.chair(18, 10.8, yaw=180)
@@ -162,7 +150,7 @@ def build_patient_floor(*, peaceful=False):
 
     # Southern rooms get varied patient beds, cabinets, and a small linen store.
     for x, z in ((-7, 17), (-4, 17), (7.5, 17), (12, 17), (20, 17), (25, 17)):
-        with props.against_wall("z", 21.88, inward=-1, gap=0.08, extra_boxes=boxes):
+        with props.against_wall("z", 23.86, inward=-1, gap=0.08, extra_boxes=boxes):
             bed(x, z, yaw=180)
         props.iv_stand(x - 0.95, 20.4)
     for x in (-9, -2, 6, 14, 19, 27):
@@ -179,10 +167,19 @@ def build_patient_floor(*, peaceful=False):
 
     for data in definitions:
         x, _, z = data["position"]
+        text = PATIENT_SIGNS[data["id"]]
+        data["name"] = text.replace("\n", " ").capitalize()
         if data["axis"] == "x":
-            props.sign(x + 1.35, z + 0.16, data["name"], yaw=180)
+            # North rooms and the nurse office face south; southern wards face north.
+            side = -1 if z == 14 else 1
+            position = (x + 1.9, 1.75, z + side * 0.16)
+            yaw = 180 if side == -1 else 0
         else:
-            props.sign(x + 0.16, z + 1.35, data["name"], yaw=-90)
+            position = (x - 0.16, 1.75, z + 1.9)
+            yaw = -90
+        props.decorations.append(Box(position, (PATIENT_SIGN_WIDTH, PATIENT_SIGN_HEIGHT, 0.035),
+                                     material=f"sign_{data['id']}", local_texture=True, yaw_degrees=yaw,
+                                     interaction=Interaction(data["name"], data["name"], "Прочитать")))
 
     for x, z in ((-24, -16), (-10, -16), (4, -16), (18, -16), (26, -16),
                  (-8, 1), (12, 1), (24, 3), (-5, 18), (10, 18), (24, 18)):

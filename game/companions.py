@@ -11,6 +11,8 @@ from game.entities.companion import Companion
 class CompanionSystem:
     def __init__(self, level, player):
         self.player = player
+        self._authored_level = level
+        self._removed_groups = frozenset(level.removed_object_groups)
         self.companions = tuple(obj.entity for obj in level.objects if isinstance(obj.entity, Companion))
         self._creator_boxes = level.creator_objects
         self._creator_obstacle = SceneObject("companion_creator_collision", {
@@ -43,6 +45,12 @@ class CompanionSystem:
             for ally in self.companions for b in state.boxes)
 
     def update(self, delta_time):
+        removed = frozenset(self._authored_level.removed_object_groups)
+        if removed != self._removed_groups:
+            self._removed_groups = removed
+            colliders = tuple(b.collider for b in self._authored_level.collision_boxes)
+            for ally in self.companions:
+                ally.body.world.set_static_colliders(colliders)
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("Companion delta time must be finite and nonnegative")
         self._player_obstacle.set_geometry((self._player_box(),))

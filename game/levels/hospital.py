@@ -79,20 +79,22 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
                                emission=tuple(c * 1.5 for c in color), emission_light=index))
 
     def desk(x, z, width=2.4, depth=0.9):
-        box((x, 0.91, z), (width, 0.14, depth), "wood")
-        for side in (-1, 1):
-            box((x + side * (width / 2 - 0.27), 0.43, z), (0.4, 0.86, depth * 0.85), "plaster")
+        with props.authored_group("desk", x, z, extra_boxes=boxes):
+            box((x, 0.91, z), (width, 0.14, depth), "wood")
+            for side in (-1, 1):
+                box((x + side * (width / 2 - 0.27), 0.43, z), (0.4, 0.86, depth * 0.85), "plaster")
 
     def bed(x, z):
-        # Leave only the radiator's depth behind the headboard.
-        with props.against_wall("z", -13.88, gap=0.4, extra_boxes=boxes):
-            box((x, 0.45, z), (1.2, 0.22, 2.2), "medical_enamel")
-            box((x, 0.66, z), (1.14, 0.2, 2.05), "bed_linen")
-            box((x, 0.82, z - 0.7), (0.85, 0.12, 0.48), "bed_linen")
-            for side in (-1, 1):
-                box((x + side * 0.5, 0.25, z), (0.07, 0.5, 1.85), "rust")
-            box((x, 0.72, z - 1.05), (1.2, 0.85, 0.06), "medical_enamel")
-            props.bed_details(x, z, mattress_top=0.76)
+        with props.authored_group("bed", x, z, extra_boxes=boxes):
+            # Leave only the radiator's depth behind the headboard.
+            with props.against_wall("z", -13.88, gap=0.4, extra_boxes=boxes):
+                box((x, 0.45, z), (1.2, 0.22, 2.2), "medical_enamel")
+                box((x, 0.66, z), (1.14, 0.2, 2.05), "bed_linen")
+                box((x, 0.82, z - 0.7), (0.85, 0.12, 0.48), "bed_linen")
+                for side in (-1, 1):
+                    box((x + side * 0.5, 0.25, z), (0.07, 0.5, 1.85), "rust")
+                box((x, 0.72, z - 1.05), (1.2, 0.85, 0.06), "medical_enamel")
+                props.bed_details(x, z, mattress_top=0.76)
 
     # Внешняя оболочка и шесть кабинетов вдоль северного фасада.
     wall("x", -14, -21, 21)
@@ -136,17 +138,18 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
         props.sofa(13.2, -2.9, 3.0)
     props.table(2.5, 6.5, 0.75, 0.75)
     # U-shaped reception with chamfered corners and a staff entrance on the east.
-    for position, size, yaw in (
-        ((11.6, 0.9, 6.2), (9.6, 1.15, 0.6), 0),
-        ((6.1, 0.9, 5.35), (0.6, 1.15, 2.4), 35),
-        ((5.5, 0.9, 3.4), (0.6, 1.15, 2.2), 0),
-        ((17.1, 0.9, 5.35), (0.6, 1.15, 2.4), -35),
-        ((17.8, 0.9, 3.9), (0.6, 1.15, 0.9), 0),
-    ):
-        box(position, size, "wood", yaw=yaw)
-        box((position[0], 1.5, position[2]), (size[0] + 0.12, 0.12, size[2] + 0.12), "wood", yaw=yaw)
-    for x in (9.2, 13.6):
-        props.desk_details(x, 6.2, height=1.56)
+    with props.authored_group("reception", 11.6, 6.2, extra_boxes=boxes):
+        for position, size, yaw in (
+            ((11.6, 0.9, 6.2), (9.6, 1.15, 0.6), 0),
+            ((6.1, 0.9, 5.35), (0.6, 1.15, 2.4), 35),
+            ((5.5, 0.9, 3.4), (0.6, 1.15, 2.2), 0),
+            ((17.1, 0.9, 5.35), (0.6, 1.15, 2.4), -35),
+            ((17.8, 0.9, 3.9), (0.6, 1.15, 0.9), 0),
+        ):
+            box(position, size, "wood", yaw=yaw)
+            box((position[0], 1.5, position[2]), (size[0] + 0.12, 0.12, size[2] + 0.12), "wood", yaw=yaw)
+        for x in (9.2, 13.6):
+            props.desk_details(x, 6.2, height=1.56)
     props.chair(11.5, 4.8, 180)
     with props.against_wall("z", 0.12):
         props.cabinet(7.0, 0.8, 1.8, 1.7, yaw=180)
@@ -156,8 +159,9 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
     props.plant(6.3, 3.2)
     props.sign(11.5, 0.16, "Регистрация — обращайтесь к стойке", yaw=180, width=1.8)
     # Keep both security door swings free of the desk and filing cabinets.
-    desk(-3, 4.9, 3.2, 0.9)
-    props.desk_details(-3, 4.9)
+    with props.authored_group("security_desk", -3, 4.9, extra_boxes=boxes):
+        desk(-3, 4.9, 3.2, 0.9)
+        props.desk_details(-3, 4.9)
     props.chair(-3, 3.65)
     with props.against_wall("z", 0.12):
         props.cabinet(-0.9, 1.1, 1.2, 2.0, yaw=180)
@@ -183,9 +187,10 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
             props.table(x + 2.55, -6.55, 0.45, 0.45, 0.72)
         if i == 0:
             with props.against_wall("z", -13.88, extra_boxes=boxes):
-                desk(-19, -10.6, 2.2)
-                with props.rotated_group(-19, -10.6, 180):
-                    props.desk_details(-19, -10.6)
+                with props.authored_group("office_desk", -19, -10.6, extra_boxes=boxes):
+                    desk(-19, -10.6, 2.2)
+                    with props.rotated_group(-19, -10.6, 180):
+                        props.desk_details(-19, -10.6)
             props.chair(-19, -12.0, 180)
             props.chair(-17.4, -12.0, 180)
             with props.against_wall("z", -13.88):
@@ -202,17 +207,19 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
                 props.cabinet(x + 2.2, -7.4, 1.2)
             props.iv_stand(x - 1.05, -12.2)
             # Adjustable examination lamp, with its shade over the couch.
-            props.part(x, -12.38, (-1.5, 0.06, -0.3), (0.65, 0.08, 0.5), "rust")
-            props.part(x, -12.38, (-1.5, 1.2, -0.3), (0.06, 2.3, 0.06), "rust")
-            props.part(x, -12.38, (-0.8, 2.3, -0.3), (1.4, 0.055, 0.055), "rust", detail=True)
-            props.part(x, -12.38, (-0.1, 2.25, -0.3), (0.6, 0.1, 0.55), "rust", detail=True)
+            with props.authored_group("examination_lamp", x, -12.38):
+                props.part(x, -12.38, (-1.5, 0.06, -0.3), (0.65, 0.08, 0.5), "rust")
+                props.part(x, -12.38, (-1.5, 1.2, -0.3), (0.06, 2.3, 0.06), "rust")
+                props.part(x, -12.38, (-0.8, 2.3, -0.3), (1.4, 0.055, 0.055), "rust", detail=True)
+                props.part(x, -12.38, (-0.1, 2.25, -0.3), (0.6, 0.1, 0.55), "rust", detail=True)
         if i == 2:
             bed(x - 1.0, -10.6)
             props.privacy_screen(x - 2.4, -12.0, yaw=90)
             with props.against_wall("z", -13.88, extra_boxes=boxes):
-                desk(x + 1.4, -11.9, 1.8)
-                with props.rotated_group(x + 1.4, -11.9, 180):
-                    props.desk_details(x + 1.4, -11.9)
+                with props.authored_group("exam_desk", x + 1.4, -11.9, extra_boxes=boxes):
+                    desk(x + 1.4, -11.9, 1.8)
+                    with props.rotated_group(x + 1.4, -11.9, 180):
+                        props.desk_details(x + 1.4, -11.9)
             props.chair(x + 1.4, -12.0, 180)
             with props.against_wall("z", -6.14, inward=-1):
                 props.cabinet(x + 1.9, -8.0, 1.1)
@@ -279,6 +286,9 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
             floor_labels=("1", "2 — хирургия", "3 — пациентское отделение"),
             floor_hints=("", "Хирургическое отделение", "Пациентское отделение"),
         )
+    if not peaceful:
+        from game.levels.stair_blood import stair_blood
+        result = replace(result, decorations=stair_blood(stair) + result.decorations)
     if any(obj.entity is not None and hasattr(obj.entity, "following") for obj in result.objects):
         from game.levels.hospital_navigation import build_hospital_navigation
         storey_definitions = None

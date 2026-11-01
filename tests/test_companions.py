@@ -186,10 +186,10 @@ class CompanionTests(unittest.TestCase):
         self.assertIsNone(scene.session.next_level)
         scene.player._interactions._activate(ally.scene_object)
         scene.session.update(0)
-        for index in range(len(ally.dialogue)):
+        for index in range(3):
             self.assertIsNotNone(scene.session.dialog)
             self.assertIsNone(scene.session.next_level)
-            scene.session.handle_action("dialogue_next")
+            scene.session.handle_action(scene.session.dialog.buttons[0].action)
         self.assertEqual(scene.session.next_level, "start")
         self.assertIn("recruited:hospital_companion", campaign.progress.flags)
         horror = campaign.load_level(scene.session.next_level)

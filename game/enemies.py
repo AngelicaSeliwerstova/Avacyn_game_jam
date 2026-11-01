@@ -15,6 +15,8 @@ class EnemySystem:
 
     def __init__(self, level, player, on_caught=None):
         self.player = player
+        self._authored_level = level
+        self._removed_groups = frozenset(level.removed_object_groups)
         self._level = level
         self._static_colliders = tuple(box.collider for box in level.collision_boxes)
         self._on_caught = on_caught
@@ -58,6 +60,13 @@ class EnemySystem:
         return True
 
     def update(self, delta_time):
+        removed = frozenset(self._authored_level.removed_object_groups)
+        if removed != self._removed_groups:
+            self._removed_groups = removed
+            colliders = tuple(b.collider for b in self._authored_level.collision_boxes)
+            self._static_colliders = colliders
+            for enemy in self.enemies:
+                enemy.body.world.set_static_colliders(colliders)
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("Enemy system delta time must be finite and nonnegative")
         if self._caught:

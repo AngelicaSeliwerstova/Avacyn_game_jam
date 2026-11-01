@@ -24,3 +24,10 @@ class InputState:
     add_creator_light: bool = False
     recalculate_shadows: bool = False
     cycle_creator_light_flicker: bool = False
+    previous_creator_preset: bool = False
+    next_creator_preset: bool = False
+    creator_axis_x: bool = False
+    creator_axis_y: bool = False
+    creator_axis_z: bool = False
+    rotate_creator_object: bool = False
+    move_creator_object: bool = False

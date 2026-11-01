@@ -170,7 +170,8 @@ class Renderer:
                 if textures.wall is not None:
                     self._wall_texture = self._load_texture(textures.wall)
                 for material in textures.materials:
-                    self._materials[material.name] = self._load_texture(material.path), material.world_size
+                    self._materials[material.name] = (self._load_texture(material.path), material.world_size,
+                                                      material.uv_scale, material.uv_offset)
                 used_materials = {box.material for box in level.boxes + level.decorations + level.all_object_boxes} | {level.floor_material}
                 unknown = used_materials - {None} - self._materials.keys()
                 if unknown:
@@ -272,6 +273,9 @@ class Renderer:
                          + self._creator_objects + self._creator_light_objects
                          + self._camera_marker_objects)
 
+        self._objects = tuple(item for item in self._objects
+                              if item[0].authored_group not in self._base_level.removed_object_groups)
+
     def _ensure_instance_capacity(self, required: int):
         if required <= self._instance_capacity:
             return
@@ -301,7 +305,7 @@ class Renderer:
             color = box.color or (1.0, 1.0, 1.0)
             emission = self._lighting.emission(box)
             data.extend(array("f", (*color, float(box.color is not None),
-                                    *emission, 0.0)).tobytes())
+                                    *emission, float(box.decal))).tobytes())
         self._instance_buffer.write(data)
 
     def cycle_postprocess(self):
@@ -326,6 +330,12 @@ class Renderer:
         if self.profile_enabled:
             self.frame_timings = {}
             self._profile_started = perf_counter()
+        hidden = frozenset(self._base_level.removed_object_groups)
+        if hidden != getattr(self, "_removed_groups", frozenset()):
+            self._removed_groups = hidden
+            self._rebuild_objects()
+            self._lighting.set_removed_groups(hidden)
+            self._dynamic_lighting.recalculate_shadows()
         self.set_camera_markers(camera_markers)
         self.set_creator_objects(creator_objects)
         self.set_creator_light_boxes(creator_light_boxes)
@@ -523,14 +533,17 @@ class Renderer:
         return self._texture_cache[key]
 
     def _use_material(self, name: str | None, texture: Texture2D | None, world_size: float):
+        uv_scale, uv_offset = (1.0, 1.0), (0.0, 0.0)
         if texture is not None and name is not None:
-            texture, world_size = self._materials[name]
-        key = (texture, world_size)
+            texture, world_size, uv_scale, uv_offset = self._materials[name]
+        key = (texture, world_size, uv_scale, uv_offset)
         if key == self._current_material:
             return
         self._current_material = key
         self._program["textured"].value = texture is not None
         self._program["texture_world_size"].value = world_size
+        self._program["texture_uv_scale"].value = uv_scale
+        self._program["texture_uv_offset"].value = uv_offset
         if texture is None:
             self._fallback_texture.use(location=0)
         else:

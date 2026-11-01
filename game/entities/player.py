@@ -21,7 +21,8 @@ from engine.scene.transform import Transform
 from engine.scene.object import ObjectState
 from game.entities.player_state import MovementState
 from game.levels.cameras import camera_model_boxes, camera_wall_normal, save_fixed_cameras
-from game.levels.creator import save_creator_objects
+from game.levels.creator import save_creator_objects, save_removed_objects
+from game.levels.creator_presets import CreatorPreset, creator_presets, place_preset, rotate_group, remove_group
 from game.levels.creator_lights import load_creator_lights, save_creator_lights
 from game.entities.flashlight import Flashlight
 from game.interactions import InteractionController
@@ -102,6 +103,10 @@ class Player(Entity):
         self._creator_materials = tuple(dict.fromkeys(("rust", "concrete", "plaster", "brick",
                                                      *settings.MATERIAL_TEXTURES)))
         self._creator_material_index = 0
+        self._creator_presets = creator_presets(level is not None and level.visual_style == "peaceful")
+        self._creator_preset_index = 0
+        self._creator_axis = 1
+        self._creator_selected_group = None
         self._selected_camera_index = None
         self._saved_creator_view = None
         self._camera_blink_elapsed = 0.0
@@ -176,19 +181,15 @@ class Player(Entity):
                 "Shift\nMove faster\n\n"
                 "E\nEdit aimed camera"
             )
+        preset = self._creator_presets[self._creator_preset_index]
         right = (
-            f"SCENE\n\n{len(self._authored_camera_zones)} cameras\n"
-            f"{len(self._creator_objects)} objects\n"
-            f"{len(self._creator_lights)} lamps\n\n"
-            "F7\nPlace wall camera\n\n"
-            "F8\nChange block material\n\n"
-            "Aim lamp + F8\nChange lamp color\n\n"
-            "Aim lamp + F4\nChange flicker\n\n"
-            "F9\nPlace block\n\n"
-            "F10\nPlace lamp\n\n"
-            "F12\nRecalculate shadows\n\n"
-            "Delete\nRemove aimed item\n\n"
-            "F6\nExit Creator"
+            f"OBJECT {self._creator_preset_index + 1}/{len(self._creator_presets)}\n{preset.name}\n\n"
+            "[ / ]  Previous / next\nF9  Place preset\n"
+            f"X / Y / Z  Axis: {'XYZ'[self._creator_axis]}\n"
+            "Aim + R  Rotate +15 deg\nShift + R  Rotate -15 deg\n"
+            "G  Select / move to aim\nDelete  Remove aimed furniture\n\n"
+            "F8  Block material / lamp color\nF10  Place lamp\nF4  Lamp flicker\n"
+            "F7  Place camera\nF12  Rebuild shadows\nF6  Exit Creator"
         )
         return left, right
 
@@ -206,6 +207,10 @@ class Player(Entity):
                 for box in camera_model_boxes(camera, led_on)
             )
         return self._camera_marker_cache
+
+    @property
+    def creator_object_count(self):
+        return len({b.creator_group or f"legacy_{i}" for i, b in enumerate(self._creator_objects)})
 
     @property
     def creator_object_boxes(self):
@@ -263,7 +268,7 @@ class Player(Entity):
         if self._creator_mode:
             camera_count = len(self._authored_camera_zones)
             text += ("\n" if text else "") + (
-                f"CREATOR  |  {camera_count} CAMERAS  |  {len(self._creator_objects)} OBJECTS"
+                f"CREATOR  |  {camera_count} CAMERAS  |  {self.creator_object_count} OBJECTS"
             )
         if not self._creator_mode and controls.INPUT_BINDINGS.toggle_inventory is not None:
             key = pygame.key.name(controls.INPUT_BINDINGS.toggle_inventory).title()
@@ -317,6 +322,17 @@ class Player(Entity):
             if self._selected_camera_index is None:
                 if inputs.add_camera:
                     self._place_fixed_camera()
+                step = int(inputs.next_creator_preset) - int(inputs.previous_creator_preset)
+                if step:
+                    self._creator_preset_index = (self._creator_preset_index + step) % len(self._creator_presets)
+                    self._camera_editor_message = self._creator_presets[self._creator_preset_index].name
+                for axis, pressed in enumerate((inputs.creator_axis_x, inputs.creator_axis_y, inputs.creator_axis_z)):
+                    if pressed:
+                        self._creator_axis = axis
+                if inputs.rotate_creator_object:
+                    self._rotate_creator_object(-15 if inputs.sprint else 15)
+                if inputs.move_creator_object:
+                    self._move_creator_object()
                 if inputs.add_object:
                     self._place_creator_object()
                 if inputs.add_creator_light:
@@ -760,20 +776,71 @@ class Player(Entity):
         if hit is None:
             self._camera_editor_message = "AIM AT A SURFACE TO PLACE OBJECT"
             return
-        normal = normal or (0.0, 1.0, 0.0)
-        size = (0.6, 0.6, 0.6)
-        offset = size[1] / 2 if normal == (0.0, 1.0, 0.0) else 0.31
-        position = tuple(value + direction * offset for value, direction in zip(hit.position, normal))
-        yaw = math.degrees(math.atan2(-normal[0], -normal[2]))
-        placed = Box(
-            position, size, material=self._creator_materials[self._creator_material_index],
-            yaw_degrees=yaw,
-        )
-        updated = self._creator_objects + (placed,)
-        save_creator_objects(self._creator_objects_path, updated)
-        self._creator_objects = updated
-        self.body.world.set_creator_colliders(updated)
-        self._camera_editor_message = f"PLACED {placed.material.upper()} BLOCK"
+        preset = self._creator_presets[self._creator_preset_index]
+        if self._creator_preset_index == 0:
+            preset = replace(preset, boxes=(replace(preset.boxes[0], material=self._creator_materials[self._creator_material_index]),))
+        placed = place_preset(preset, hit.position, normal or (0, 1, 0))
+        self._creator_selected_group = placed[0].creator_group
+        self._save_creator_geometry(self._creator_objects + placed)
+        self._camera_editor_message = (f"PLACED {placed[0].material.upper()} BLOCK" if self._creator_preset_index == 0
+                                       else f"PLACED: {preset.name} | X/Y/Z AXIS, R ROTATE, G MOVE")
+
+    def _save_creator_geometry(self, objects):
+        if self._creator_objects_path is None:
+            return
+        save_creator_objects(self._creator_objects_path, objects)
+        self._creator_objects = objects
+        self.body.world.set_creator_colliders(objects)
+
+    def _aimed_creator_object_index(self):
+        origin = tuple(self.camera.position)
+        direction = tuple(self.camera.target - self.camera.position)
+        hit = cast_ray(origin, direction, tuple(b.collider for b in self._creator_objects), settings.CAMERA_FAR)
+        if hit is None:
+            return None
+        blocker = cast_ray(origin, direction, self._editor_colliders(), settings.CAMERA_FAR)
+        if blocker is not None and blocker.distance + 0.05 < hit.distance:
+            return None
+        return hit.index
+
+    def _rotate_creator_object(self, degrees):
+        index = self._aimed_creator_object_index()
+        if index is None:
+            self._camera_editor_message = "AIM AT A PLACED OBJECT TO ROTATE"
+            return
+        axis = tuple(int(i == self._creator_axis) for i in range(3))
+        self._creator_selected_group = self._creator_objects[index].creator_group
+        self._save_creator_geometry(rotate_group(self._creator_objects, index, axis, degrees))
+        self._camera_editor_message = f"ROTATED {'XYZ'[self._creator_axis]} {degrees:+} DEG"
+
+    def _move_creator_object(self):
+        # Aim at an object once to select it; aim at its destination and press G again.
+        index = self._aimed_creator_object_index()
+        if index is not None and self._creator_objects[index].creator_group != self._creator_selected_group:
+            self._creator_selected_group = self._creator_objects[index].creator_group
+            self._camera_editor_message = "SELECTED | AIM AT DESTINATION AND PRESS G"
+            return
+        group = self._creator_selected_group
+        members = tuple(b for b in self._creator_objects if group and b.creator_group == group)
+        if not members:
+            self._camera_editor_message = "AIM AT A PLACED OBJECT AND PRESS G"
+            return
+        # Exclude the selected assembly from the destination ray cast.
+        remaining = tuple(b for b in self._creator_objects if b.creator_group != group)
+        self.body.world.set_creator_colliders(remaining)
+        try:
+            hit, _, normal = self._creator_surface_hit(tuple(self.camera.position), tuple(self.camera.target - self.camera.position))
+        finally:
+            self.body.world.set_creator_colliders(self._creator_objects)
+        if hit is None:
+            self._camera_editor_message = "AIM AT A SURFACE TO MOVE"
+            return
+        pivot = glm.vec3(members[0].creator_pivot)
+        local = tuple(replace(b, position=tuple(glm.vec3(b.position) - pivot)) for b in members)
+        moved = place_preset(CreatorPreset("", local), hit.position, normal or (0, 1, 0))
+        self._creator_selected_group = moved[0].creator_group
+        self._save_creator_geometry(remaining + moved)
+        self._camera_editor_message = "OBJECT MOVED"
 
     def _place_creator_light(self):
         if self._creator_lights_path is None:
@@ -886,8 +953,16 @@ class Player(Entity):
 
         for index, camera in enumerate(self._authored_camera_zones):
             consider("camera", index, camera.position, 0.65)
-        for index, box in enumerate(self._creator_objects):
-            consider("object", index, box.position, max(box.bounds_half_size))
+        object_index = self._aimed_creator_object_index()
+        if object_index is not None:
+            hit = cast_ray(origin, tuple(direction), tuple(b.collider for b in self._creator_objects), settings.CAMERA_FAR)
+            aimed.append((hit.distance, "object", object_index))
+        if self._level is not None and self._level.removed_objects_path is not None:
+            authored = tuple(b for b in self._level.boxes + self._level.decorations
+                             if b.authored_group and b.authored_group not in self._level.removed_object_groups)
+            hit = cast_ray(origin, tuple(direction), tuple(b.collider for b in authored), settings.CAMERA_FAR)
+            if hit is not None and (blocker is None or hit.distance <= blocker.distance + 0.05):
+                aimed.append((hit.distance, "authored", hit.index))
         for index, light in enumerate(self._creator_lights):
             consider("lamp", index, (light.position[0], light.position[1] + 0.12, light.position[2]), 0.7)
         if not aimed:
@@ -905,9 +980,15 @@ class Player(Entity):
             save_fixed_cameras(self._camera_save_path, self._authored_camera_zones)
             self._camera_marker_phase = None
         elif kind == "object" and self._creator_objects_path is not None:
-            self._creator_objects = self._creator_objects[:index] + self._creator_objects[index + 1:]
+            self._creator_objects = remove_group(self._creator_objects, index)
             self.body.world.set_creator_colliders(self._creator_objects)
             save_creator_objects(self._creator_objects_path, self._creator_objects)
+        elif kind == "authored":
+            group = authored[index].authored_group
+            removed = self._level.removed_object_groups | {group}
+            save_removed_objects(self._level.removed_objects_path, removed)
+            self._level.removed_object_groups.update(removed)
+            self.body.world.set_static_colliders(b.collider for b in self._level.collision_boxes)
         elif kind == "lamp" and self._creator_lights_path is not None:
             self._creator_lights = self._creator_lights[:index] + self._creator_lights[index + 1:]
             save_creator_lights(self._creator_lights_path, self._creator_lights)

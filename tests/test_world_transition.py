@@ -53,7 +53,7 @@ class WorldTransitionTests(unittest.TestCase):
         geometry = lambda boxes: tuple((b.position, b.size, b.yaw_degrees) for b in boxes)
         self.assertEqual(geometry(hospital.boxes), geometry(peaceful.boxes))
         # Creator edits are per-map overlays; compare the shared authored building.
-        self.assertEqual(geometry(b for b in hospital.decorations if b not in hospital.creator_objects),
+        self.assertEqual(geometry(b for b in hospital.decorations if b not in hospital.creator_objects and not b.decal),
                          geometry(b for b in peaceful.decorations if b not in peaceful.creator_objects))
         self.assertEqual(geometry(hospital.all_object_boxes), geometry(peaceful.all_object_boxes))
         self.assertNotEqual(tuple(b.material for b in hospital.boxes),
@@ -82,8 +82,8 @@ class WorldTransitionTests(unittest.TestCase):
         peaceful.player._interactions._activate(speaker)
         peaceful.session.update(0)
         self.assertIsNotNone(peaceful.session.dialog)
-        for _ in speaker.entity.dialogue:
-            peaceful.session.handle_action("dialogue_next")
+        for _ in range(3):
+            peaceful.session.handle_action(peaceful.session.dialog.buttons[0].action)
         self.assertEqual(peaceful.session.next_level, "start")
         peaceful.player.inventory.add_key("story", "Сюжетный ключ")
         hospital = campaign.load_level(peaceful.session.next_level)
