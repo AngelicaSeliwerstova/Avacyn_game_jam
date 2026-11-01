@@ -72,11 +72,11 @@ class CCTVProgress:
 
 class CCTVProgressStore:
     """Campaign memory plus an optional atomic JSON checkpoint for the recorder."""
-    def __init__(self, path=None):
+    def __init__(self, path=None, *, resume=True):
         self.path = Path(path) if path is not None else None
         self._data = {}
         self.warning = ""
-        if self.path is not None and self.path.exists():
+        if resume and self.path is not None and self.path.exists():
             try:
                 saved = json.loads(self.path.read_text(encoding="utf-8"))
                 if saved.get("version") != 1 or not isinstance(saved.get("puzzles"), dict):
