@@ -21,8 +21,8 @@ from main import run_session
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def figure(x, z, *, shade=0.48, facing=-1, pose="idle", lean=0):
-    base = glm.vec3(x, 9.6, z)
+def figure(x, z, *, shade=0.48, facing=-1, pose="idle", lean=0, pendant=False):
+    base = glm.vec3(x, 4.8, z)
     rotation = glm.angleAxis(math.radians(lean), glm.vec3(0, 0, 1))
     boxes = []
     color = (shade * 0.86, shade, shade * 0.9)
@@ -46,6 +46,11 @@ def figure(x, z, *, shade=0.48, facing=-1, pose="idle", lean=0):
     part((0, 1.52, 0), (0.23, 0.28, 0.23))
     part((0, 1.13, 0), (0.35, 0.5, 0.25))
     part((0, 0.76, 0), (0.42, 0.3, 0.3))
+    if pendant:
+        for p, size in (((0, 1.15, .15), (.10, .13, .035)),
+                        ((-.07, 1.29, .14), (.025, .20, .025)),
+                        ((.07, 1.29, .14), (.025, .20, .025))):
+            boxes.append(Box(tuple(point(p)), size, color=(.87, .73, .31), emission=(.3, .2, .04)))
     limb((-0.1, 0.66, 0), (-0.16, 0.07, 0.03), 0.13)
     limb((0.1, 0.66, 0), (0.2, 0.07, -0.03), 0.13)
     for side in (-1, 1):
@@ -92,10 +97,11 @@ def capture():
     output.mkdir(parents=True, exist_ok=True)
     original_load, original_render, original_mode = Campaign.load_level, Renderer.render, pygame.display.set_mode
     staged = (
-        figure(-8.5, 6.9, shade=0.34) + figure(-9.3, 6.9),
-        figure(-9.4, 6.9, shade=0.34, pose="argue") + figure(-10.6, 6.9, facing=1),
-        figure(-9.6, 6.9, shade=0.34, pose="push") + figure(-10.9, 6.9, pose="fall", lean=24),
-        figure(-10.0, 6.9, shade=0.34),
+        figure(-8.5, 6.9, shade=0.34, pendant=True) + figure(-9.3, 6.9),
+        figure(-9.4, 6.9, shade=0.34, pose="argue", pendant=True) + figure(-10.6, 6.9, facing=1),
+        figure(-9.6, 6.9, shade=0.34, pose="push", pendant=True) + figure(-10.9, 6.9, pose="fall", lean=24),
+        figure(-10.0, 6.9, shade=0.34) + (
+            Box((-10.65, 4.83, 6.95), (.13, .035, .16), color=(.87, .73, .31), emission=(.5, .4, .08)),),
     )
     actors, frame = None, 0
 
@@ -109,7 +115,7 @@ def capture():
     def render(renderer, window_size, *args, **kwargs):
         nonlocal frame
         actors.set_geometry(staged[frame])
-        renderer._camera = Camera((-6.2, 13.4, 11.2), (-11.2, 10.15, 5.8), 58, 0.1, 150)
+        renderer._camera = Camera((-6.2, 8.6, 11.2), (-11.2, 5.35, 5.8), 58, 0.1, 150)
         kwargs.update(dialog=None, puzzle_view=None, inventory=None, hud_text="", aim_text=None,
                       player_transform=None, creator_help_text=None, camera_effect_strength=1, stress_strength=0)
         original_render(renderer, window_size, *args, **kwargs)

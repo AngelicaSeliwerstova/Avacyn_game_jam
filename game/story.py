@@ -89,7 +89,7 @@ class StorySession(GameSession):
     def _prepend(self, act, steps):
         self._queue.extendleft((act, step) for step in reversed(steps))
 
-    def _dialogue_nodes(self, act, nodes, presentation="conversation"):
+    def _dialogue_nodes(self, act, nodes, presentation="conversation", *, audio=True):
         steps = []
         for node in nodes:
             is_choice = "choice" in node
@@ -99,7 +99,7 @@ class StorySession(GameSession):
                 for index, page in enumerate(pages):
                     steps.append({"type": "_voice_line", "node": {
                         "speaker": node["speaker"], "text": page,
-                        "audio": node["audio"] if index == 0 else None,
+                        "audio": node["audio"] if audio and index == 0 else None,
                         "seconds": node["seconds"] * len(page) / total}})
                 continue
             for page in pages[:-1]:
@@ -119,7 +119,7 @@ class StorySession(GameSession):
                 self._dialogue_nodes(act, act.dialogues[step["id"]], step.get("presentation", "conversation"))
             elif kind == "voiceover":
                 self._voiceover_elapsed = 0.0
-                self._dialogue_nodes(act, act.dialogues[step["id"]], "voiceover")
+                self._dialogue_nodes(act, act.dialogues[step["id"]], "voiceover", audio=step.get("audio", True))
             elif kind == "_voice_line":
                 node = step["node"]
                 self._voice_remaining = node["seconds"]
@@ -132,6 +132,23 @@ class StorySession(GameSession):
                 self.player.story_camera = (tuple(step["position"]), tuple(step["target"]))
                 self.player.story_distortion = 0.12
                 self.player._sync_fixed_camera()
+            elif kind == "release_camera":
+                self.player.story_camera = None
+                self.player.story_distortion = 0.0
+                self.player._sync_third_person_camera()
+                self.player._sync_fixed_camera()
+            elif kind == "first_person":
+                self.player.story_first_person = step["enabled"]
+                self.player.story_camera = None
+                self.player.story_distortion = 0.0
+                self.player._active_camera_zone = None
+                self.player._camera_transition_remaining = 0.0
+                self.player._sync_third_person_camera()
+                self.player._sync_fixed_camera()
+            elif kind == "offer_help":
+                self._offer_help()
+            elif kind == "clear_event":
+                self.player.story_events.discard(step["name"])
             elif kind == "ambience":
                 self._ambience_tween = (self.player.story_audio_gain, step["gain"], step["seconds"], 0.0)
             elif kind == "grant_key":
@@ -161,8 +178,9 @@ class StorySession(GameSession):
                 self._timed, self._elapsed = step, 0.0
                 presentation = "title" if kind == "title" else step["effect"]
                 self.dialog = Dialog(step.get("title", ""), step.get("text", ""), (),
-                                     presentation="blackout" if presentation == "fade_to_black" else presentation,
-                                     opacity=0 if presentation == "fade_to_black" else 1)
+                                     presentation=("blackout" if presentation == "fade_to_black" else
+                                                   "whiteout" if presentation in ("fade_to_white", "fade_from_white") else presentation),
+                                     opacity=0 if presentation in ("fade_to_black", "fade_to_white") else 1)
                 break
             elif kind == "object_state":
                 obj = self._object(step["object"])
@@ -247,6 +265,27 @@ class StorySession(GameSession):
             raise StoryFormatError(f"{self.act.path}: object {name!r} not found on {self.level_name}")
         return obj
 
+    def _offer_help(self):
+        import glm
+        from game.levels.final_chapter import HELP_PLAYER, HELP_DOCTOR
+        doctor = self.actors["doctor"]
+        doctor.following = False
+        doctor.seated = False
+        doctor.offering_help = True
+        if doctor.body is not None:
+            doctor.body._position = glm.vec3(HELP_DOCTOR)
+        doctor._yaw = 180.0
+        doctor.transform = replace(doctor.transform, position=HELP_DOCTOR, rotation=(0, 180, 0))
+        doctor.scene_object.set_geometry(doctor._geometry())
+        self.player.body._position = glm.vec3(HELP_PLAYER)
+        self.player.body.vertical_speed = 0.0
+        self.player.body._camera_offset = 0.0
+        self.player.controller._yaw = -math.pi / 2
+        self.player.controller._pitch = 0.0
+        self.player._sync_transform()
+        self.player._sync_third_person_camera()
+        self.player._sync_interaction_camera()
+
     def _play_audio(self, filename, volume, *, voice=False):
         from config import settings
         if not settings.AUDIO_ENABLED:
@@ -298,6 +337,10 @@ class StorySession(GameSession):
         opacity = min(1, max(0, (step["seconds"] - self._elapsed) / step.get("fade_seconds", 1))) if step["type"] == "title" else 1
         if step.get("effect") == "fade_to_black":
             opacity = min(1, self._elapsed / step["seconds"])
+        elif step.get("effect") in ("fade_to_white", "fade_from_white"):
+            opacity = min(1, self._elapsed / step["seconds"])
+            if step["effect"] == "fade_from_white":
+                opacity = 1 - opacity
         if step.get("effect") == "distortion":
             self.player.story_distortion = 0.12 + 0.45 * max(0, 1 - self._elapsed / step["seconds"])
         self.dialog = replace(self.dialog, opacity=opacity, effect_time=self._elapsed)
@@ -523,7 +566,12 @@ class StorySession(GameSession):
             return True
         if puzzle.playing:
             return False
-        if action.startswith("archive_frame:"):
+        if action.startswith("archive_swap:"):
+            values = action.split(":")[1:]
+            if len(values) != 2 or any(value not in ("0", "1", "2", "3") for value in values):
+                return False
+            puzzle.swap(*map(int, values))
+        elif action.startswith("archive_frame:"):
             value = action.partition(":")[2]
             if value not in ("0", "1", "2", "3"):
                 return False

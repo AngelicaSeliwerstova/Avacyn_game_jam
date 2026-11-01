@@ -46,8 +46,8 @@ class StoryResourceTests(unittest.TestCase):
         self.edit(self.campaign, lambda data: data["characters"]["doctor"].update(name="Анна"))
         def act(data):
             data["objectives"][0]["title"] = "Новая задача"
-            data["scenes"][0]["steps"][0]["seconds"] = 0.25
-            data["scenes"][1]["steps"][-1]["level"] = "peaceful"
+            next(scene for scene in data["scenes"] if scene["id"] == "intro")["steps"][0]["seconds"] = 0.25
+            next(scene for scene in data["scenes"] if scene["id"] == "meeting")["steps"][-1]["level"] = "peaceful"
         self.edit(self.act, act)
         scene = Campaign().load_level("peaceful")
         session = scene.session

@@ -21,7 +21,7 @@ FLOOR_COUNT = 3
 SLAB_THICKNESS = 0.24
 
 
-def build_hospital(level: Level, peaceful: bool = False) -> Level:
+def build_hospital(level: Level, peaceful: bool = False, *, gate_upper=True) -> Level:
     boxes, decorations, definitions, lights = [], [], [], []
     height = FLOOR_HEIGHT - SLAB_THICKNESS
     floor_count = FLOOR_COUNT
@@ -273,7 +273,7 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
             definition["panel_material"] = "door_panel"
             definition["frame_material"] = "wall_tile_frame"
             definition["handle_material"] = "brushed_metal"
-    if peaceful:
+    if peaceful and gate_upper:
         # The building is shared; story access to the upper floors stays gated.
         angle = 30
         radius = (stair.inner_radius + stair.outer_radius) / 2
@@ -286,7 +286,7 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
         boxes = [replace(box, color=(0.82, 0.81, 0.74))
                  if box.material == "plaster" and box.size[1] > 1.2 else box for box in boxes]
     surgical_floor = build_surgical_floor(peaceful=peaceful)
-    patient_floor = build_patient_floor(peaceful=peaceful)
+    patient_floor = build_patient_floor(peaceful=peaceful, healed=peaceful and not gate_upper)
     result = assemble_storeys(level, tuple(boxes) + tuple(props.boxes),
                             tuple(decorations) + tuple(props.decorations), definitions, lights,
                             stair, count=floor_count, material_map=palette,
@@ -301,6 +301,10 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
         )
     from game.levels.patient_archive import build_patient_archive
     result = replace(result, objects=build_patient_archive() + result.objects)
+    from game.levels.hospital_pumpkins import build_hospital_pumpkins
+    result = replace(result, objects=result.objects + build_hospital_pumpkins(result.floor_heights))
+    from game.levels.final_chapter import build_final_props
+    result = replace(result, objects=result.objects + build_final_props())
     from game.levels.under_spotlights import damaged_stair_rail
     result = replace(result, decorations=damaged_stair_rail(stair) + result.decorations)
     if not peaceful:

@@ -12,7 +12,7 @@ PATIENT_FLOOR_SIZE = (60.0, 48.0)
 PATIENT_WALL_HEIGHT = 4.56
 
 
-def build_patient_floor(*, peaceful=False):
+def build_patient_floor(*, peaceful=False, healed=False):
     boxes = []
     definitions = []
     lights = []
@@ -149,12 +149,19 @@ def build_patient_floor(*, peaceful=False):
     # Wards 309 and 313 each have two beds and their own corridor entrance.
     for x in (20, 24):
         for surface, inward, yaw in ((-3.88, 1, 0), (7.88, -1, 180)):
+            if healed and surface == 7.88 and x == 20:
+                continue
             with props.against_wall("z", surface, inward=inward, gap=0.08, extra_boxes=boxes):
                 bed(x, 0, yaw=yaw)
-                props.cart(x + 1.1, 0)
-                props.monitor(x - 1.15, 0, yaw=yaw)
-    with props.against_wall("x", 29.86, inward=-1):
-        props.cabinet(26.5, 4.5, 0.9, 1.8, yaw=90)
+                if not (healed and surface == 7.88):
+                    props.cart(x + 1.1, 0)
+                    props.monitor(x - 1.15, 0, yaw=yaw)
+    if healed:
+        props.cabinet(25.3, 6.8, 0.45, 0.65, medical=False)
+        props.chair(22.5, 6.5, yaw=90)
+    else:
+        with props.against_wall("x", 29.86, inward=-1):
+            props.cabinet(26.5, 4.5, 0.9, 1.8, yaw=90)
     props.table(19, 9.5, 2.0, 0.85, 0.75)
     props.chair(18, 10.8, yaw=180)
     props.chair(20, 10.8, yaw=180)
@@ -177,7 +184,8 @@ def build_patient_floor(*, peaceful=False):
         props.linen_shelf(-26.5, 20.1, 2.4, yaw=-90)
 
     from game.levels.hospital_story import add_patient_story
-    add_patient_story(props, boxes, definitions)
+    if not healed:
+        add_patient_story(props, boxes, definitions)
     for data in definitions:
         if data["type"] != "door":
             continue

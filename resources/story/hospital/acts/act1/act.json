@@ -1,32 +1,21 @@
 {
   "id": "act1",
-  "title": "Она всегда меня находила",
+  "title": "Псевдоморфоза любви",
   "complete_flag": "act1:complete",
   "dialogues_file": "dialogue.json",
   "documents_file": "documents.json",
+  "next_act": "act2",
   "zones": {
-    "tv": {
+    "security": {
       "min": [
-        8.5,
-        9.1,
-        -22
+        -5.8,
+        -0.2,
+        0.2
       ],
       "max": [
-        13.5,
-        10.1,
-        -18.7
-      ]
-    },
-    "child_room": {
-      "min": [
-        21.3,
-        9.1,
-        -23.8
-      ],
-      "max": [
-        29.7,
-        10.1,
-        -17.8
+        -0.2,
+        1.0,
+        7.8
       ]
     }
   },
@@ -35,70 +24,57 @@
       "requires": [
         "act1:complete"
       ],
-      "title": "Акт 1 завершён",
-      "description": "Дверь палаты 313 открыта."
+      "title": "Запись просмотрена",
+      "description": "Кулон остался у лестницы."
     },
     {
       "requires": [
-        "act1:memory_done"
+        "archive_puzzle_solved"
       ],
-      "title": "Вернуться к палате 313",
-      "description": "Отправляйтесь с врачом к 313 и откройте дверь найденным ключом."
+      "title": "Посмотреть восстановленную запись",
+      "description": "Запустите запись на видеорегистраторе и досмотрите её до конца."
     },
     {
       "requires": [
-        "act1:child_room_seen"
+        "act1:archive_opened"
       ],
-      "title": "Взять ключ",
-      "description": "Осмотрите табурет в центре детской комнаты."
+      "title": "Восстановить запись",
+      "description": "Расположите четыре фрагмента в хронологическом порядке."
     },
     {
       "requires": [
-        "act1:music"
+        "act1:lost_items_searched"
       ],
-      "title": "Найти источник мелодии",
-      "description": "Прислушивайтесь к звуку и исследуйте палаты третьего этажа."
+      "title": "Изучить записи видеонаблюдения",
+      "description": "Откройте архив на мониторе в комнате охраны."
     },
     {
-      "title": "Найти палату 313",
-      "description": "Поднимитесь вместе с врачом на третий этаж."
+      "requires": [
+        "act1:security_seen"
+      ],
+      "title": "Осмотреть потерянные вещи",
+      "description": "Проверьте шкаф рядом с мониторами: возможно, кулон принесли сюда."
+    },
+    {
+      "title": "Найти сторожку",
+      "description": "Спуститесь на первый этаж и проверьте комнату охраны."
     }
   ],
   "scenes": [
     {
-      "id": "intro_from_archive",
+      "id": "resume_ending",
       "trigger": {
         "type": "load"
       },
       "requires": [
-        "act0:locked_313"
+        "act1:complete"
       ],
-      "unless": [
-        "act1:started"
-      ],
+      "once": false,
       "steps": [
         {
-          "type": "title",
-          "title": "АКТ 1",
-          "text": "«Она всегда меня находила»",
-          "seconds": 4
-        },
-        {
-          "type": "flags",
-          "add": [
-            "act1:started",
-            "act1:door_found",
-            "act1:music"
-          ]
-        },
-        {
-          "type": "follow",
-          "actor": "doctor",
-          "enabled": true
-        },
-        {
-          "type": "dialogue",
-          "id": "melody"
+          "type": "end",
+          "title": "КОНЕЦ АКТА 2",
+          "text": "«Псевдоморфоза любви»"
         }
       ]
     },
@@ -107,23 +83,21 @@
       "trigger": {
         "type": "load"
       },
-      "unless": [
-        "act1:started"
-      ],
       "steps": [
         {
+          "type": "release_camera"
+        },
+        {
           "type": "title",
-          "title": "АКТ 1",
-          "text": "«Она всегда меня находила»",
-          "seconds": 4,
-          "fade_seconds": 1.2
+          "title": "АКТ 2",
+          "text": "«Псевдоморфоза любви»",
+          "seconds": 3.0
         },
         {
           "type": "flags",
           "add": [
             "act1:started"
-          ],
-          "remove": []
+          ]
         },
         {
           "type": "follow",
@@ -131,396 +105,204 @@
           "enabled": true
         },
         {
+          "type": "object_state",
+          "object": "f2_surgery_preop",
+          "state": "open"
+        },
+        {
           "type": "dialogue",
-          "id": "intro"
+          "id": "pendant_missing"
         }
-      ]
-    },
-    {
-      "id": "resume_key",
-      "trigger": {
-        "type": "load"
-      },
-      "requires": [
-        "act1:child_room_seen"
       ],
       "unless": [
-        "act1:key_taken"
-      ],
-      "once": false,
-      "steps": [
-        {
-          "type": "object_state",
-          "object": "f3_ward_313_key",
-          "state": "default"
-        }
+        "act1:started",
+        "archive_recording_watched"
       ]
     },
     {
-      "id": "locked_door",
-      "trigger": {
-        "type": "event",
-        "name": "locked:f3_patient_ward_313"
-      },
-      "unless": [
-        "act1:door_found"
-      ],
-      "steps": [
-        {
-          "type": "flags",
-          "add": [
-            "act1:door_found"
-          ],
-          "remove": []
-        },
-        {
-          "type": "dialogue",
-          "id": "locked"
-        },
-        {
-          "type": "flags",
-          "add": [
-            "act1:music"
-          ],
-          "remove": []
-        },
-        {
-          "type": "dialogue",
-          "id": "melody"
-        }
-      ]
-    },
-    {
-      "id": "clock",
-      "trigger": {
-        "type": "interact",
-        "object": "f3_ward_305_clock"
-      },
-      "requires": [
-        "act1:music"
-      ],
-      "steps": [
-        {
-          "type": "dialogue",
-          "id": "clock"
-        }
-      ]
-    },
-    {
-      "id": "television",
-      "trigger": {
-        "any": [
-          {
-            "type": "zone",
-            "zone": "tv"
-          },
-          {
-            "type": "interact",
-            "object": "f3_ward_306_tv"
-          }
-        ]
-      },
-      "requires": [
-        "act1:music"
-      ],
-      "steps": [
-        {
-          "type": "object_state",
-          "object": "f3_ward_306_tv",
-          "state": "memory"
-        },
-        {
-          "type": "wait",
-          "seconds": 1
-        },
-        {
-          "type": "object_state",
-          "object": "f3_ward_306_tv",
-          "state": "default"
-        },
-        {
-          "type": "dialogue",
-          "id": "television"
-        },
-        {
-          "type": "flags",
-          "add": [
-            "act1:tv_seen"
-          ],
-          "remove": []
-        }
-      ]
-    },
-    {
-      "id": "toy",
-      "trigger": {
-        "type": "interact",
-        "object": "f3_ward_307_toy"
-      },
-      "requires": [
-        "act1:music"
-      ],
-      "steps": [
-        {
-          "type": "dialogue",
-          "id": "toy"
-        },
-        {
-          "type": "flags",
-          "add": [
-            "act1:toy_seen"
-          ],
-          "remove": []
-        }
-      ]
-    },
-    {
-      "id": "drawing",
-      "trigger": {
-        "type": "interact",
-        "object": "f3_ward_308_drawing"
-      },
-      "requires": [
-        "act1:music"
-      ],
-      "steps": [
-        {
-          "type": "dialogue",
-          "id": "drawing"
-        }
-      ]
-    },
-    {
-      "id": "child_room",
+      "id": "security_arrival",
       "trigger": {
         "type": "zone",
-        "zone": "child_room"
+        "zone": "security"
       },
-      "requires": [
-        "act1:music"
-      ],
       "steps": [
         {
           "type": "dialogue",
-          "id": "child_room"
+          "id": "security_arrival"
         },
         {
           "type": "flags",
           "add": [
-            "act1:music_muted"
-          ],
-          "remove": []
-        },
+            "act1:security_seen"
+          ]
+        }
+      ],
+      "requires": [
+        "act1:started"
+      ]
+    },
+    {
+      "id": "lost_items",
+      "trigger": {
+        "type": "interact",
+        "object": "security_lost_items"
+      },
+      "steps": [
         {
-          "type": "wait",
-          "seconds": 1.5
+          "type": "document",
+          "id": "lost_items"
+        }
+      ],
+      "once": false,
+      "requires": [
+        "act1:started"
+      ]
+    },
+    {
+      "id": "terminal_locked",
+      "trigger": {
+        "type": "interact",
+        "object": "security_archive"
+      },
+      "steps": [
+        {
+          "type": "dialogue",
+          "id": "search_first"
+        }
+      ],
+      "unless": [
+        "act1:lost_items_searched"
+      ],
+      "once": false
+    },
+    {
+      "id": "terminal_intro",
+      "trigger": {
+        "type": "interact",
+        "object": "security_archive"
+      },
+      "steps": [
+        {
+          "type": "dialogue",
+          "id": "cameras"
         },
         {
           "type": "dialogue",
-          "id": "first_memory"
+          "id": "damaged_archive"
         },
         {
           "type": "flags",
           "add": [
-            "act1:child_room_seen"
-          ],
-          "remove": [
-            "act1:music_muted"
+            "act1:archive_opened"
           ]
         },
         {
-          "type": "object_state",
-          "object": "f3_ward_313_key",
-          "state": "default"
+          "type": "puzzle",
+          "id": "cctv_archive"
         }
+      ],
+      "requires": [
+        "act1:lost_items_searched"
+      ],
+      "unless": [
+        "act1:archive_opened"
       ]
     },
     {
-      "id": "take_key",
+      "id": "terminal",
+      "trigger": {
+        "type": "interact",
+        "object": "security_archive"
+      },
+      "steps": [
+        {
+          "type": "puzzle",
+          "id": "cctv_archive"
+        }
+      ],
+      "requires": [
+        "act1:archive_opened"
+      ],
+      "once": false
+    },
+    {
+      "id": "after_recording",
       "trigger": {
         "type": "event",
-        "name": "collected:f3_ward_313_key"
+        "name": "watched:cctv_archive"
       },
-      "requires": [
-        "act1:child_room_seen"
-      ],
-      "steps": [
-        {
-          "type": "flags",
-          "add": [
-            "act1:key_taken"
-          ],
-          "remove": []
-        },
-        {
-          "type": "dialogue",
-          "id": "memory",
-          "presentation": "memory"
-        },
-        {
-          "type": "dialogue",
-          "id": "after_memory"
-        },
-        {
-          "type": "flags",
-          "add": [
-            "act1:memory_done"
-          ],
-          "remove": []
-        }
-      ]
-    },
-    {
-      "id": "return",
-      "trigger": {
-        "type": "outside_zone",
-        "zone": "child_room"
-      },
-      "requires": [
-        "act1:memory_done"
-      ],
       "steps": [
         {
           "type": "dialogue",
-          "id": "return"
-        }
-      ]
-    },
-    {
-      "id": "open_313",
-      "trigger": {
-        "type": "event",
-        "name": "opened:f3_patient_ward_313"
-      },
-      "requires": [
-        "act1:memory_done",
-        "act1:key_taken"
-      ],
-      "steps": [
+          "id": "after_recording"
+        },
         {
-          "type": "wait_object",
-          "object": "f3_patient_ward_313",
-          "state": "open"
+          "type": "puzzle_checkpoint",
+          "id": "cctv_archive"
+        },
+        {
+          "type": "effect",
+          "effect": "interference",
+          "seconds": 0.8
         },
         {
           "type": "effect",
           "effect": "fade_to_black",
-          "seconds": 1.5
+          "seconds": 1.2
         },
         {
           "type": "complete_act"
         },
         {
           "type": "end",
-          "title": "КОНЕЦ АКТА 1",
-          "text": "«Она всегда меня находила»"
+          "title": "КОНЕЦ АКТА 2",
+          "text": "«Псевдоморфоза любви»"
         }
+      ],
+      "requires": [
+        "act1:lost_items_searched",
+        "archive_puzzle_solved",
+        "archive_recording_watched"
       ]
     },
     {
-      "id": "stairs_fear",
-      "requires": [
-        "act1:started"
-      ],
+      "id": "resume_watched",
       "trigger": {
-        "type": "event",
-        "name": "stairs_walk_finished"
+        "type": "load"
       },
       "steps": [
         {
           "type": "flags",
           "add": [
-            "hospital:stairs_fear"
+            "act1:started",
+            "act1:lost_items_searched",
+            "act1:archive_opened"
           ]
         },
         {
-          "type": "say",
-          "speaker": "hero",
-          "text": "Меня в дрожь бросает от лестниц… Это же такое опасное место.",
-          "seconds": 7
+          "type": "dialogue",
+          "id": "after_recording"
+        },
+        {
+          "type": "effect",
+          "effect": "fade_to_black",
+          "seconds": 1.2
+        },
+        {
+          "type": "complete_act"
+        },
+        {
+          "type": "end",
+          "title": "КОНЕЦ АКТА 2",
+          "text": "«Псевдоморфоза любви»"
         }
       ],
-      "unless": [
-        "hospital:stairs_fear"
-      ]
-    }
-  ],
-  "audio_sources": [
-    {
-      "id": "music_box",
-      "file": "story/music_box.wav",
-      "position": [
-        24.1,
-        10.42,
-        -22.1
-      ],
-      "radius": 34,
-      "volume": 0.7,
-      "loop": true,
       "requires": [
-        "act1:music"
-      ],
-      "unless": [
-        "act1:key_taken",
-        "act1:music_muted"
-      ]
-    },
-    {
-      "id": "clock",
-      "file": "story/clock_tick.wav",
-      "position": [
-        5,
-        11.8,
-        -23.7
-      ],
-      "radius": 8,
-      "volume": 0.22,
-      "loop": false,
-      "interval": [
-        1,
-        1
-      ],
-      "requires": [
-        "act1:started"
+        "archive_recording_watched"
       ],
       "unless": [
         "act1:complete"
       ]
-    },
-    {
-      "id": "tv",
-      "file": "story/tv_static.wav",
-      "position": [
-        11,
-        11.05,
-        -22.5
-      ],
-      "radius": 7,
-      "volume": 0.1,
-      "loop": true,
-      "requires": [
-        "act1:started"
-      ],
-      "unless": [
-        "act1:complete"
-      ]
-    },
-    {
-      "id": "lock",
-      "file": "story/lock_click.wav",
-      "position": [
-        16,
-        10.9,
-        5
-      ],
-      "radius": 9,
-      "volume": 0.55,
-      "loop": false,
-      "event": "opened:f3_patient_ward_313",
-      "requires": [
-        "act1:started"
-      ]
     }
-  ],
-  "next_act": "act2"
+  ]
 }

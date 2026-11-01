@@ -1,0 +1,148 @@
+{
+  "layout": "hospital_healed",
+  "audio_profile": "peaceful",
+  "floor_size": [
+    43.0,
+    29.0
+  ],
+  "floor_material": "hospital_floor",
+  "room_height": 4.8,
+  "spawn_position": [
+    -11,
+    1.6,
+    10.6
+  ],
+  "spawn_target": [
+    -11,
+    1.6,
+    9.1
+  ],
+  "snow_enabled": false,
+  "lighting": {
+    "ambient": [
+      0.23,
+      0.25,
+      0.23
+    ],
+    "lights": []
+  },
+  "boxes": [],
+  "objects": [
+    {
+      "id": "hospital_companion",
+      "name": "Врач",
+      "type": "companion",
+      "appearance": "doctor",
+      "position": [
+        -11,
+        0,
+        9.1
+      ],
+      "following": true,
+      "story_actor": true
+    },
+    {
+      "id": "hospital_plan",
+      "type": "story_document",
+      "position": [
+        13.4,
+        2.45,
+        0.17
+      ],
+      "size": [
+        1.9,
+        1.15,
+        0.06
+      ],
+      "name": "План больницы",
+      "style": "board"
+    },
+    {
+      "id": "mother_letter",
+      "type": "story_document",
+      "position": [
+        9.78,
+        1.58,
+        1.81
+      ],
+      "size": [
+        0.48,
+        0.018,
+        0.32
+      ],
+      "selection_size": [
+        0.58,
+        0.14,
+        0.4
+      ],
+      "name": "Личное письмо",
+      "style": "paper",
+      "initial": "hidden"
+    },
+    {
+      "id": "archive_card",
+      "type": "story_document",
+      "position": [
+        11.6,
+        1.59,
+        6.18
+      ],
+      "size": [
+        0.48,
+        0.025,
+        0.34
+      ],
+      "selection_size": [
+        0.58,
+        0.18,
+        0.44
+      ],
+      "name": "Архивная карточка",
+      "style": "paper"
+    },
+    {
+      "id": "archive_case_081",
+      "type": "story_prop",
+      "position": [
+        9.78,
+        1.58,
+        1.81
+      ],
+      "size": [
+        0.77,
+        0.025,
+        0.48
+      ],
+      "color": [
+        0.57,
+        0.45,
+        0.27
+      ],
+      "initial": "hidden",
+      "name": "Медицинское дело №081",
+      "action": "Открыть дело"
+    },
+    {
+      "id": "office_case",
+      "type": "story_document",
+      "position": [
+        -18.7,
+        1.01,
+        -10.6
+      ],
+      "size": [
+        0.5,
+        0.02,
+        0.36
+      ],
+      "color": [
+        0.76,
+        0.73,
+        0.59
+      ],
+      "name": "Медицинское дело"
+    }
+  ],
+  "story": "hospital",
+  "visual_style": "peaceful"
+}

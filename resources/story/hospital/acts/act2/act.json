@@ -1,55 +1,176 @@
 {
   "id": "act2",
-  "title": "Последние минуты",
+  "title": "Angel of hope",
   "complete_flag": "act2:complete",
   "dialogues_file": "dialogue.json",
   "documents_file": "documents.json",
-  "zones": {},
+  "zones": {
+    "stairs_body": {
+      "min": [
+        -16,
+        -0.2,
+        8.4
+      ],
+      "max": [
+        -8,
+        1,
+        12.4
+      ]
+    },
+    "ward_313": {
+      "min": [
+        16.6,
+        9.1,
+        2.3
+      ],
+      "max": [
+        29.6,
+        10.4,
+        7.7
+      ]
+    }
+  },
   "objectives": [
     {
       "requires": [
-        "archive_puzzle_solved",
-        "archive_recording_watched",
-        "incident_report_read"
+        "act2:inside_ward"
       ],
-      "title": "Архив изучен",
-      "description": "Запись восстановлена, отчёт о происшествии прочитан."
+      "title": "Закрыть дверь",
+      "description": "Закройте за собой дверь палаты №313."
     },
     {
       "requires": [
-        "archive_recording_watched"
+        "act2:help_accepted"
       ],
-      "title": "Прочитать отчёт о происшествии",
-      "description": "Осмотрите папку рядом с видеорегистратором в комнате охраны."
+      "title": "Войти в палату",
+      "description": "Поднимитесь на третий этаж и войдите в палату №313."
     },
     {
       "requires": [
-        "archive_puzzle_solved"
+        "act2:help_offered"
       ],
-      "title": "Посмотреть восстановленную запись",
-      "description": "Запустите просмотр на терминале в комнате охраны."
+      "title": "Принять помощь",
+      "description": "Подойдите к доктору и нажмите E."
     },
     {
-      "title": "Изучить записи камер",
-      "description": "Найдите монитор в комнате охраны на первом этаже. Восстановите порядок четырёх фрагментов."
+      "title": "Вернуться к лестнице",
+      "description": "Найдите нижнюю площадку лестницы вместе с доктором."
     }
   ],
   "scenes": [
+    {
+      "id": "healed_arrival",
+      "trigger": {
+        "type": "load"
+      },
+      "steps": [
+        {
+          "type": "release_camera"
+        },
+        {
+          "type": "first_person",
+          "enabled": true
+        },
+        {
+          "type": "object_state",
+          "object": "friend_body",
+          "state": "hidden"
+        },
+        {
+          "type": "object_state",
+          "object": "fallen_pendant",
+          "state": "hidden"
+        },
+        {
+          "type": "object_state",
+          "object": "doctor_help",
+          "state": "hidden"
+        },
+        {
+          "type": "grant_key",
+          "id": "ward_313",
+          "name": "Ключ от палаты 313"
+        },
+        {
+          "type": "follow",
+          "actor": "doctor",
+          "enabled": true
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act2:healed"
+          ]
+        },
+        {
+          "type": "effect",
+          "effect": "fade_from_white",
+          "seconds": 2
+        },
+        {
+          "type": "dialogue",
+          "id": "final_thought"
+        }
+      ],
+      "requires": [
+        "act2:help_accepted"
+      ],
+      "levels": [
+        "healed"
+      ],
+      "once": false
+    },
+    {
+      "id": "resume_offer",
+      "trigger": {
+        "type": "load"
+      },
+      "requires": [
+        "act2:help_offered"
+      ],
+      "unless": [
+        "act2:help_accepted"
+      ],
+      "once": false,
+      "steps": [
+        {
+          "type": "object_state",
+          "object": "friend_body",
+          "state": "default"
+        },
+        {
+          "type": "object_state",
+          "object": "fallen_pendant",
+          "state": "default"
+        },
+        {
+          "type": "first_person",
+          "enabled": true
+        },
+        {
+          "type": "offer_help"
+        },
+        {
+          "type": "object_state",
+          "object": "doctor_help",
+          "state": "default"
+        }
+      ]
+    },
     {
       "id": "intro",
       "trigger": {
         "type": "load"
       },
-      "unless": [
-        "act2:started",
-        "archive_recording_watched"
-      ],
       "steps": [
         {
+          "type": "release_camera"
+        },
+        {
           "type": "title",
-          "title": "АКТ 2",
-          "text": "«Последние минуты»",
-          "seconds": 4
+          "title": "АКТ 3",
+          "text": "«Angel of hope»",
+          "seconds": 3.0
         },
         {
           "type": "flags",
@@ -63,82 +184,215 @@
           "enabled": true
         },
         {
-          "type": "dialogue",
-          "id": "arrival"
+          "type": "object_state",
+          "object": "friend_body",
+          "state": "default"
+        },
+        {
+          "type": "object_state",
+          "object": "fallen_pendant",
+          "state": "default"
         }
+      ],
+      "unless": [
+        "act2:started",
+        "act2:help_accepted"
       ]
     },
     {
-      "id": "report_resume",
+      "id": "body_resume",
       "trigger": {
         "type": "load"
       },
-      "requires": [
-        "archive_recording_watched"
-      ],
-      "once": false,
       "steps": [
         {
           "type": "object_state",
-          "object": "incident_report",
+          "object": "friend_body",
+          "state": "default"
+        },
+        {
+          "type": "object_state",
+          "object": "fallen_pendant",
           "state": "default"
         }
-      ]
+      ],
+      "requires": [
+        "act2:started"
+      ],
+      "unless": [
+        "act2:help_accepted"
+      ],
+      "once": false
     },
     {
-      "id": "terminal",
+      "id": "last_meeting",
       "trigger": {
-        "type": "interact",
-        "object": "security_archive"
+        "type": "zone",
+        "zone": "stairs_body"
       },
-      "once": false,
       "steps": [
         {
-          "type": "puzzle",
-          "id": "cctv_archive"
-        }
-      ]
-    },
-    {
-      "id": "after_recording",
-      "trigger": {
-        "type": "event",
-        "name": "watched:cctv_archive"
-      },
-      "unless": [
-        "cctv_archive:aftermath_done"
-      ],
-      "steps": [
+          "type": "focus_camera",
+          "position": [
+            -8.8,
+            2.8,
+            11.8
+          ],
+          "target": [
+            -12.1,
+            0.35,
+            9.65
+          ]
+        },
         {
           "type": "dialogue",
-          "id": "after_recording"
+          "id": "last_meeting"
         },
         {
-          "type": "puzzle_checkpoint",
-          "id": "cctv_archive"
+          "type": "effect",
+          "effect": "interference",
+          "seconds": 0.4
+        },
+        {
+          "type": "dialogue",
+          "id": "echo"
+        },
+        {
+          "type": "dialogue",
+          "id": "remember"
+        },
+        {
+          "type": "dialogue",
+          "id": "realization"
+        },
+        {
+          "type": "dialogue",
+          "id": "resolution"
+        },
+        {
+          "type": "first_person",
+          "enabled": true
+        },
+        {
+          "type": "offer_help"
+        },
+        {
+          "type": "dialogue",
+          "id": "offer"
         },
         {
           "type": "object_state",
-          "object": "incident_report",
+          "object": "doctor_help",
           "state": "default"
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act2:help_offered"
+          ]
         }
+      ],
+      "requires": [
+        "act2:started"
+      ],
+      "unless": [
+        "act2:help_accepted"
       ]
     },
     {
-      "id": "report",
+      "id": "accept_help",
       "trigger": {
         "type": "interact",
-        "object": "incident_report"
+        "object": "doctor_help"
       },
-      "once": false,
-      "requires": [
-        "archive_recording_watched"
-      ],
       "steps": [
         {
-          "type": "document",
-          "id": "incident_report"
+          "type": "object_state",
+          "object": "doctor_help",
+          "state": "hidden"
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act2:help_accepted"
+          ]
+        },
+        {
+          "type": "effect",
+          "effect": "fade_to_white",
+          "seconds": 2.5
+        },
+        {
+          "type": "level",
+          "level": "healed",
+          "preserve_scene": true
         }
+      ],
+      "requires": [
+        "act2:help_offered"
+      ]
+    },
+    {
+      "id": "enter_ward",
+      "trigger": {
+        "type": "zone",
+        "zone": "ward_313"
+      },
+      "steps": [
+        {
+          "type": "clear_event",
+          "name": "closed:f3_patient_ward_313"
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act2:inside_ward"
+          ]
+        },
+        {
+          "type": "follow",
+          "actor": "doctor",
+          "enabled": false
+        }
+      ],
+      "requires": [
+        "act2:help_accepted"
+      ]
+    },
+    {
+      "id": "close_door",
+      "trigger": {
+        "type": "event",
+        "name": "closed:f3_patient_ward_313"
+      },
+      "steps": [
+        {
+          "type": "wait_object",
+          "object": "f3_patient_ward_313",
+          "state": "default"
+        },
+        {
+          "type": "audio",
+          "file": "act0/lock_click.wav",
+          "volume": 0.5
+        },
+        {
+          "type": "effect",
+          "effect": "fade_to_black",
+          "seconds": 2
+        },
+        {
+          "type": "complete_act"
+        },
+        {
+          "type": "end",
+          "title": "КОНЕЦ ИГРЫ",
+          "text": "КОНЕЦ АКТА 3. «Angel of hope»"
+        }
+      ],
+      "requires": [
+        "act2:inside_ward",
+        "act2:help_accepted"
       ]
     }
   ]

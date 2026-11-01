@@ -300,7 +300,7 @@ class GLTFModel:
             return result.x, result.y, result.z, result.w
         return tuple(a + (b - a) * amount for a, b in zip(values[left], values[right]))
 
-    def update(self, delta_time: float, speed: float = 1.0, *, seated=False):
+    def update(self, delta_time: float, speed: float = 1.0, *, seated=False, offering_help=False):
         if not self._channels or self._duration <= 0:
             return
         self._time = (self._time + delta_time * speed) % self._duration if speed > 0 else 0.0
@@ -314,7 +314,8 @@ class GLTFModel:
             name = node.get("name", "")
             sitting_joint = seated and name in ("mixamorig:Hips", "mixamorig:LeftUpLeg", "mixamorig:RightUpLeg",
                                                 "mixamorig:LeftLeg", "mixamorig:RightLeg")
-            if (index not in animated and not sitting_joint) or "matrix" in node:
+            helping_joint = offering_help and name in ("mixamorig:RightArm", "mixamorig:RightForeArm")
+            if (index not in animated and not sitting_joint and not helping_joint) or "matrix" in node:
                 continue
             current = animated.get(index, {})
             translation = current.get("translation", node.get("translation", (0.0, 0.0, 0.0)))
@@ -332,7 +333,28 @@ class GLTFModel:
                 * glm.scale(glm.mat4(1.0), glm.vec3(scale))
             )
         self._update_world_matrices()
+        if offering_help:
+            self._aim_helping_arm()
         self._update_skin_textures()
+
+    def _aim_helping_arm(self):
+        names = {node.get("name"): i for i, node in enumerate(self._nodes)}
+        parents = {child: i for i, node in enumerate(self._nodes) for child in node.get("children", ())}
+        for name, child_name in (("mixamorig:RightArm", "mixamorig:RightForeArm"),
+                                  ("mixamorig:RightForeArm", "mixamorig:RightHand")):
+            if name not in names or child_name not in names:
+                continue
+            index, child = names[name], names[child_name]
+            position = glm.vec3(self._world_matrices[index][3])
+            direction = glm.normalize(glm.vec3(self._world_matrices[child][3]) - position)
+            desired = glm.normalize(glm.vec3(0, -.20, 1))
+            cross = glm.cross(direction, desired)
+            rotation = glm.normalize(glm.quat(1 + glm.dot(direction, desired), cross.x, cross.y, cross.z))
+            parent = self._world_matrices[parents[index]] if index in parents else glm.mat4(1)
+            world = (glm.translate(glm.mat4(1), position) * glm.mat4_cast(rotation)
+                     * glm.translate(glm.mat4(1), -position) * self._world_matrices[index])
+            self._local_matrices[index] = glm.inverse(parent) * world
+            self._update_world_matrices()
 
     def _update_skin_textures(self):
         for node_index, texture in self._mesh_nodes:

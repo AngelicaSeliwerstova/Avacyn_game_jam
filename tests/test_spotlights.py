@@ -8,7 +8,7 @@ from game.companions import CompanionSystem
 from game.levels.spiral import SpiralStair
 from game.levels.under_spotlights import MEMORY_CAMERA, CRADLE_TARGET
 from engine.input.state import InputState
-from support_story import complete_patient_archive, finish_conversation
+from support_story import complete_patient_archive, finish_conversation, finish_memory
 from test_hospital import walk, make_body
 
 
@@ -120,6 +120,28 @@ class SpotlightsTests(unittest.TestCase):
             else:
                 self.fail(f'Doctor cannot reach nursery: {tuple(doctor.body.position)}; goal={goal}')
         self.assertAlmostEqual(doctor.body.position.y,4.8,places=3)
+
+    @patch.object(settings,'AUDIO_ENABLED',False)
+    def test_act_ending_shows_subtitles_and_recorded_memory_voices(self):
+        _,scene=self.begin()
+        session=scene.session
+        bank=Mock()
+        bank._paths={}
+        session._cue_sounds=bank
+        session._flags.add('act0:nursery_open')
+        cradle=next(o for o in scene.level.objects if o.name=='f2_nursery_cradle')
+        scene.player._interactions._activate(cradle)
+        with patch.object(settings,'AUDIO_ENABLED',True):
+            session.update(0)
+            session.tick_presentation(1.2)
+            self.assertEqual(session.dialog.presentation,'voiceover')
+            self.assertIn('Мам, ты опять',session.dialog.message)
+            finish_memory(session)
+        self.assertEqual(bank.play_voice.call_count, 6)
+        self.assertIn('act0:memory_heard',session._flags)
+        self.assertIn('act0:complete',session._flags)
+        self.assertEqual(session.dialog.presentation,'ending')
+        bank.play_discovery.assert_called_with('act0/corridor_unknown.wav',0.45)
 
     @patch.object(settings,'AUDIO_ENABLED',False)
     def test_voice_pages_do_not_replay_recordings_and_mute_keeps_automatic_timing(self):

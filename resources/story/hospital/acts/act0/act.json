@@ -116,6 +116,23 @@
   ],
   "scenes": [
     {
+      "id": "resume_ending",
+      "trigger": {
+        "type": "load"
+      },
+      "requires": [
+        "act0:complete"
+      ],
+      "once": false,
+      "steps": [
+        {
+          "type": "end",
+          "title": "КОНЕЦ АКТА 1",
+          "text": "«Под софитами»"
+        }
+      ]
+    },
+    {
       "id": "intro",
       "trigger": {
         "type": "load"
@@ -463,7 +480,8 @@
         },
         {
           "type": "voiceover",
-          "id": "cradle_memory"
+          "id": "cradle_memory",
+          "audio": true
         },
         {
           "type": "flags",
@@ -482,7 +500,8 @@
         },
         {
           "type": "voiceover",
-          "id": "memory_outro_first"
+          "id": "memory_outro_first",
+          "audio": true
         },
         {
           "type": "wait",
@@ -490,7 +509,8 @@
         },
         {
           "type": "voiceover",
-          "id": "memory_outro_second"
+          "id": "memory_outro_second",
+          "audio": true
         },
         {
           "type": "wait",
@@ -604,5 +624,6 @@
       ],
       "once": false
     }
-  ]
+  ],
+  "next_act": "act1"
 }

@@ -75,9 +75,10 @@ def load_location(path: Path) -> Level:
         story=data.get("story"),
         audio_profile=data.get("audio_profile"),
     )
-    if data.get("layout") in ("hospital", "hospital_first_floor", "hospital_peaceful"):
+    if data.get("layout") in ("hospital", "hospital_first_floor", "hospital_peaceful", "hospital_healed"):
         from game.levels.hospital import build_hospital
-        level = build_hospital(level, peaceful=data.get("layout") == "hospital_peaceful")
+        level = build_hospital(level, peaceful=data.get("layout") in ("hospital_peaceful", "hospital_healed"),
+                               gate_upper=data.get("layout") != "hospital_healed")
     elif data.get("layout") is not None:
         raise ValueError(f"Unknown location layout: {data['layout']!r}")
     return level

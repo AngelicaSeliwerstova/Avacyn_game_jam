@@ -130,7 +130,7 @@ class DebugTests(unittest.TestCase):
             with patch("sys.argv", ["main.py", *flags]), patch("main.run_session", return_value="quit") as run:
                 main()
             run.assert_called_once_with(creator_mode=False, debug_mode=enabled,
-                                        level_name=settings.LEVEL_NAME, resume_archive=False)
+                                        level_name=settings.LEVEL_NAME, resume_archive=False, show_menu=True)
 
     def test_command_line_preserves_test_level_on_restart(self):
         from main import main
@@ -138,9 +138,9 @@ class DebugTests(unittest.TestCase):
                 patch("main.run_session", side_effect=("restart", "quit")) as run:
             main()
         self.assertEqual(run.call_count, 2)
-        for call in run.call_args_list:
+        for index, call in enumerate(run.call_args_list):
             self.assertEqual(call.kwargs, {"creator_mode": False, "debug_mode": True,
-                                           "level_name": "start", "resume_archive": False})
+                                           "level_name": "start", "resume_archive": False, "show_menu": index == 0})
 
     def test_player_status_tracks_real_motion_and_not_held_buttons(self):
         level = Level((10, 10), 1, (Box((0, 1.5, -2), (4, 3, 1)),),

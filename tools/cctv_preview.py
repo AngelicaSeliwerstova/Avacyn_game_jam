@@ -13,7 +13,7 @@ from main import run_session
 def capture():
     folder = Path("artifacts/cctv-qa")
     folder.mkdir(parents=True, exist_ok=True)
-    scene = Campaign().load_level("act2")
+    scene = Campaign().load_level("act1")
     puzzle = scene.session._puzzles["cctv_archive"]
     views = [("initial", puzzle.view())]
     puzzle.click(0)
@@ -27,11 +27,11 @@ def capture():
     views.append(("solved", puzzle.view()))
     puzzle.play()
     views.append(("playback-a", puzzle.view()))
-    for _ in range(300):
+    for _ in range(3000):
         puzzle.tick(0.1)
         view = puzzle.view()
-        if view.speaker == "Героиня":
-            views.append(("hero-line", view))
+        if view.speaker.startswith("Неизвестная") and view.caption:
+            views.append(("unknown-line", view))
             break
     original_render, original_mode = Renderer.render, pygame.display.set_mode
     frame = 0
@@ -50,7 +50,7 @@ def capture():
 
     with patch.object(Renderer, "render", render), patch("pygame.display.set_mode", side_effect=
             lambda size, flags=0, **kw: original_mode(size, flags | pygame.HIDDEN, **kw)):
-        run_session(level_name="act2")
+        run_session(level_name="act1")
     scene.session.release()
     print(folder.resolve())
 

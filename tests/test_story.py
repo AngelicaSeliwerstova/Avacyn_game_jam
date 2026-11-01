@@ -97,8 +97,14 @@ class ActZeroTests(unittest.TestCase):
                 self.assertIn("act0:memory_heard", session._flags)
                 self.assertEqual(session.act.id, "act0")
                 self.assertEqual(session.dialog.title, "КОНЕЦ АКТА 1")
-                self.assertNotIn("story_continue", {b.action for b in session.dialog.buttons})
+                self.assertIn("story_continue", {b.action for b in session.dialog.buttons})
                 self.assertEqual(scene.player.story_audio_gain, 1)
+                self.assertTrue(session.handle_action("story_continue"))
+                from test_act_one import advance_scene
+                advance_scene(session)
+                self.assertEqual(session.act.id, "act1")
+                self.assertIsNone(scene.player.story_camera)
+                self.assertIn("Найти сторожку", scene.player.objective_status)
 
     def test_office_door_documents_and_reception_are_physically_reachable(self):
         campaign = Campaign()

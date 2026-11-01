@@ -59,6 +59,7 @@ class Application:
         postprocess_presets: tuple[tuple[str, PostProcessSettings], ...] = (),
         scene_loader: Callable[[str], RuntimeScene] | None = None,
         debug_mode: bool = False,
+        menu=None,
     ):
         self._window_size = window_size
         self._render_size = render_size
@@ -91,6 +92,15 @@ class Application:
         self._running = False
         self._inventory_open = False
         self._inventory_page = 0
+        self._menu = menu
+
+    @property
+    def _menu_open(self):
+        return self._menu is not None and self._menu.dialog is not None
+
+    @property
+    def _active_dialog(self):
+        return self._menu.dialog if self._menu_open else self._session.dialog
 
     def run(self):
         pygame.init()
@@ -112,6 +122,10 @@ class Application:
             renderer = self._create_renderer()
             clock = pygame.time.Clock()
             input_device = KeyboardMouse(self._input_bindings)
+            if self._menu is not None:
+                self._menu.apply(window)
+            if self._menu_open or self._session.dialog is not None or self._session.puzzle_active:
+                input_device.begin_modal()
             self._running = True
 
             while self._running:
@@ -127,20 +141,18 @@ class Application:
                 if not self._running:
                     break
 
-                if self._session.next_level is not None:
+                if self._session.next_level is not None and not self._menu_open:
                     renderer = self._change_level(renderer, window)
                     input_device.reset_after_loading()
                     clock.tick()
                     continue
 
                 inputs = input_device.read()
-                had_puzzle = self._session.puzzle_active
                 had_dialog = self._session.dialog is not None or self._session.puzzle_active
-                if not getattr(self._controlled_entity, "creator_mode", False):
+                if not self._menu_open and not getattr(self._controlled_entity, "creator_mode", False):
                     self._session.tick_presentation(delta_time)
                 if had_dialog and self._session.dialog is None and not self._session.puzzle_active:
-                    if had_puzzle:
-                        input_device.end_modal()
+                    input_device.end_modal()
                     input_device.reset_after_loading()
                     inputs = input_device.read()
                 if self._session.controls_locked and not getattr(self._controlled_entity, "creator_mode", False):
@@ -176,10 +188,7 @@ class Application:
                             if self._session.next_level is not None:
                                 break
                             if self._session.dialog is not None or self._session.puzzle_active:
-                                if self._session.puzzle_active:
-                                    input_device.begin_modal()
-                                else:
-                                    input_device.release()
+                                input_device.begin_modal()
                                 break
                     systems_updated = perf_counter() if profiling else 0.0
                     if self._session.dialog is None and not self._session.puzzle_active:
@@ -194,7 +203,7 @@ class Application:
                             ),
                         )
                     animation_updated = perf_counter() if profiling else 0.0
-                if self._session.next_level is not None:
+                if self._session.next_level is not None and not self._menu_open:
                     renderer = self._change_level(renderer, window)
                     input_device.reset_after_loading()
                     # Loading time must not become the next physics step.
@@ -207,9 +216,9 @@ class Application:
                 updated = perf_counter() if profiling else 0.0
                 renderer.render(window.size, hud_text=self._controlled_entity.status_text,
                                 debug_text=self._debug.text, aim_text=self._controlled_entity.aim_text,
-                                dialog=self._session.dialog,
-                                puzzle_view=self._session.puzzle_view,
-                                inventory=self._inventory_view(),
+                                dialog=self._active_dialog,
+                                puzzle_view=None if self._menu_open else self._session.puzzle_view,
+                                inventory=None if self._menu_open else self._inventory_view(),
                                 camera_markers=getattr(self._controlled_entity, "camera_marker_boxes", ()),
                                 creator_objects=getattr(self._controlled_entity, "creator_object_boxes", ()),
                                 creator_lights=getattr(self._controlled_entity, "creator_lights", ()),
@@ -228,7 +237,8 @@ class Application:
                                     self._controlled_entity, "camera_transition_strength", 0.0,
                                 ),
                                 stress_strength=getattr(self._controlled_entity, "stair_stress_strength", 0.0),
-                                player_transform=self._controlled_entity.transform,
+                                player_transform=(None if getattr(self._controlled_entity, "story_first_person", False)
+                                                  else self._controlled_entity.transform),
                                 debug_paths=self._debug_paths() if self._debug.enabled and self._debug_paths else ())
                 rendered = perf_counter() if profiling else 0.0
                 window.present()
@@ -319,7 +329,10 @@ class Application:
         # Keep the existing SDL window and context, showing black during loading.
         renderer.context.screen.use()
         renderer.context.viewport = (0, 0, *window.size)
-        renderer.context.clear(0, 0, 0, 1)
+        if self._session.dialog is not None and self._session.dialog.presentation == "whiteout":
+            renderer.context.clear(240 / 255, 238 / 255, 224 / 255, 1)
+        else:
+            renderer.context.clear(0, 0, 0, 1)
         window.present()
         scene = self._scene_loader(self._session.next_level)
         context = renderer.context
@@ -339,7 +352,7 @@ class Application:
 
     @property
     def _simulation_paused(self):
-        return self._session.dialog is not None or self._session.puzzle_active or self._inventory_open
+        return self._menu_open or self._session.dialog is not None or self._session.puzzle_active or self._inventory_open
 
     def _inventory_view(self):
         if not self._inventory_open:
@@ -365,10 +378,52 @@ class Application:
             elif (event.type == pygame.KEYDOWN and event.key == self._input_bindings.cycle_postprocess
                   and renderer is not None and not self._simulation_paused and not getattr(event, "repeat", False)):
                 renderer.cycle_postprocess()
-            elif event.type == pygame.KEYDOWN and event.key == self._input_bindings.toggle_fullscreen:
-                input_device.release()
+            elif (event.type == pygame.KEYDOWN and not getattr(event, "repeat", False)
+                  and (event.key == self._input_bindings.toggle_fullscreen
+                       or event.key == pygame.K_RETURN and getattr(event, "mod", 0) & pygame.KMOD_ALT)):
+                if self._simulation_paused:
+                    input_device.release()
+                else:
+                    input_device.begin_modal()
                 window.toggle_fullscreen()
+                if self._menu is not None:
+                    self._menu.remember_window(window)
+                if not self._simulation_paused:
+                    input_device.end_modal()
+                    input_device.reset_after_loading()
+                continue
             window.handle_event(event)
+            if self._menu_open:
+                action = None
+                if event.type == pygame.KEYDOWN and not getattr(event, "repeat", False):
+                    if event.key in (pygame.K_UP, pygame.K_DOWN):
+                        self._menu.navigate(1 if event.key == pygame.K_DOWN else -1)
+                    else:
+                        key = pygame.key.name(event.key)
+                        action = next((b.action for b in self._menu.dialog.buttons if key in b.keys), None)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    action = dialog_action_at(self._menu.dialog, event.pos, window.size, self._render_size)
+                elif event.type in (pygame.WINDOWFOCUSLOST, pygame.WINDOWFOCUSGAINED):
+                    input_device.handle_event(event)
+                if action is not None:
+                    result = self._menu.handle_action(action, window)
+                    if result == "quit":
+                        self._running = False
+                        break
+                    if not self._menu_open:
+                        if self._session.dialog is None and not self._session.puzzle_active:
+                            input_device.end_modal()
+                            input_device.reset_after_loading()
+                        else:
+                            input_device.release()
+                continue
+            if (self._menu is not None and event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
+                    and not getattr(event, "repeat", False) and not self._simulation_paused
+                    and not self._session.controls_locked
+                    and not getattr(self._controlled_entity, "creator_mode", False)):
+                self._menu.open_pause()
+                input_device.begin_modal()
+                continue
             if self._session.puzzle_active:
                 action = None
                 if event.type == pygame.KEYDOWN and not getattr(event, "repeat", False):
@@ -381,7 +436,19 @@ class Application:
                         action = "archive_play" if self._session.puzzle_view.solved else "archive_check"
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     action = archive_action_at(self._session.puzzle_view, event.pos, window.size, self._render_size)
+                    self._archive_drag_start = None
+                    if action and action.startswith("archive_frame:"):
+                        self._archive_drag_start = action.partition(":")[2]
+                        action = None
+                elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                    start = getattr(self, "_archive_drag_start", None)
+                    self._archive_drag_start = None
+                    target = archive_action_at(self._session.puzzle_view, event.pos, window.size, self._render_size)
+                    if start is not None and target and target.startswith("archive_frame:"):
+                        end = target.partition(":")[2]
+                        action = f"archive_frame:{start}" if start == end else f"archive_swap:{start}:{end}"
                 elif event.type in (pygame.WINDOWFOCUSLOST, pygame.WINDOWFOCUSGAINED):
+                    self._archive_drag_start = None
                     input_device.handle_event(event)
                 if action is not None:
                     self._session.handle_puzzle_action(action)
@@ -426,6 +493,7 @@ class Application:
                 if action is not None:
                     if self._session.handle_action(action):
                         if self._session.dialog is None:
+                            input_device.end_modal()
                             input_device.reset_after_loading()
                         continue
                     self._result = action

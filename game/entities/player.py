@@ -82,9 +82,11 @@ class Player(Entity):
             else self._automatic_camera_zones
         )
         self._active_camera_zone = None
+        self.camera_mode = "cameras"
         self._camera_selection_initialized = False
         self._camera_transition_remaining = 0.0
         self.story_camera = None
+        self.story_first_person = False
         self.story_audio_gain = 1.0
         self.story_distortion = 0.0
         self._creator_mode = False
@@ -258,7 +260,22 @@ class Player(Entity):
 
     @property
     def fixed_camera_effect_active(self) -> bool:
-        return self._active_camera_zone is not None and not self._creator_mode
+        return (not self.story_first_person and self.camera_mode == "cameras"
+                and self._active_camera_zone is not None and not self._creator_mode)
+
+    def set_camera_mode(self, mode):
+        if mode not in ("cameras", "third_person"):
+            raise ValueError(f"Unknown camera mode: {mode}")
+        if self.camera_mode == mode:
+            return
+        self.camera_mode = mode
+        self._active_camera_zone = None
+        self._camera_selection_initialized = False
+        self._camera_transition_remaining = 0.0
+        if not self._creator_mode:
+            self._sync_third_person_camera()
+            self._sync_fixed_camera()
+            self._sync_interaction_camera()
 
     @property
     def camera_transition_strength(self) -> float:
@@ -382,7 +399,7 @@ class Player(Entity):
         previous_position = self.body.position
         # Fixed shots never define the character's heading. A/D turn the body,
         # W/S move along that heading, and backing up keeps the model facing forward.
-        tank_controls = bool(self._camera_zones)
+        tank_controls = not self.story_first_person and self.camera_mode == "cameras" and bool(self._camera_zones)
         self.controller.update(
             delta_time, inputs.forward, 0.0 if tank_controls else inputs.right,
             (0, 0) if tank_controls else inputs.mouse_delta,
@@ -479,6 +496,10 @@ class Player(Entity):
             math.sin(pitch),
             math.sin(yaw) * math.cos(pitch),
         )
+        if self.story_first_person:
+            self.camera.position = self.body.eye_position(settings.PLAYER_EYE_HEIGHT)
+            self.camera.target = self.camera.position + look_direction
+            return
         camera_offset = glm.vec3(
             -math.cos(yaw) * horizontal_distance - math.sin(body_yaw) * shoulder,
             settings.PLAYER_CAMERA_HEIGHT - settings.PLAYER_CAMERA_DISTANCE * math.sin(pitch),
@@ -508,7 +529,7 @@ class Player(Entity):
         self.camera.target = glm.vec3(zone.target)
 
     def _active_fixed_camera(self):
-        if self._level is None or self._creator_mode:
+        if self._level is None or self._creator_mode or self.story_first_person or self.camera_mode != "cameras":
             return None
         position = tuple(self._player_eye_position())
         active = self._active_camera_zone

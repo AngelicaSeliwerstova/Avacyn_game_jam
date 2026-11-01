@@ -83,32 +83,27 @@
       "act": "act1",
       "set_flags": [
         "act0:complete",
-        "act0:map",
-        "act0:letter_read",
         "act0:transformed",
         "act0:met_doctor",
-        "act0:archive_card_read",
-        "act0:archive_1981_open",
-        "act0:case_081_open",
-        "act0:assessment_read",
-        "act0:archive_reviewed",
-        "act0:archive_closed"
+        "act0:key_taken",
+        "act0:cry_stopped"
       ]
     },
     "act2": {
       "act": "act2",
       "set_flags": [
         "act0:complete",
-        "act0:map",
-        "act0:letter_read",
         "act0:transformed",
+        "act1:complete"
+      ]
+    },
+    "healed": {
+      "act": "act2",
+      "set_flags": [
+        "act0:complete",
         "act1:complete",
-        "act0:archive_card_read",
-        "act0:archive_1981_open",
-        "act0:case_081_open",
-        "act0:assessment_read",
-        "act0:archive_reviewed",
-        "act0:archive_closed"
+        "act2:started",
+        "act2:help_accepted"
       ]
     }
   },

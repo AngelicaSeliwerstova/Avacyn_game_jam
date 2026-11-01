@@ -16,7 +16,8 @@ from game.campaign import Campaign
 from game.puzzles.cctv_puzzle import CCTVPuzzle, CCTVProgressStore, load_cctv_definition
 from game.story_loader import load_story
 from game.ui import create_hud_style
-from support_story import finish_conversation
+from support_story import finish_conversation, read_document
+from test_act_one import advance_scene
 from test_hospital import walk
 
 
@@ -33,16 +34,23 @@ class CCTVTests(unittest.TestCase):
 
     def scene(self, store=None):
         campaign = Campaign(puzzle_store=store)
-        scene = campaign.load_level("act2")
-        scene.session.tick_presentation(4)
-        finish_conversation(scene.session)
+        scene = campaign.load_level("act1")
+        advance_scene(scene.session)
         self.addCleanup(scene.session.release)
+        scene.player.body._position = glm.vec3(-3, 0, 2.4)
+        scene.session.update(0)
+        advance_scene(scene.session)
+        cabinet = next(o for o in scene.level.objects if o.name == "security_lost_items")
+        scene.player._interactions._activate(cabinet)
+        scene.session.update(0)
+        advance_scene(scene.session)
         return campaign, scene
 
     def open(self, scene):
         monitor = next(o for o in scene.level.objects if o.name == "security_archive")
         scene.player._interactions._activate(monitor)
         scene.session.update(0)
+        finish_conversation(scene.session)
         self.assertTrue(scene.session.puzzle_active)
 
     def solve(self, session):
@@ -56,7 +64,7 @@ class CCTVTests(unittest.TestCase):
     def watch(self, session):
         if not session._puzzle.playing:
             session.handle_puzzle_action("archive_play")
-        for _ in range(500):
+        for _ in range(3000):
             session.tick_presentation(0.1)
             if not session.puzzle_active:
                 session.update(0)
@@ -118,36 +126,28 @@ class CCTVTests(unittest.TestCase):
 
     def test_new_session_starts_unsolved_and_only_explicit_resume_restores_checkpoint(self):
         from main import run_session
-
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "archive.json"
             puzzle = self.puzzle(CCTVProgressStore(path))
             puzzle.progress.order = list(self.definition["correct_order"])
             puzzle.check()
-            puzzle.progress.watched = puzzle.progress.report_read = puzzle.progress.aftermath_done = True
+            puzzle.progress.watched = puzzle.progress.aftermath_done = True
             puzzle.save()
             self.addCleanup(puzzle.release)
-
             for resume in (False, True):
-                with self.subTest(resume=resume), \
-                        patch("main.CCTVProgressStore", side_effect=lambda _, **kwargs: CCTVProgressStore(path, **kwargs)), \
-                        patch("main.Application") as application:
+                with self.subTest(resume=resume), patch("main.CCTVProgressStore", side_effect=lambda _, **kw: CCTVProgressStore(path, **kw)), patch("main.Application") as application:
                     application.return_value.run.return_value = "quit"
-                    run_session(level_name="act2", **({"resume_archive": True} if resume else {}))
+                    run_session(level_name="act1", resume_archive=resume)
                     session = application.call_args.kwargs["session"]
                     self.addCleanup(session.release)
+                    advance_scene(session)
                     self.assertEqual("archive_puzzle_solved" in session._flags, resume)
-                    self.assertEqual(session.player.inventory.has_item("incident_report"), resume)
-                    session.tick_presentation(4)
-                    finish_conversation(session)
-                    monitor = next(o for o in application.call_args.kwargs["level"].objects
-                                   if o.name == "security_archive")
-                    session.player._interactions._activate(monitor)
-                    session.update(0)
-                    self.assertTrue(session.puzzle_active)
-                    self.assertEqual(session.puzzle_view.solved, resume)
-                    self.assertEqual(session._puzzle.progress.order,
-                                     self.definition["correct_order"] if resume else self.definition["initial_order"])
+                    self.assertEqual("archive_recording_watched" in session._flags, resume)
+                    if resume:
+                        self.assertEqual(session.dialog.title, "КОНЕЦ АКТА 2")
+                    else:
+                        self.assertIsNone(session.dialog)
+                        self.assertFalse(session._puzzles["cctv_archive"].progress.solved)
 
     def test_fresh_disk_store_saves_current_run_and_reopening_monitor_keeps_its_order(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -173,89 +173,72 @@ class CCTVTests(unittest.TestCase):
     def test_restart_starts_fresh_even_when_launching_with_saved_archive(self):
         from main import main
 
-        with patch("sys.argv", ["main.py", "--level", "act2", "--resume-archive"]), \
+        with patch("sys.argv", ["main.py", "--level", "act1", "--resume-archive"]), \
                 patch("main.run_session", side_effect=("restart", "quit")) as run:
             main()
         self.assertEqual(run.call_count, 2)
         self.assertTrue(run.call_args_list[0].kwargs["resume_archive"])
         self.assertFalse(run.call_args_list[1].kwargs["resume_archive"])
-        self.assertTrue(all(call.kwargs["level_name"] == "act2" for call in run.call_args_list))
+        self.assertTrue(all(call.kwargs["level_name"] == "act1" for call in run.call_args_list))
 
-    def test_full_story_all_choices_unlock_report_and_dialogue_only_once(self):
-        for choice in range(3):
-            with self.subTest(choice=choice):
-                campaign, scene = self.scene()
-                session = scene.session
-                report = next(o for o in scene.level.objects if o.name == "incident_report")
-                self.assertIsNone(report.interaction)
-                self.open(scene)
-                self.solve(session)
-                self.assertIsNone(report.interaction)
-                self.watch(session)
-                self.assertIn("archive_recording_watched", campaign.progress.flags)
-                self.assertEqual(session.dialog.message, session.act.dialogues["after_recording"][0]["text"])
-                finish_conversation(session, choice)
-                self.assertIn(f"act2:choice:recognition:{choice}", session._flags)
-                self.assertIsNotNone(report.interaction)
-                scene.player._interactions._activate(report)
-                session.update(0)
-                self.assertEqual(session.dialog.presentation, "document")
-                self.assertIn("она погибла", " ".join(session._document_pages))
-                while "document_next" in {b.action for b in session.dialog.buttons}:
-                    session.handle_action("document_next")
-                session.handle_action("document_close")
-                finish_conversation(session)
-                self.assertTrue({"archive_puzzle_solved", "archive_recording_watched", "incident_report_read"} <= session._flags)
-                self.assertIn("Архив изучен", scene.player.objective_status)
-                self.open(scene)
-                self.watch(session)
-                self.assertIsNone(session.dialog)
-                saved = campaign.puzzle_store.get("cctv_archive", self.definition)
-                self.assertTrue(saved.solved and saved.watched and saved.report_read and saved.aftermath_done)
-                restored = campaign.load_level("act2")
-                self.assertIsNotNone(next(o for o in restored.level.objects if o.name == "incident_report").interaction)
-                fresh = Campaign(puzzle_store=campaign.puzzle_store).load_level("act2")
-                self.assertIsNotNone(next(o for o in fresh.level.objects if o.name == "incident_report").interaction)
-                beginning = Campaign(puzzle_store=campaign.puzzle_store).load_level("peaceful")
-                self.assertNotIn("incident_report_read", beginning.session._flags)
-                self.assertFalse(beginning.player.inventory.has_item("incident_report"))
-
-    def test_act_one_ending_continues_in_place_into_act_two(self):
-        campaign = Campaign()
-        scene = campaign.load_level("act1")
+    def test_watched_recording_completes_act_without_report_or_early_revelation(self):
+        campaign, scene = self.scene()
         session = scene.session
-        session.tick_presentation(4)
-        finish_conversation(session)
+        self.open(scene)
+        self.solve(session)
+        self.watch(session)
+        self.assertIn("archive_recording_watched", campaign.progress.flags)
+        self.assertIn("Кулон", session.dialog.message)
+        self.assertNotIn("Это я", session.dialog.message)
+        advance_scene(session)
+        self.assertIn("act1:complete", session._flags)
+        self.assertNotIn("incident_report_read", session._flags)
+        self.assertEqual(session.dialog.title, "КОНЕЦ АКТА 2")
+        saved = campaign.puzzle_store.get("cctv_archive", self.definition)
+        self.assertTrue(saved.solved and saved.watched and saved.aftermath_done)
+        restored = Campaign(puzzle_store=campaign.puzzle_store).load_level("act1")
+        self.addCleanup(restored.session.release)
+        advance_scene(restored.session)
+        self.assertEqual(restored.session.dialog.title, "КОНЕЦ АКТА 2")
+        beginning = Campaign(puzzle_store=campaign.puzzle_store).load_level("peaceful")
+        self.addCleanup(beginning.session.release)
+        self.assertNotIn("archive_recording_watched", beginning.session._flags)
+
+    def test_second_act_ending_continues_in_place_into_final_act(self):
+        scene = Campaign().load_level("act1")
+        self.addCleanup(scene.session.release)
+        session = scene.session
+        advance_scene(session)
         position = tuple(scene.player.body.position)
-        session._prepend(session.act, [{"type": "complete_act"}, {"type": "end", "title": "КОНЕЦ АКТА 1", "text": ""}])
+        session._prepend(session.act, [{"type": "complete_act"}, {"type": "end", "title": "КОНЕЦ АКТА 2", "text": ""}])
         session._advance()
         self.assertTrue(session.handle_action("story_continue"))
         self.assertEqual(session.act.id, "act2")
-        self.assertEqual(session.dialog.presentation, "title")
         self.assertEqual(tuple(scene.player.body.position), position)
-        session.tick_presentation(4)
-        finish_conversation(session)
-        self.assertIn("Изучить записи камер", scene.player.objective_status)
+        advance_scene(session)
+        self.assertIn("Вернуться к лестнице", scene.player.objective_status)
 
-    def test_hero_says_the_line_before_unknown_voice_and_escape_never_marks_watched(self):
+    def test_recording_keeps_attacker_anonymous_until_final_act(self):
         puzzle = self.puzzle()
+        self.addCleanup(puzzle.release)
         puzzle.progress.order = list("ABCD")
         puzzle.check()
         puzzle.play()
         seen = []
         previous = None
-        for _ in range(500):
+        for _ in range(3000):
             view = puzzle.view()
             pair = view.speaker, view.caption
             if pair != previous and view.caption:
                 seen.append(pair)
             previous = pair
-            if puzzle.tick(0.1):
+            if puzzle.tick(.25):
                 break
-        hero = next(i for i, (speaker, text) in enumerate(seen) if speaker == "Героиня" and "Оставь" in text)
-        unknown = next(i for i, (speaker, text) in enumerate(seen) if speaker.startswith("Неизвестная") and "Оставь" in text)
-        self.assertLess(hero, unknown)
         self.assertTrue(puzzle.progress.watched)
+        self.assertTrue(any("Авацин" in text for _, text in seen))
+        self.assertTrue(any("Я должна тебя спасти" in text for _, text in seen))
+        self.assertTrue(all(speaker != "Героиня" for speaker, _ in seen))
+        self.assertTrue(all(speaker.startswith(("Подруга", "Неизвестная")) for speaker, _ in seen))
 
     def test_monitor_and_report_are_physically_visible_from_security_room(self):
         _, scene = self.scene()
@@ -286,6 +269,7 @@ class CCTVTests(unittest.TestCase):
             self.assertEqual(archive_action_at(view, point, (1536, 864), (640, 480)), f"archive_frame:{i}")
         self.assertIsNone(archive_action_at(view, (0, 10), (1536, 864), (640, 480)))
         app = Application.__new__(Application)
+        app._menu = None
         app._session, app._inventory_open = scene.session, False
         app._render_size, app._input_bindings = (640, 480), controls.INPUT_BINDINGS
         app._running, app._debug_mode = True, False
@@ -304,6 +288,22 @@ class CCTVTests(unittest.TestCase):
                 puzzle = self.puzzle(CCTVProgressStore(path))
                 self.assertEqual(puzzle.progress.order, list("CADB"))
                 self.assertFalse(puzzle.progress.solved)
+
+    def test_mouse_drag_swaps_frames_on_release(self):
+        _, scene = self.scene()
+        self.open(scene)
+        app = Application.__new__(Application)
+        app._menu = None
+        app._session, app._inventory_open = scene.session, False
+        app._render_size, app._input_bindings = (640, 480), controls.INPUT_BINDINGS
+        app._running, app._debug_mode = True, False
+        cards, _ = archive_layout(scene.session.puzzle_view, (640, 480))
+        events = [pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=cards[0].center),
+                  pygame.event.Event(pygame.MOUSEBUTTONUP, button=1, pos=cards[1].center)]
+        with patch('pygame.event.get', return_value=events):
+            app._handle_events(Mock(), Mock(size=(640, 480)))
+        self.assertEqual(scene.session._puzzle.progress.order, list('ACDB'))
+        self.assertIsNone(scene.session._puzzle.selected)
 
 
 if __name__ == "__main__":

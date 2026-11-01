@@ -90,6 +90,7 @@ class Renderer:
         self._snow = None
         self._player_model = None
         self._entity_models = []
+        self._model_owners = {}
         self._hud = None
         self._debug_hud = None
         self._aim_hud = None
@@ -167,6 +168,7 @@ class Renderer:
                     if getattr(entity, "seated", False) and not getattr(entity, "following", False):
                         mesh.update(0, speed=0, seated=True)
                     self._entity_models.append((entity, mesh))
+                    self._model_owners[id(entity)] = obj
                     self._program["skin_matrices"].value = 10
             if textures is not None:
                 if textures.floor is not None:
@@ -223,7 +225,8 @@ class Renderer:
             body = getattr(entity, "body", None)
             speed = 1.0 if body is not None and body.horizontal_speed > 0.05 else 0.0
             mesh.update(delta_time, speed=speed,
-                        seated=getattr(entity, "seated", False) and not getattr(entity, "following", False))
+                        seated=getattr(entity, "seated", False) and not getattr(entity, "following", False),
+                        offering_help=getattr(entity, "offering_help", False))
 
     def set_camera_markers(self, boxes: tuple[Box, ...]):
         if boxes == self._camera_marker_boxes:
@@ -415,6 +418,8 @@ class Renderer:
                     self._camera.position,
                 )
             for entity, mesh in self._entity_models:
+                if not self._model_owners[id(entity)].boxes:
+                    continue
                 self._render_target.framebuffer.depth_mask = True
                 calls, triangles = mesh.render(entity.model.world_matrix(entity.transform), self._camera.position)
                 model_draw_calls += calls
@@ -567,6 +572,7 @@ class Renderer:
         for _, mesh in self._entity_models:
             mesh.release()
         self._entity_models.clear()
+        self._model_owners.clear()
         if self._inventory is not None:
             self._inventory.release()
             self._inventory = None

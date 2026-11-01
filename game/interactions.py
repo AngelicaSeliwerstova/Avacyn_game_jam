@@ -245,8 +245,10 @@ class InteractionController:
             self.events.add(f"opened:{target.name}")
         elif action.command == "open_door":
             target.set_state("open")
+            self.events.add(f"opened:{target.name}")
         elif action.command == "close_door":
             target.set_state("default")
+            self.events.add(f"closed:{target.name}")
         else:
             raise ValueError(f"Unknown interaction command: {action.command}")
         return action.message

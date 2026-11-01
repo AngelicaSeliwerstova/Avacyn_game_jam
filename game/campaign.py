@@ -27,12 +27,20 @@ class CampaignProgress:
 
 
 class Campaign:
-    def __init__(self, creator_mode: bool = False, *, puzzle_store=None):
+    def __init__(self, creator_mode: bool = False, *, puzzle_store=None, camera_mode="cameras"):
         from game.puzzles.cctv_puzzle import CCTVProgressStore
         self.puzzle_store = CCTVProgressStore() if puzzle_store is None else puzzle_store
         self.progress = CampaignProgress()
         self.creator_mode = creator_mode
         self._scene: RuntimeScene | None = None
+        self.set_camera_mode(camera_mode)
+
+    def set_camera_mode(self, mode):
+        if mode not in ("cameras", "third_person"):
+            raise ValueError(f"Unknown camera mode: {mode}")
+        self.camera_mode = mode
+        if self._scene is not None:
+            self._scene.player.set_camera_mode(mode)
 
     def load_level(self, name: str) -> RuntimeScene:
         level = create_level(name)
@@ -69,6 +77,7 @@ class Campaign:
         )
         player = create_player(level, world, creator_mode=self.creator_mode,
                                inventory=self.progress.inventory)
+        player.set_camera_mode(self.camera_mode)
         if self._scene is not None:
             player.flashlight.light.enabled = self._scene.player.flashlight.light.enabled
         if level.story is not None and not self.creator_mode:

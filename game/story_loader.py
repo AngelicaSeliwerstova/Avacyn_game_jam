@@ -169,10 +169,13 @@ class _ActValidator:
             "puzzle": (("id",), ()), "puzzle_checkpoint": (("id",), ()),
             "archive": ((), ("case",)),
             "audio": (("file",), ("volume",)),
-            "voiceover": (("id",), ()),
+            "voiceover": (("id",), ("audio",)),
             "grant_key": (("id", "name"), ()),
             "focus_camera": (("position", "target"), ()),
             "ambience": (("gain", "seconds"), ()),
+            "release_camera": ((), ()), "first_person": (("enabled",), ()),
+            "offer_help": ((), ()),
+            "clear_event": (("name",), ()),
         }
         for i, step in enumerate(steps):
             loc = f"{where}[{i}]"
@@ -181,7 +184,11 @@ class _ActValidator:
             _check(isinstance(kind, str) and kind in specs, loc + ".type", f"unknown step {kind!r}")
             required, optional = specs[kind]
             _fields(step, loc, ("type", *required), optional)
-            if kind in ("puzzle", "puzzle_checkpoint"):
+            if kind == "clear_event":
+                _text(step["name"], loc + ".name")
+            elif kind == "first_person":
+                _boolean(step["enabled"], loc + ".enabled")
+            elif kind in ("puzzle", "puzzle_checkpoint"):
                 self.ref(step["id"], self.book.data.get("puzzles", {}), loc + ".id")
             elif kind == "archive":
                 _boolean(step.get("case", False), loc + ".case")
@@ -190,6 +197,7 @@ class _ActValidator:
                 _number(step.get("volume", 1), loc + ".volume")
                 _check(step.get("volume", 1) <= 1, loc, "volume must be <= 1")
             elif kind == "voiceover":
+                _boolean(step.get("audio", True), loc + ".audio")
                 self.ref(step["id"], self.act.dialogues, loc + ".id")
                 _check(all("choice" not in line and "audio" in line for line in self.act.dialogues[step["id"]]),
                        loc, "voiceover needs recorded lines without choices")
@@ -231,7 +239,8 @@ class _ActValidator:
                     _text(step["text"], loc + ".text")
                     _number(step.get("fade_seconds", 1), loc + ".fade_seconds", 0.001)
                 else:
-                    _check(step["effect"] in ("interference", "blackout", "fade_to_black", "distortion"), loc, "unsupported visual effect")
+                    _check(step["effect"] in ("interference", "blackout", "fade_to_black", "distortion",
+                                              "fade_to_white", "fade_from_white"), loc, "unsupported visual effect")
             elif kind == "level":
                 _check(isinstance(step["level"], str) and bool(_ID.fullmatch(step["level"])), loc, "invalid level ID")
                 _boolean(step.get("preserve_scene", False), loc + ".preserve_scene")

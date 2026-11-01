@@ -57,6 +57,10 @@ class Window:
             self._fullscreen = True
 
     @property
+    def fullscreen(self) -> bool:
+        return self._fullscreen
+
+    @property
     def size(self) -> tuple[int, int]:
         return pygame.display.get_window_size()
 

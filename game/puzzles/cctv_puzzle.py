@@ -57,6 +57,9 @@ def load_cctv_definition(filename, characters):
             check(step["speaker"] in characters and isinstance(step.get("text"), str), "invalid recording speaker/text")
         if "sound" in step:
             check(step["sound"] in sounds, "unknown recording sound")
+        if "audio" in step:
+            audio = (AUDIO_ROOT / step["audio"]).resolve()
+            check(audio.is_relative_to(AUDIO_ROOT.resolve()) and audio.is_file(), "missing recorded voice")
     return data
 
 
@@ -151,6 +154,16 @@ class CCTVPuzzle:
             self.save()
         self._cue("click")
 
+    def swap(self, first, second):
+        if self.progress.solved or self.playing or not (0 <= first < 4 and 0 <= second < 4):
+            return False
+        self.progress.order[first], self.progress.order[second] = self.progress.order[second], self.progress.order[first]
+        self.selected = None
+        self.message = ""
+        self.save()
+        self._cue("click")
+        return True
+
     def check(self):
         if self.progress.solved or self.playing:
             return self.progress.solved
@@ -193,14 +206,20 @@ class CCTVPuzzle:
             self._typer = DialogueTyper(step["text"], profile)
         if "sound" in step:
             self._cue(step["sound"])
+        if "audio" in step and settings.AUDIO_ENABLED:
+            self._sounds._paths["recording_voice"] = step["audio"]
+            self._sounds.play_voice("recording_voice", 0.8)
 
     def tick(self, delta_time):
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("CCTV delta time must be finite and nonnegative")
         if self._typer is not None:
             cue = self._typer.update(delta_time)
-            if cue and settings.AUDIO_ENABLED and settings.DIALOGUE_BEEPS_ENABLED:
+            recorded = self.playing and "audio" in self.data["recording"][self._step]
+            if cue and settings.AUDIO_ENABLED and settings.DIALOGUE_BEEPS_ENABLED and not recorded:
                 self._voice.play(self._typer.profile, *cue)
+        if not settings.AUDIO_ENABLED:
+            self._sounds.stop()
         if not settings.AUDIO_ENABLED or not settings.DIALOGUE_BEEPS_ENABLED:
             self._voice.stop()
         if not self.playing:

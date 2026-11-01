@@ -73,11 +73,14 @@ class CCTVOverlay(TextOverlay):
                     pygame.draw.line(surface, (64, 83, 71, 220), (16, y), (width - 16, y), 2)
                 self._label(surface, "ПОТЕРЯ СИГНАЛА", (width // 2 - 80, height // 2), font=self._font)
             if view.caption:
-                panel = pygame.Rect(26, height - 155, width - 52, 96)
+                lines = self._wrap_line(view.caption, width - 72, self._caption_font)
+                line_height = self._caption_font.get_linesize()
+                panel_height = 44 + len(lines) * line_height
+                panel = pygame.Rect(26, height - 59 - panel_height, width - 52, panel_height)
                 pygame.draw.rect(surface, (8, 14, 14, 246), panel)
                 self._label(surface, view.speaker, (panel.x + 10, panel.y + 8), font=self._caption_font)
-                for i, line in enumerate(self._wrap_line(view.caption, panel.width - 20, self._caption_font)):
-                    self._label(surface, line, (panel.x + 10, panel.y + 32 + i * 22), (234, 233, 213), self._caption_font)
+                for i, line in enumerate(lines):
+                    self._label(surface, line, (panel.x + 10, panel.y + 32 + i * line_height), (234, 233, 213), self._caption_font)
         else:
             self._label(surface, view.title, (16, 40), font=self._font)
             self._label(surface, view.instruction, (16, 62))
