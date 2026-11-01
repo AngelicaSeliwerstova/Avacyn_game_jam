@@ -8,7 +8,9 @@ import random
 import pygame
 
 from config import settings
-from game.audio_channels import ENVIRONMENT_CHANNELS, MIXER_CHANNELS, RESERVED_CHANNELS, STORY_LOOP_CHANNELS
+from game.audio_channels import (DISCOVERY_CHANNEL, ENVIRONMENT_CHANNELS, MIXER_CHANNELS,
+                                 MUSIC_CHANNEL, RESERVED_CHANNELS, STORY_LOOP_CHANNELS)
+from game.levels.stair_blood import StairBloodDiscovery
 
 
 AUDIO_ROOT = Path(__file__).resolve().parents[1] / "resources/audio"
@@ -46,6 +48,11 @@ def load_audio_profile(name, path=CONFIG_PATH):
     for i, loop in enumerate(loops):
         check(isinstance(loop, dict) and loop.get("sound") in sounds, f"{name}.loops[{i}]", "unknown loop sound")
         volume(loop.get("volume"), f"{name}.loops[{i}].volume")
+    for field in ("music", "blood_cue"):
+        item = profile.get(field)
+        if item is not None:
+            check(isinstance(item, dict) and item.get("sound") in sounds, name + "." + field, "unknown sound")
+            volume(item.get("volume"), name + "." + field + ".volume")
     for field in ("door_volume", "random_volume", "breathing_volume"):
         volume(profile.get(field), name + "." + field)
     interval(profile.get("random_interval"), name + ".random_interval")
@@ -131,6 +138,19 @@ class HospitalSoundBank:
         if channel is not None and pygame.mixer.get_init():
             channel.stop()
 
+    def play_discovery(self, sound_id, volume):
+        """A reserved cue cannot be dropped when all environmental voices are busy."""
+        if volume < 0.005 or not self._ensure():
+            return
+        try:
+            channel = pygame.mixer.Channel(DISCOVERY_CHANNEL)
+            channel.set_volume(volume, volume)
+            channel.play(self._sound(sound_id))
+            channel.set_volume(volume, volume)
+            self._effects[channel] = (volume, volume)
+        except (pygame.error, OSError):
+            self._unavailable = True
+
     def duck_effects(self, gain):
         if not self._ready or not pygame.mixer.get_init():
             return
@@ -182,6 +202,9 @@ class HospitalAudioSystem:
         self._pending_steps = []
         self._story_timers = {item["sound"]: 0.0 for item in self._story_sources}
         self._heard_events = set()
+        self._blood = StairBloodDiscovery(getattr(level, "stair_blood_targets", ()),
+                                         getattr(session, "_flags", set()))
+        self._music_duck_time = 0.0
 
     def _source_active(self, source):
         return (getattr(self.session.act, "id", None) == source["act"]
@@ -201,6 +224,10 @@ class HospitalAudioSystem:
         if not self._started:
             return
         gain = self._gain()
+        music = self.profile.get("music")
+        if music is not None:
+            volume = music["volume"] * gain * (1 - 0.7 * min(1, self._music_duck_time / 0.8))
+            self.sounds.loop(MUSIC_CHANNEL, music["sound"], volume, volume)
         for i, loop in enumerate(self.profile["loops"]):
             volume = loop["volume"] * gain
             self.sounds.loop(i, loop["sound"], volume, volume)
@@ -267,6 +294,13 @@ class HospitalAudioSystem:
             self._loops()
             return
         self._started = True
+        self._music_duck_time = max(0.0, self._music_duck_time - delta_time)
+        cue = self.profile.get("blood_cue")
+        if (cue is not None and self._blood.targets and self._gain() > 0
+                and self._blood.visible(self.player.camera, self.player.body.world)):
+            self.sounds.play_discovery(cue["sound"], cue["volume"] * self._gain())
+            self._blood.flags.add(self._blood.FLAG)
+            self._music_duck_time = 3.0
         self._loops()
         self._story_tick(delta_time)
         pending = []

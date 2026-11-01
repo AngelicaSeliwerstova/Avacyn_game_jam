@@ -47,6 +47,7 @@ class Level:
     story: str | None = None
     stair_surfaces: tuple[Box, ...] = ()
     audio_profile: str | None = None
+    stair_blood_targets: tuple[tuple[float, float, float], ...] = ()
 
     def __post_init__(self):
         if len({obj.name for obj in self.objects}) != len(self.objects):

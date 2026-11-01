@@ -23,7 +23,8 @@ class CompanionState(Enum):
 @dataclass(frozen=True)
 class CompanionSettings:
     speed: float = 3.8
-    repath_interval: float = 0.65
+    catch_up_speed: float = 8.0
+    repath_interval: float = 0.25
     stop_distance: float = 1.4
     resume_distance: float = 2.0
     radius: float = 0.25
@@ -101,9 +102,11 @@ class Companion(Entity):
             TraversalProfile(self.tuning.radius, self.tuning.height, self.tuning.step_height),
         )
 
-    def update(self, delta_time, target_position):
+    def update(self, delta_time, target_position, *, target_speed=0.0):
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("Companion delta time must be finite and nonnegative")
+        if not math.isfinite(target_speed) or target_speed < 0:
+            raise ValueError("Companion target speed must be finite and nonnegative")
         if self.body is None:
             raise RuntimeError("Companion must be bound to a collision world before updating")
         target = self._point(target_position)
@@ -161,7 +164,11 @@ class Companion(Entity):
             stopping = self.tuning.stop_distance if following_target else 0.08
             if distance > stopping and delta_time > 0:
                 self._yaw = math.degrees(math.atan2(-delta.x, -delta.z))
-                velocity = delta / distance * min(self.tuning.speed, (distance - stopping) / delta_time)
+                # Match the player's pace, then close any gap left by turns or stairs.
+                pace = max(self.tuning.speed, target_speed)
+                catch_up = max(0.0, distance_to_player - self.tuning.resume_distance) * 1.5
+                speed = min(max(self.tuning.speed, self.tuning.catch_up_speed), pace + catch_up)
+                velocity = delta / distance * min(speed, (distance - stopping) / delta_time)
             self.state = CompanionState.CHASE
         self.body.update(delta_time, velocity)
         if glm.length(velocity) > 0.01 and self.body.horizontal_speed < 0.02:

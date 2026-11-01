@@ -7,6 +7,8 @@
     "creak": "hospital/door_creak.wav",
     "monitor": "hospital/monitor_beep.wav",
     "breathing": "hospital/breathing.wav",
+    "hospital_music": "music/hospital_theme.wav",
+    "blood_sting": "music/blood_sting.wav",
     "distant_step": "footsteps/doctor_step_01.wav"
   },
   "profiles": {
@@ -28,6 +30,8 @@
       ]
     },
     "abandoned": {
+      "music": {"sound": "hospital_music", "volume": 0.30},
+      "blood_cue": {"sound": "blood_sting", "volume": 0.72},
       "breathing_volume": 0.44,
       "loops": [
         {"sound": "room_tone", "volume": 0.36},

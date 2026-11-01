@@ -64,7 +64,8 @@ class CompanionSystem:
         if not self.player.body.grounded:
             target.y = self.player.body.world.support_height(target, self.player.body.radius, target.y)
         for ally in self.companions:
-            ally.update(min(delta_time, settings.MAX_DELTA_TIME), target)
+            ally.update(min(delta_time, settings.MAX_DELTA_TIME), target,
+                        target_speed=self.player.body.horizontal_speed)
 
     def debug_paths(self):
         return tuple(DebugPath((tuple(ally.body.position), *ally.remaining_path))

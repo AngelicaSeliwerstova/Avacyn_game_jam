@@ -1,0 +1,35 @@
+[
+  {
+    "id": "hospital_theme",
+    "author": "Tarush Singhal",
+    "title": "PS2 horror / mystery ambient theme",
+    "url": "https://opengameart.org/content/ps2-horror-mystery-ambient-theme",
+    "download_url": "https://opengameart.org/sites/default/files/amb.mp3",
+    "license": "CC0-1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "crossfade": 4.0,
+    "verified_date": "2026-11-01",
+    "file": "hospital_theme.wav",
+    "duration": 94.17698412698412,
+    "source_sha256": "3fdde74b4e22762c3ef3108aa7df1d9401de4bbec20a9452cf922d7125fe5903",
+    "sha256": "f60d601d943a85b7f0c247357d4210aded71c44ed0db43b3da8cba56f109fb4b",
+    "processing": "MP3 decoded to mono 44100 Hz/16-bit PCM; DC removal, RMS/peak leveling; 4-second equal-power loop crossfade for music; 3.6-second excerpt and 1-second tail fade for cue."
+  },
+  {
+    "id": "blood_sting",
+    "author": "MouthlessGames",
+    "title": "Creepy Piano Sfx — bam.mp3",
+    "url": "https://opengameart.org/content/creepy-piano-sfx",
+    "download_url": "https://opengameart.org/sites/default/files/bam_0.mp3",
+    "license": "CC-BY-3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/",
+    "seconds": 3.6,
+    "crossfade": 0.0,
+    "verified_date": "2026-11-01",
+    "file": "blood_sting.wav",
+    "duration": 3.6,
+    "source_sha256": "d6a954f1620b3cbf94851a211d5f6e526dcad3242b080d35aa994c88890aac48",
+    "sha256": "af3fa5a1877d91dbd35bc986bac867d4eb2895fe940840b745a5550c9cd90573",
+    "processing": "MP3 decoded to mono 44100 Hz/16-bit PCM; DC removal, RMS/peak leveling; 4-second equal-power loop crossfade for music; 3.6-second excerpt and 1-second tail fade for cue."
+  }
+]

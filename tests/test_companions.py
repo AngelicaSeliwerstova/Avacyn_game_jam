@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import glm
 
+from config import settings
 from engine.collision.world3d import CollisionWorld3D
 from engine.navigation.graph import NavigationGraph, PathResult
 from engine.scene.box import Box
@@ -17,9 +18,9 @@ from game.levels.objects import build_objects
 from test_hospital import make_body
 
 
-def fixture(boxes=(), graph=None, objects=(), position=(-4, 0, 0)):
+def fixture(boxes=(), graph=None, objects=(), position=(-4, 0, 0), floor_size=(20, 20)):
     ally = Companion("ally", position, appearance="boxes")
-    level = Level((20, 20), 1, boxes, (4, 1.6, 0), (3, 1.6, 0), ((80, 80, 80),) * 2,
+    level = Level(floor_size, 1, boxes, (4, 1.6, 0), (3, 1.6, 0), ((80, 80, 80),) * 2,
                   objects=(ally.scene_object,) + objects, navigation=graph)
     world = CollisionWorld3D((b.collider for b in boxes), level.floor_bounds, objects=level.objects)
     player = create_player(level, world)
@@ -28,6 +29,30 @@ def fixture(boxes=(), graph=None, objects=(), position=(-4, 0, 0)):
 
 
 class CompanionTests(unittest.TestCase):
+    def test_keeps_up_with_continuous_sprint_at_different_frame_rates(self):
+        for fps in (30, 60, 120):
+            with self.subTest(fps=fps):
+                ally, player, system = fixture(position=(-2, 0, 0), floor_size=(160, 20))
+                player.body = make_body(player.body.world, (0, 0, 0))
+                for _ in range(fps * 8):
+                    player.body.update(1 / fps, glm.vec3(settings.SPRINT_SPEED, 0, 0))
+                    system.update(1 / fps)
+                self.assertLess(glm.distance(ally.body.position, player.body.position), 2.3)
+                for _ in range(fps * 2):
+                    player.body.update(1 / fps, glm.vec3(0))
+                    system.update(1 / fps)
+                self.assertAlmostEqual(glm.distance(ally.body.position, player.body.position),
+                                       ally.tuning.stop_distance, places=3)
+
+    def test_catches_up_from_far_away_with_physical_bounded_movement(self):
+        ally, player, system = fixture(position=(-20, 0, 0), floor_size=(80, 20))
+        for _ in range(240):
+            before = ally.body.position
+            system.update(1 / 60)
+            self.assertLessEqual(glm.distance(before, ally.body.position), ally.tuning.catch_up_speed / 60 + 1e-5)
+            self.assertFalse(ally.body.world.is_blocked(ally.body.position, 0.249, 1.799))
+        self.assertLess(glm.distance(ally.body.position, player.body.position), 1.5)
+
     def test_follows_through_security_reception_and_open_stair_lobby(self):
         scene = Campaign().load_level("start")
         system = next(s for s in scene.systems if isinstance(s, CompanionSystem))
@@ -215,7 +240,8 @@ class CompanionTests(unittest.TestCase):
             self.assertAlmostEqual(ally.body.position.y, goal[1], places=3)
 
     def test_invalid_settings_are_rejected(self):
-        for data in ({"speed": 0}, {"stop_distance": 0}, {"resume_distance": 1}, {"speed": math.nan}):
+        for data in ({"speed": 0}, {"stop_distance": 0}, {"resume_distance": 1}, {"speed": math.nan},
+                     {"catch_up_speed": 0}, {"catch_up_speed": math.inf}):
             with self.assertRaises(ValueError):
                 CompanionSettings(**data)
 

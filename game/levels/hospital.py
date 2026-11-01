@@ -296,7 +296,10 @@ def build_hospital(level: Level, peaceful: bool = False) -> Level:
         )
     if not peaceful:
         from game.levels.stair_blood import stair_blood
-        result = replace(result, decorations=stair_blood(stair) + result.decorations)
+        blood = stair_blood(stair)
+        result = replace(result, decorations=blood + result.decorations,
+                         stair_blood_targets=tuple((box.position[0], box.position[1] + 0.015, box.position[2])
+                                                   for box in blood if box.position[1] < 0.02 and box.size[0] >= 1))
     if any(obj.entity is not None and hasattr(obj.entity, "following") for obj in result.objects):
         from game.levels.hospital_navigation import build_hospital_navigation
         storey_definitions = None

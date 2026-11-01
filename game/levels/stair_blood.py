@@ -2,7 +2,35 @@
 
 import random
 
+import glm
+
+from config import settings
+from engine.raycasting.aabb import cast_ray
+from engine.rendering.visibility import ViewFrustum
 from engine.scene.box import Box
+
+
+class StairBloodDiscovery:
+    """Notice a pool only when the rendered camera can actually see it."""
+
+    FLAG = "hospital:stair_blood_seen"
+
+    def __init__(self, targets, flags):
+        self.targets, self.flags = targets, flags
+
+    def visible(self, camera, world):
+        if not self.targets or self.FLAG in self.flags:
+            return False
+        frustum = ViewFrustum(camera.projection_matrix(settings.RENDER_SIZE[0] / settings.RENDER_SIZE[1])
+                              * camera.view_matrix)
+        for point in self.targets:
+            offset = glm.vec3(point) - camera.position
+            distance = glm.length(offset)
+            if not 0.05 < distance <= 18 or not frustum.intersects(point, (0, 0, 0)):
+                continue
+            if cast_ray(camera.position, offset, world.colliders, distance - 0.03) is None:
+                return True
+        return False
 
 
 def stair_blood(stair):
