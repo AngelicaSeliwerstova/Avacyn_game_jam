@@ -479,9 +479,8 @@
           "seconds": 1.2
         },
         {
-          "type": "voiceover",
-          "id": "cradle_memory",
-          "audio": false
+          "type": "dialogue",
+          "id": "cradle_memory"
         },
         {
           "type": "flags",
@@ -499,18 +498,16 @@
           "seconds": 2.5
         },
         {
-          "type": "voiceover",
-          "id": "memory_outro_first",
-          "audio": false
+          "type": "dialogue",
+          "id": "memory_outro_first"
         },
         {
           "type": "wait",
           "seconds": 1
         },
         {
-          "type": "voiceover",
-          "id": "memory_outro_second",
-          "audio": false
+          "type": "dialogue",
+          "id": "memory_outro_second"
         },
         {
           "type": "wait",

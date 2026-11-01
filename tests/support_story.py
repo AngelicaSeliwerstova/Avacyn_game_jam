@@ -43,10 +43,12 @@ def finish_office(session):
 
 
 def finish_memory(session):
-    """Advance real presentation and world time, including automatic voices and pauses."""
+    """Read the memory dialogue and advance the surrounding effects and pauses."""
     for _ in range(1600):
         if session.dialog is not None and session.dialog.presentation == "ending":
             return
+        if session.dialog is not None and session.dialog.presentation in ("conversation", "memory"):
+            finish_conversation(session)
         session.tick_presentation(.1)
         session.update(.1)
     raise AssertionError("Memory did not reach ending")

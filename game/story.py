@@ -330,11 +330,7 @@ class StorySession(GameSession):
             return
         if self._puzzle is not None:
             if self._puzzle.tick(delta_time):
-                puzzle = self._puzzle
-                self._sync_puzzle_flags()
-                if not puzzle.progress.aftermath_done:
-                    self.player.story_events.add(f"watched:{puzzle.id}")
-                self._close_puzzle()
+                self._finish_recording()
             else:
                 self.puzzle_view = self._puzzle.view()
             return
@@ -565,6 +561,13 @@ class StorySession(GameSession):
         self.puzzle_view = None
         self._advance()
 
+    def _finish_recording(self):
+        puzzle = self._puzzle
+        self._sync_puzzle_flags()
+        if not puzzle.progress.aftermath_done:
+            self.player.story_events.add(f"watched:{puzzle.id}")
+        self._close_puzzle()
+
     def handle_puzzle_action(self, action):
         if self._puzzle is None:
             return False
@@ -573,7 +576,13 @@ class StorySession(GameSession):
             self._close_puzzle()
             return True
         if puzzle.playing:
-            return False
+            if action != "archive_next":
+                return False
+            if puzzle.continue_recording():
+                self._finish_recording()
+            else:
+                self.puzzle_view = puzzle.view()
+            return True
         if action.startswith("archive_swap:"):
             values = action.split(":")[1:]
             if len(values) != 2 or any(value not in ("0", "1", "2", "3") for value in values):

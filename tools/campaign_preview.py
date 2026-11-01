@@ -86,6 +86,7 @@ def capture():
     puzzle.play()
     puzzle._step = next(i for i, step in enumerate(puzzle.data['recording']) if len(step.get('text', '')) > 250)
     puzzle._begin_step()
+    puzzle.continue_recording()  # Show the full long caption for layout inspection.
     overlay = CCTVOverlay(context, create_hud_style())
     pygame.image.save(overlay.surface(puzzle.view(), (640, 480)), str(output / 'recording_subtitles.png'))
     overlay.release()

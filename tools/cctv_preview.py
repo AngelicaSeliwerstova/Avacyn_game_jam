@@ -33,6 +33,8 @@ def capture():
         if view.speaker.startswith("Неизвестная") and view.caption:
             views.append(("unknown-line", view))
             break
+        if puzzle.playing:
+            puzzle.continue_recording()
     original_render, original_mode = Renderer.render, pygame.display.set_mode
     frame = 0
 

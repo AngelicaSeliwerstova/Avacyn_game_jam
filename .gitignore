@@ -4,3 +4,5 @@ __pycache__/
 artifacts/
 logs/
 saves/
+build/
+dist/

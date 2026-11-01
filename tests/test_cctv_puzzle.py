@@ -1,4 +1,5 @@
 import itertools
+from collections import defaultdict
 import json
 from pathlib import Path
 import tempfile
@@ -10,6 +11,7 @@ import pygame
 
 from config import controls, settings
 from engine.core.application import Application
+from engine.input.keyboard_mouse import KeyboardMouse
 from engine.rendering.cctv_overlay import CCTVOverlay, archive_action_at, archive_layout
 from engine.scene.camera import Camera
 from game.campaign import Campaign
@@ -66,6 +68,8 @@ class CCTVTests(unittest.TestCase):
             session.handle_puzzle_action("archive_play")
         for _ in range(3000):
             session.tick_presentation(0.1)
+            if session.puzzle_active:
+                session.handle_puzzle_action('archive_next')
             if not session.puzzle_active:
                 session.update(0)
                 return
@@ -232,7 +236,7 @@ class CCTVTests(unittest.TestCase):
             if pair != previous and view.caption:
                 seen.append(pair)
             previous = pair
-            if puzzle.tick(.25):
+            if puzzle.tick(.25) or puzzle.continue_recording():
                 break
         self.assertTrue(puzzle.progress.watched)
         self.assertTrue(any("Авацин" in text for _, text in seen))
@@ -280,6 +284,47 @@ class CCTVTests(unittest.TestCase):
         self.assertFalse(app._simulation_paused)
         device.end_modal.assert_called_once()
 
+    def test_dialogue_to_archive_keeps_cursor_visible_until_archive_closes(self):
+        _, scene = self.scene()
+        session = scene.session
+        monitor = next(o for o in scene.level.objects if o.name == 'security_archive')
+        scene.player._interactions._activate(monitor)
+        session.update(0)
+        self.assertIsNotNone(session.dialog)
+        app = Application.__new__(Application)
+        app._menu = None
+        app._session, app._inventory_open = session, False
+        app._render_size, app._input_bindings = (640, 480), controls.INPUT_BINDINGS
+        app._running, app._debug_mode = True, False
+        window = Mock(size=(640, 480))
+        with patch('pygame.event.set_grab') as grab, patch('pygame.mouse.set_visible') as visible, \
+                patch('pygame.mouse.get_rel', return_value=(0, 0)), \
+                patch('pygame.key.get_focused', return_value=True), \
+                patch('pygame.key.get_pressed', return_value=defaultdict(bool)):
+            device = KeyboardMouse(controls.INPUT_BINDINGS)
+            device.begin_modal()
+            for _ in range(80):
+                if session.puzzle_active:
+                    break
+                session.reveal_dialogue()
+                with patch('pygame.event.get', return_value=[pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e)]):
+                    app._handle_events(device, window)
+            self.assertTrue(session.puzzle_active)
+            self.assertEqual(device.status_text, 'CURSOR FREE')
+            visible.assert_called_with(True)
+            grab.assert_called_with(False)
+            cards, _ = archive_layout(session.puzzle_view, (640, 480))
+            drag = [pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=cards[0].center),
+                    pygame.event.Event(pygame.MOUSEBUTTONUP, button=1, pos=cards[1].center)]
+            with patch('pygame.event.get', return_value=drag):
+                app._handle_events(device, window)
+            self.assertEqual(session._puzzle.progress.order, list('ACDB'))
+            with patch('pygame.event.get', return_value=[pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)]):
+                app._handle_events(device, window)
+            self.assertFalse(session.puzzle_active)
+            self.assertEqual(device.status_text, 'CAPTURED')
+            visible.assert_called_with(False)
+
     def test_corrupt_checkpoint_falls_back_without_breaking_the_level(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "archive.json"
@@ -316,11 +361,43 @@ class CCTVTests(unittest.TestCase):
             puzzle.check()
             puzzle.play()
             for _ in range(3000):
-                if puzzle.tick(.25):
+                if puzzle.tick(.25) or puzzle.continue_recording():
                     break
         self.assertTrue(puzzle.progress.watched)
         puzzle._voice.play.assert_called()
         puzzle._sounds.play_voice.assert_not_called()
+
+    def test_playback_text_waits_for_e_and_enter_to_reveal_then_continue(self):
+        _, scene = self.scene()
+        self.open(scene)
+        session = scene.session
+        self.solve(session)
+        session.handle_puzzle_action('archive_play')
+        session.handle_puzzle_action('archive_next')  # Intro footsteps.
+        puzzle = session._puzzle
+        first_step = puzzle._step
+        first_text = puzzle.data['recording'][first_step]['text']
+        self.assertEqual(session.puzzle_view.caption, '')
+        self.assertTrue(session.puzzle_view.typing)
+        app = Application.__new__(Application)
+        app._menu = None
+        app._session, app._inventory_open = session, False
+        app._render_size, app._input_bindings = (640, 480), controls.INPUT_BINDINGS
+        app._running, app._debug_mode = True, False
+        with patch('pygame.event.get', return_value=[pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e)]):
+            app._handle_events(Mock(), Mock(size=(640, 480)))
+        self.assertEqual(session.puzzle_view.caption, first_text)
+        self.assertFalse(session.puzzle_view.typing)
+        for _ in range(200):
+            session.tick_presentation(.25)
+        self.assertEqual(puzzle._step, first_step)
+        self.assertNotIn('archive_recording_watched', session._flags)
+        with patch('pygame.event.get', return_value=[pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN)]):
+            app._handle_events(Mock(), Mock(size=(640, 480)))
+        self.assertEqual(puzzle._step, first_step + 1)
+        self.assertTrue(session.puzzle_view.typing)
+        _, buttons = archive_layout(session.puzzle_view, (640, 480))
+        self.assertIn('archive_next', {action for action, _, _ in buttons})
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import argparse
-from pathlib import Path
 
 from config import controls, settings
+from config.paths import data_directory
 from engine.core.application import Application
 from engine.rendering.options import RenderOptions
 from game.effects import create_postprocess_presets
@@ -14,10 +14,10 @@ from game.puzzles.cctv_puzzle import CCTVProgressStore
 def run_session(creator_mode: bool = False, debug_mode: bool = False, level_name: str | None = None,
                 *, resume_archive: bool = False, show_menu: bool = False):
     campaign = Campaign(creator_mode=creator_mode, puzzle_store=CCTVProgressStore(
-        Path(__file__).resolve().parent / "saves/hospital_archives.json", resume=resume_archive))
+        data_directory() / "saves/hospital_archives.json", resume=resume_archive))
     scene = campaign.load_level(settings.LEVEL_NAME if level_name is None else level_name)
     from game.menu import GameMenu
-    menu = None if creator_mode else GameMenu(Path(__file__).resolve().parent / "saves/settings.json",
+    menu = None if creator_mode else GameMenu(data_directory() / "saves/settings.json",
                                              start_screen=show_menu, on_camera_mode_changed=campaign.set_camera_mode)
     if menu is not None:
         campaign.set_camera_mode(menu.camera_mode)

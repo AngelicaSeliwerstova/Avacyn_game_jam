@@ -1,9 +1,9 @@
 import gc
 from time import perf_counter
 from collections.abc import Callable
-from pathlib import Path
 
 import pygame
+from config.paths import data_directory
 
 from engine.core.window import Window
 from engine.debug.panel import DebugSettings, DeveloperPanel
@@ -110,7 +110,7 @@ class Application:
 
         try:
             if self._debug_mode:
-                frame_log = SlowFrameLog(Path(__file__).resolve().parents[2] / "logs")
+                frame_log = SlowFrameLog(data_directory() / "logs")
                 print(f"Performance log: {frame_log.path}")
             window = Window(
                 size=self._window_size,
@@ -432,7 +432,9 @@ class Application:
                         action = "archive_close"
                     elif key in ("1", "2", "3", "4"):
                         action = f"archive_frame:{int(key) - 1}"
-                    elif key == "return":
+                    elif key in ("e", "return", "keypad enter") and self._session.puzzle_view.playing:
+                        action = "archive_next"
+                    elif key in ("return", "keypad enter"):
                         action = "archive_play" if self._session.puzzle_view.solved else "archive_check"
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     action = archive_action_at(self._session.puzzle_view, event.pos, window.size, self._render_size)
@@ -492,7 +494,7 @@ class Application:
                     action = dialog_action_at(self._session.dialog, event.pos, window.size, self._render_size)
                 if action is not None:
                     if self._session.handle_action(action):
-                        if self._session.dialog is None:
+                        if self._session.dialog is None and not self._session.puzzle_active:
                             input_device.end_modal()
                             input_device.reset_after_loading()
                         continue

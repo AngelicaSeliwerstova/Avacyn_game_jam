@@ -10,7 +10,9 @@ def archive_layout(view, size):
     cw, ch = (width - 44) // 2, (height - 206) // 2
     cards = tuple(pygame.Rect(margin + i % 2 * (cw + gap), 76 + i // 2 * (ch + gap), cw, ch) for i in range(4))
     labels = [("archive_close", "Закрыть · Esc")]
-    if not view.playing:
+    if view.playing:
+        labels.insert(0, ("archive_next", "Показать целиком · E / Enter" if view.typing else "Далее · E / Enter"))
+    else:
         labels.insert(0, ("archive_play" if view.solved else "archive_check", "Смотреть запись" if view.solved else "Восстановить запись"))
         if not view.solved:
             labels.insert(1, ("archive_reset", "Сбросить"))
@@ -72,10 +74,11 @@ class CCTVOverlay(TextOverlay):
                 for y in range(48, height - 60, 4):
                     pygame.draw.line(surface, (64, 83, 71, 220), (16, y), (width - 16, y), 2)
                 self._label(surface, "ПОТЕРЯ СИГНАЛА", (width // 2 - 80, height // 2), font=self._font)
-            if view.caption:
+            if view.full_caption or view.caption:
+                full_lines = self._wrap_line(view.full_caption or view.caption, width - 72, self._caption_font)
                 lines = self._wrap_line(view.caption, width - 72, self._caption_font)
                 line_height = self._caption_font.get_linesize()
-                panel_height = 44 + len(lines) * line_height
+                panel_height = 44 + len(full_lines) * line_height
                 panel = pygame.Rect(26, height - 59 - panel_height, width - 52, panel_height)
                 pygame.draw.rect(surface, (8, 14, 14, 246), panel)
                 self._label(surface, view.speaker, (panel.x + 10, panel.y + 8), font=self._caption_font)

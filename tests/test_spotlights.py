@@ -122,20 +122,32 @@ class SpotlightsTests(unittest.TestCase):
         self.assertAlmostEqual(doctor.body.position.y,4.8,places=3)
 
     @patch.object(settings,'AUDIO_ENABLED',False)
-    def test_act_ending_shows_subtitles_without_synthesized_speech(self):
+    def test_memory_uses_manual_dialogue_with_blips_without_synthesized_speech(self):
         _,scene=self.begin()
         session=scene.session
         bank=Mock()
         bank._paths={}
         session._cue_sounds=bank
+        session._voice=Mock()
         session._flags.add('act0:nursery_open')
         cradle=next(o for o in scene.level.objects if o.name=='f2_nursery_cradle')
         scene.player._interactions._activate(cradle)
         with patch.object(settings,'AUDIO_ENABLED',True):
             session.update(0)
             session.tick_presentation(1.2)
-            self.assertEqual(session.dialog.presentation,'voiceover')
+            self.assertEqual(session.dialog.presentation,'conversation')
             self.assertIn('Мам, ты опять',session.dialog.message)
+            self.assertEqual(session.dialog.visible_characters,0)
+            self.assertTrue({'e','return'} <= set(session.dialog.buttons[0].keys))
+            session.tick_presentation(.1)
+            session._voice.play.assert_called()
+            first=session.dialog.message
+            self.assertTrue(session.handle_action('story_next'))
+            self.assertEqual(session.dialog.visible_characters,len(first))
+            session.tick_presentation(30)
+            self.assertEqual(session.dialog.message,first)
+            self.assertTrue(session.handle_action('story_next'))
+            self.assertNotEqual(session.dialog.message,first)
             finish_memory(session)
         bank.play_voice.assert_not_called()
         self.assertIn('act0:memory_heard',session._flags)

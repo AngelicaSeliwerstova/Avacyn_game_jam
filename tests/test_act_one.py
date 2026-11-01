@@ -83,6 +83,8 @@ class RevisedCampaignTests(unittest.TestCase):
         self.interact(scene, 'security_archive')
         for _ in range(3000):
             session.tick_presentation(.25)
+            if session.puzzle_active:
+                session.handle_puzzle_action('archive_next')
             if not session.puzzle_active:
                 break
         else:

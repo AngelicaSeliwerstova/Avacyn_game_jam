@@ -25,3 +25,5 @@ class ArchiveView:
     speaker: str = ""
     caption: str = ""
     interference: bool = False
+    full_caption: str = ""
+    typing: bool = False

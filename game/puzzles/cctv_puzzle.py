@@ -221,9 +221,24 @@ class CCTVPuzzle:
             self._voice.stop()
         if not self.playing:
             return False
+        if self._typer is not None:
+            return False
         self._elapsed += min(delta_time, 0.25)
         if self._elapsed < self.data["recording"][self._step]["seconds"]:
             return False
+        return self._next_step()
+
+    def continue_recording(self):
+        """Reveal the current line first, then advance on the next press."""
+        if not self.playing:
+            return False
+        if self._typer is not None and not self._typer.finished:
+            self._typer.reveal()
+            self._voice.stop()
+            return False
+        return self._next_step()
+
+    def _next_step(self):
         self._elapsed = 0.0
         self._step += 1
         if self._step < len(self.data["recording"]):
@@ -244,7 +259,11 @@ class CCTVPuzzle:
                            self.message or self.store.warning, self.playing,
                            order.index(step["frame"]) if self.playing else 0,
                            self.characters.get(step.get("speaker"), {}).get("name", ""),
-                           step.get("text", "") if self.playing else "", step.get("interference", False) if self.playing else False)
+                           (step.get("text", "")[:self._typer.visible] if self._typer is not None
+                            else step.get("text", "")) if self.playing else "",
+                           step.get("interference", False) if self.playing else False,
+                           full_caption=step.get("text", "") if self.playing else "",
+                           typing=self.playing and self._typer is not None and not self._typer.finished)
 
     def stop(self):
         self.playing = False
