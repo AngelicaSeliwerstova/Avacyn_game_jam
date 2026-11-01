@@ -5,7 +5,6 @@ import math
 from pathlib import Path
 
 from engine.scene.archive import ArchiveFrame, ArchiveView
-from game.dialogue_voice import DialogueTyper, DialogueVoice, DialogueVoiceProfile
 from game.hospital_audio import HospitalSoundBank
 from config import settings
 
@@ -23,6 +22,7 @@ def load_cctv_definition(filename, characters):
     check(path.is_relative_to(PUZZLES_ROOT.resolve()), "puzzle path must stay inside resources/puzzles")
     data = json.loads(path.read_text(encoding="utf-8"))
     check(isinstance(data, dict) and data.get("version") == 1, "unsupported CCTV format")
+    check(type(data.get("speech_enabled", False)) is bool, "speech_enabled must be true or false")
     for key in ("title", "instruction", "incorrect", "correct", "hint", "solved_flag", "watched_flag", "report_flag"):
         check(isinstance(data.get(key), str) and bool(data[key].strip()), f"missing text {key}")
     frames = data.get("frames")
@@ -128,8 +128,6 @@ class CCTVPuzzle:
         self.playing = False
         self._step = 0
         self._elapsed = 0.0
-        self._typer = None
-        self._voice = DialogueVoice()
         self._sounds = HospitalSoundBank(definition["sounds"])
 
     def save(self):
@@ -186,8 +184,6 @@ class CCTVPuzzle:
     def hint(self):
         if self.progress.attempts >= 2 and not self.progress.solved and not self.playing:
             self.message = self.characters["doctor"]["name"] + ": " + self.data["hint"]
-            self._voice.stop()
-            self._typer = DialogueTyper(self.data["hint"], DialogueVoiceProfile.from_data(self.characters["doctor"].get("voice")))
 
     def play(self):
         if not self.progress.solved:
@@ -198,30 +194,15 @@ class CCTVPuzzle:
         self._begin_step()
 
     def _begin_step(self):
-        self._voice.stop()
         step = self.data["recording"][self._step]
-        self._typer = None
-        if "speaker" in step:
-            profile = DialogueVoiceProfile.from_data(self.characters[step["speaker"]].get("voice"))
-            self._typer = DialogueTyper(step["text"], profile)
         if "sound" in step:
             self._cue(step["sound"])
-        if "audio" in step and settings.AUDIO_ENABLED:
-            self._sounds._paths["recording_voice"] = step["audio"]
-            self._sounds.play_voice("recording_voice", 0.8)
 
     def tick(self, delta_time):
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("CCTV delta time must be finite and nonnegative")
-        if self._typer is not None:
-            cue = self._typer.update(delta_time)
-            recorded = self.playing and "audio" in self.data["recording"][self._step]
-            if cue and settings.AUDIO_ENABLED and settings.DIALOGUE_BEEPS_ENABLED and not recorded:
-                self._voice.play(self._typer.profile, *cue)
         if not settings.AUDIO_ENABLED:
             self._sounds.stop()
-        if not settings.AUDIO_ENABLED or not settings.DIALOGUE_BEEPS_ENABLED:
-            self._voice.stop()
         if not self.playing:
             return False
         self._elapsed += min(delta_time, 0.25)
@@ -251,10 +232,7 @@ class CCTVPuzzle:
 
     def stop(self):
         self.playing = False
-        self._voice.stop()
-        self._typer = None
         self._sounds.stop()
 
     def release(self):
         self.stop()
-        self._voice.release()

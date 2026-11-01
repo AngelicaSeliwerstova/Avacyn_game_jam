@@ -266,6 +266,12 @@
           "id": "realization"
         },
         {
+          "type": "flags",
+          "add": [
+            "act2:doctor_revealed"
+          ]
+        },
+        {
           "type": "dialogue",
           "id": "resolution"
         },

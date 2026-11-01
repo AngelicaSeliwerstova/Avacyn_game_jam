@@ -13,6 +13,7 @@ class InteractionController:
 
     _RAY_GRID_CELL_SIZE = 4.0
     _RAY_GRID_MARGIN = 1e-4
+    _NEARBY_TARGET_DISTANCE = 1.25
 
     def __init__(self, boxes: tuple[Box, ...], reach: float, message_seconds: float, key_label: str,
                  objects: tuple[SceneObject, ...] = (), inventory: Inventory | None = None,
@@ -41,7 +42,8 @@ class InteractionController:
         self._message = ""
         self._remaining = 0.0
 
-    def update(self, delta_time: float, camera: Camera, pressed: bool = False, reach_origin=None):
+    def update(self, delta_time: float, camera: Camera, pressed: bool = False, reach_origin=None,
+               *, prefer_nearby=False):
         self._refresh_objects()
         self._remaining = max(0.0, self._remaining - delta_time)
         self.focused = None
@@ -58,11 +60,15 @@ class InteractionController:
                     alignment, view_distance = visible_score
                     # A nearby companion must not steal E from a visible document,
                     # key or door simply because the fixed camera centres on them.
-                    candidates.append((target.interaction.command == "talk", alignment,
-                                       self._surface_distance(reach_origin, collider),
+                    distance = self._surface_distance(reach_origin, collider)
+                    # Fixed-camera players choose by walking closer, since the
+                    # camera's centre cannot be aimed at a particular object.
+                    close = prefer_nearby and distance <= self._NEARBY_TARGET_DISTANCE
+                    priority = (0, distance, alignment) if close else (1, alignment, distance)
+                    candidates.append((target.interaction.command == "talk", *priority,
                                        view_distance, target))
             if candidates:
-                self.focused = min(candidates, key=lambda item: item[:4])[-1]
+                self.focused = min(candidates, key=lambda item: item[:-1])[-1]
         if pressed and self.focused is not None:
             self._message = self._activate(self.focused)
             self._remaining = self._message_seconds

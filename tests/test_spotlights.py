@@ -122,7 +122,7 @@ class SpotlightsTests(unittest.TestCase):
         self.assertAlmostEqual(doctor.body.position.y,4.8,places=3)
 
     @patch.object(settings,'AUDIO_ENABLED',False)
-    def test_act_ending_shows_subtitles_and_recorded_memory_voices(self):
+    def test_act_ending_shows_subtitles_without_synthesized_speech(self):
         _,scene=self.begin()
         session=scene.session
         bank=Mock()
@@ -137,14 +137,14 @@ class SpotlightsTests(unittest.TestCase):
             self.assertEqual(session.dialog.presentation,'voiceover')
             self.assertIn('Мам, ты опять',session.dialog.message)
             finish_memory(session)
-        self.assertEqual(bank.play_voice.call_count, 6)
+        bank.play_voice.assert_not_called()
         self.assertIn('act0:memory_heard',session._flags)
         self.assertIn('act0:complete',session._flags)
         self.assertEqual(session.dialog.presentation,'ending')
         bank.play_discovery.assert_called_with('act0/corridor_unknown.wav',0.45)
 
     @patch.object(settings,'AUDIO_ENABLED',False)
-    def test_voice_pages_do_not_replay_recordings_and_mute_keeps_automatic_timing(self):
+    def test_voice_pages_stay_silent_and_keep_automatic_timing(self):
         _,scene=self.begin()
         session=scene.session
         bank=Mock()
@@ -154,19 +154,17 @@ class SpotlightsTests(unittest.TestCase):
         session._prepend(session.act,[{'type':'voiceover','id':'cradle_memory'}])
         with patch.object(settings,'AUDIO_ENABLED',True):
             session._advance()
-            self.assertEqual(bank.play_voice.call_count,1)
-            # First recorded line needs two subtitle pages; turning a page must
-            # leave the recording playing on its own channel.
+            bank.play_voice.assert_not_called()
+            # Subtitle pages retain their timing without synthesized speech.
             first_page_time=session._voice_remaining
             session.tick_presentation(first_page_time)
-            self.assertEqual(bank.play_voice.call_count,1)
+            bank.play_voice.assert_not_called()
             self.assertEqual(session.dialog.presentation,'voiceover')
             for _ in range(900):
                 session.tick_presentation(.1)
                 if session.dialog is None:
                     break
-            self.assertEqual([c.args[0] for c in bank.play_voice.call_args_list],
-                             [line['audio'] for line in session.act.dialogues['cradle_memory']])
+            bank.play_voice.assert_not_called()
         session._prepend(session.act,[{'type':'voiceover','id':'memory_outro_first'}])
         session._advance()
         session.tick_presentation(.1)

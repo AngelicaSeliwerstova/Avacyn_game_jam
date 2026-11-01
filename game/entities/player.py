@@ -424,6 +424,7 @@ class Player(Entity):
         self._interactions.update(
             delta_time, self.camera, inputs.interact,
             reach_origin=tuple(self._interaction_camera.position),
+            prefer_nearby=self.fixed_camera_effect_active,
         )
         if self._level is not None and self._level.goal_position is not None:
             self._exit_found = self._exit_found or math.dist(

@@ -13,7 +13,9 @@
       }
     },
     "doctor": {
-      "name": "Доктор",
+      "name": "Пациентка",
+      "revealed_name": "Доктор",
+      "reveal_flag": "act2:doctor_revealed",
       "entity": "hospital_companion",
       "voice": {
         "pitch_hz": 560,

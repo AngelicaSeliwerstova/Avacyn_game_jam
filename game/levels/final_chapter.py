@@ -26,8 +26,12 @@ def pendant_boxes(position):
 
 def build_final_props():
     cabinet = build_story_prop({"id": "security_lost_items", "name": "Шкаф потерянных вещей",
-        "action": "Осмотреть найденные вещи", "size": (0.9, 1.65, 0.42),
-        "color": (0.32, 0.36, 0.31)}, (-4.6, 0.85, 6.8))
+        "action": "Осмотреть найденные вещи", "size": (0.08, 1.65, 1.6),
+        "selection_size": (0.16, 1.65, 1.6)}, (-5.05, 0.95, 3.2))
+    # Bind E to the doors of the existing cabinet beside the security desk.
+    # Its selection surface sits just in front of the furniture and handles.
+    cabinet = SceneObject(cabinet.name, {"default": replace(cabinet.states["default"], boxes=())},
+                          entity=cabinet.entity)
     # The body is a baked, unanimated copy of the user's friend.glb.
     source = Path(__file__).resolve().parents[2] / "resources/models/props/friend_rest.glb"
     body = SceneObject("friend_body", {"default": ObjectState((

@@ -481,7 +481,7 @@
         {
           "type": "voiceover",
           "id": "cradle_memory",
-          "audio": true
+          "audio": false
         },
         {
           "type": "flags",
@@ -501,7 +501,7 @@
         {
           "type": "voiceover",
           "id": "memory_outro_first",
-          "audio": true
+          "audio": false
         },
         {
           "type": "wait",
@@ -510,7 +510,7 @@
         {
           "type": "voiceover",
           "id": "memory_outro_second",
-          "audio": true
+          "audio": false
         },
         {
           "type": "wait",

@@ -48,7 +48,8 @@ class EntityTests(unittest.TestCase):
             player = create_player(self.level, self.world)
         self.assertIsInstance(player, Entity)
         self.assertIsNone(player.model.source_path)
-        for frame in range(180):
+        # Cover the same staircase distance after changing the configured speed.
+        for frame in range(round(10.5 / settings.MOVE_SPEED * 60)):
             player.update(1 / 60, InputState(forward=1, jump=frame == 0))
             self.assertLess(glm.length(glm.vec3(player.transform.position) - player.body.position), 1e-6)
             self.assertGreater(player.camera.position.y, player.body.position.y)

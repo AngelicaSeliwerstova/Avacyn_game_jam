@@ -24,6 +24,7 @@ class StorySession(GameSession):
             flags.update(entry.get("set_flags", []))
             flags.add(self._active_prefix + active)
         self.act = book.acts[active]
+        self.actors = {}
         super().__init__(level, player, flags)
         from game.puzzles.cctv_puzzle import CCTVPuzzle, CCTVProgressStore, load_cctv_definition
         store = CCTVProgressStore() if puzzle_store is None else puzzle_store
@@ -40,7 +41,7 @@ class StorySession(GameSession):
                        for name, item in book.data["characters"].items()}
         for name, actor in self.actors.items():
             if actor:
-                actor.display_name = book.data["characters"][name]["name"]
+                actor.display_name = self._speaker_name(name)
                 if actor.scene_object.interaction is not None:
                     actor.scene_object.set_interaction(replace(actor.scene_object.interaction, name=actor.display_name))
         for obj in level.objects:
@@ -75,7 +76,19 @@ class StorySession(GameSession):
                 and not set(data.get("unless", ())) & self._flags
                 and ("levels" not in data or self.level_name in data["levels"]))
 
+    def _speaker_name(self, speaker):
+        character = self.book.data["characters"][speaker]
+        if character.get("reveal_flag") in self._flags:
+            return character["revealed_name"]
+        return character["name"]
+
     def _update_hint(self):
+        for name, actor in self.actors.items():
+            if actor is not None:
+                actor.display_name = self._speaker_name(name)
+                action = actor.scene_object.interaction
+                if action is not None and action.name != actor.display_name:
+                    actor.scene_object.set_interaction(replace(action, name=actor.display_name))
         self.player.act_title = self.act.data["title"]
         self.player.objective_status = ""
         for objective in self.act.data["objectives"]:
@@ -119,14 +132,12 @@ class StorySession(GameSession):
                 self._dialogue_nodes(act, act.dialogues[step["id"]], step.get("presentation", "conversation"))
             elif kind == "voiceover":
                 self._voiceover_elapsed = 0.0
-                self._dialogue_nodes(act, act.dialogues[step["id"]], "voiceover", audio=step.get("audio", True))
+                self._dialogue_nodes(act, act.dialogues[step["id"]], "voiceover", audio=step.get("audio", False))
             elif kind == "_voice_line":
                 node = step["node"]
                 self._voice_remaining = node["seconds"]
-                self.dialog = Dialog(self.book.data["characters"][node["speaker"]]["name"], node["text"], (),
+                self.dialog = Dialog(self._speaker_name(node["speaker"]), node["text"], (),
                                      presentation="voiceover", effect_time=self._voiceover_elapsed)
-                if node["audio"]:
-                    self._play_audio(node["audio"], 0.78, voice=True)
                 break
             elif kind == "focus_camera":
                 self.player.story_camera = (tuple(step["position"]), tuple(step["target"]))
@@ -156,7 +167,7 @@ class StorySession(GameSession):
             elif kind in ("_line", "_choice"):
                 node = step["node"]
                 self._node, self._node_act = node, act
-                speaker = self.book.data["characters"][node["speaker"]]["name"]
+                speaker = self._speaker_name(node["speaker"])
                 if kind == "_choice":
                     buttons = tuple(DialogButton(f"{i + 1}. {option['label']}", f"story_choice:{i}", (str(i + 1),))
                                     for i, option in enumerate(node["options"]))
@@ -228,7 +239,7 @@ class StorySession(GameSession):
                 self.open_document(step["id"])
                 break
             elif kind == "say":
-                speaker = self.book.data["characters"][step["speaker"]]["name"]
+                speaker = self._speaker_name(step["speaker"])
                 self.player.story_status = f"{speaker}: {step['text']}"
                 self._subtitle_time = step.get("seconds", 5.5)
             elif kind == "sound":
@@ -286,7 +297,7 @@ class StorySession(GameSession):
         self.player._sync_third_person_camera()
         self.player._sync_interaction_camera()
 
-    def _play_audio(self, filename, volume, *, voice=False):
+    def _play_audio(self, filename, volume):
         from config import settings
         if not settings.AUDIO_ENABLED:
             return
@@ -294,10 +305,7 @@ class StorySession(GameSession):
         if not hasattr(self, "_cue_sounds"):
             self._cue_sounds = HospitalSoundBank({})
         self._cue_sounds._paths[filename] = filename
-        if voice:
-            self._cue_sounds.play_voice(filename, volume)
-        else:
-            self._cue_sounds.play_discovery(filename, volume)
+        self._cue_sounds.play_discovery(filename, volume)
 
     def tick_presentation(self, delta_time):
         if not math.isfinite(delta_time) or delta_time < 0:

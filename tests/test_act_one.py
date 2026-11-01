@@ -1,5 +1,6 @@
 """Revised chapters connect the nursery, the archive and the final door."""
 import unittest
+import math
 from unittest.mock import patch
 import glm
 from config import settings
@@ -165,3 +166,46 @@ class RevisedCampaignTests(unittest.TestCase):
         walk(self, player.body, ((18, 9.6, 5),), fps=20)
         scene.session.update(0)
         self.assertIn('act2:inside_ward', scene.session._flags)
+
+    def test_real_security_cabinet_selects_from_normal_views_and_unlocks_the_recorder(self):
+        for mode in ('cameras', 'third_person'):
+            with self.subTest(mode=mode):
+                scene = self.load(Campaign(camera_mode=mode), 'act1')
+                player, session = scene.player, scene.session
+                player.body._position = glm.vec3(-3, 0, 2.4)
+                session.update(0)
+                advance_scene(session)
+                walk(self, player.body, ((-4.5, 0, 3.2),), fps=20)
+                for x, z in ((-4.5, 2.8), (-4.5, 3.2), (-4.5, 3.8), (-4.2, 3.2), (-4, 3.2)):
+                    player.body._position = glm.vec3(x, 0, z)
+                    self.assertFalse(player.body.world.is_blocked(player.body.position, .25, 1.8))
+                    player.controller._yaw = math.pi
+                    player._active_camera_zone = None
+                    player.update(0, InputState())
+                    self.assertEqual(player._interactions.focused.name, 'security_lost_items')
+                player.update(0, InputState(interact=True))
+                session.update(0)
+                self.assertEqual(session._document_id, 'lost_items')
+                read_document(session)
+                self.assertIn('act1:lost_items_searched', session._flags)
+                player.body._position = glm.vec3(-1.8, 0, 3.6)
+                monitor = next(o for o in scene.level.objects if o.name == 'security_archive')
+                target = monitor.boxes[0].position
+                player.controller._yaw = math.atan2(target[2] - 3.6, target[0] + 1.8)
+                player._active_camera_zone = None
+                player.update(0, InputState())
+                self.assertEqual(player._interactions.focused.name, 'security_archive')
+                player.update(0, InputState(interact=True))
+                session.update(0)
+                advance_scene(session)
+                self.assertTrue(session.puzzle_active)
+
+    def test_cabinet_cannot_be_used_through_the_security_wall(self):
+        scene = self.load(Campaign(), 'act1')
+        scene.player.body._position = glm.vec3(-7, 0, 3.2)
+        scene.player._active_camera_zone = None
+        scene.player.update(0, InputState(interact=True))
+        focused = scene.player._interactions.focused
+        self.assertTrue(focused is None or focused.name != 'security_lost_items')
+        scene.session.update(0)
+        self.assertIsNone(scene.session._document_id)

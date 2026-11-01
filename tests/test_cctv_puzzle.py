@@ -305,6 +305,21 @@ class CCTVTests(unittest.TestCase):
         self.assertEqual(scene.session._puzzle.progress.order, list('ACDB'))
         self.assertIsNone(scene.session._puzzle.selected)
 
+    def test_synthesized_recording_speech_stays_off_with_game_audio_enabled(self):
+        puzzle = self.puzzle()
+        puzzle.data['speech_enabled'] = True
+        self.addCleanup(puzzle.release)
+        puzzle._sounds = Mock()
+        puzzle.progress.order = list('ABCD')
+        with patch.object(settings, 'AUDIO_ENABLED', True):
+            puzzle.check()
+            puzzle.play()
+            for _ in range(3000):
+                if puzzle.tick(.25):
+                    break
+        self.assertTrue(puzzle.progress.watched)
+        puzzle._sounds.play_voice.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

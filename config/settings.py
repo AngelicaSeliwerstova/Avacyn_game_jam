@@ -14,8 +14,6 @@ FPS_LIMIT = 60
 AUDIO_ENABLED = True
 AMBIENCE_VOLUME = 0.65
 AMBIENCE_DIALOGUE_GAIN = 0.30
-DIALOGUE_BEEPS_ENABLED = True
-DIALOGUE_BEEP_VOLUME = 0.35
 FOOTSTEP_PLAYER_VOLUME = 0.28
 FOOTSTEP_DOCTOR_VOLUME = 0.72
 FOOTSTEP_HEARING_RANGE = 18.0
@@ -237,9 +235,9 @@ CAMERA_NEAR = 0.1         # Ближняя граница видимости.
 CAMERA_FAR = 100.0        # Дальняя граница видимости.
 
 # Управление от первого лица.
-MOVE_SPEED = 3.5                  # Мировых единиц в секунду.
-SPRINT_SPEED = 6.5                # При удержании Shift.
-CROUCH_SPEED = 1.7                # При удержании Ctrl; имеет приоритет над бегом.
+MOVE_SPEED = 3.5 / 1.5            # Мировых единиц в секунду; замедление в 1,5 раза.
+SPRINT_SPEED = 6.5 / 1.5          # При удержании Shift.
+CROUCH_SPEED = 1.7 / 1.5          # При удержании Ctrl; имеет приоритет над бегом.
 INTERACTION_REACH = 2.5           # Расстояние от камеры до поверхности объекта, м.
 INTERACTION_MESSAGE_SECONDS = 3.0
 

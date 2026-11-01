@@ -55,7 +55,8 @@ class StairCameraTests(unittest.TestCase):
     def test_visible_shake_keeps_controls_physics_and_interaction_camera_stable(self):
         player, reference = self.player(), self.player()
         peak, matrix_changed = 0, False
-        for _ in range(150):
+        # Reach the same part of the stairs at the configured walking speed.
+        for _ in range(round(8.75 / settings.MOVE_SPEED * 60)):
             player.update(1 / 60, InputState(forward=1))
             with patch.object(settings, "STAIR_SHAKE_ENABLED", False):
                 reference.update(1 / 60, InputState(forward=1))

@@ -197,7 +197,7 @@ class _ActValidator:
                 _number(step.get("volume", 1), loc + ".volume")
                 _check(step.get("volume", 1) <= 1, loc, "volume must be <= 1")
             elif kind == "voiceover":
-                _boolean(step.get("audio", True), loc + ".audio")
+                _boolean(step.get("audio", False), loc + ".audio")
                 self.ref(step["id"], self.act.dialogues, loc + ".id")
                 _check(all("choice" not in line and "audio" in line for line in self.act.dialogues[step["id"]]),
                        loc, "voiceover needs recorded lines without choices")
@@ -406,8 +406,12 @@ def load_story(story_id, root=None):
     _check(data["id"] == story_id, path, "campaign ID does not match its folder")
     _check(isinstance(data["characters"], dict), path, "characters must be named objects")
     for name, character in data["characters"].items():
-        _fields(character, str(path) + ".characters." + name, ("name",), ("entity", "voice"))
+        _fields(character, str(path) + ".characters." + name, ("name",),
+                ("entity", "voice", "revealed_name", "reveal_flag"))
         _text(character["name"], path)
+        if "revealed_name" in character or "reveal_flag" in character:
+            _text(character.get("revealed_name"), path)
+            _text(character.get("reveal_flag"), path)
         if "entity" in character:
             _text(character["entity"], path)
         if "voice" in character:
