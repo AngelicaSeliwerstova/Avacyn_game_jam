@@ -64,7 +64,6 @@ class Player(Entity):
         self._exit_found = False
         self._sprinting = False
         self._look_back = False
-        self._locked_movement_yaw = None
         self._movement_yaw = math.radians(controller.yaw_degrees)
         self._camera_save_path = level.camera_save_path if level is not None else None
         self._camera_zones_authored = bool(level is not None and level.fixed_cameras_authored)
@@ -201,7 +200,7 @@ class Player(Entity):
 
     @property
     def camera_marker_boxes(self):
-        if not self._camera_zones_authored:
+        if not self._creator_mode or not self._camera_zones_authored:
             return ()
         cameras = self._authored_camera_zones
         phases = tuple((self._camera_blink_elapsed + index * 0.17) % 1.0 < 0.55
@@ -315,7 +314,6 @@ class Player(Entity):
             self._camera_save_path is not None or self._creator_objects_path is not None
             or self._creator_lights_path is not None
         ):
-            self._locked_movement_yaw = None
             if self._creator_mode and self._selected_camera_index is not None:
                 self._leave_camera_edit()
             self._creator_mode = not self._creator_mode
@@ -377,26 +375,23 @@ class Player(Entity):
 
         previous_position = self.body.position
         self._movement_camera_lock = inputs.forward != 0 or inputs.right != 0
-        active_camera = self._active_fixed_camera()
-        movement_yaw = None
-        if active_camera is not None:
-            if inputs.forward == 0 and inputs.right == 0:
-                self._locked_movement_yaw = None
-            elif self._locked_movement_yaw is None:
-                direction = glm.vec3(active_camera.target) - glm.vec3(active_camera.position)
-                self._locked_movement_yaw = math.atan2(direction.z, direction.x)
-            movement_yaw = self._locked_movement_yaw
-        else:
-            self._locked_movement_yaw = None
+        # Fixed shots never define the character's heading. A/D turn the body,
+        # W/S move along that heading, and backing up keeps the model facing forward.
+        tank_controls = bool(self._camera_zones)
+        if tank_controls:
+            self._active_fixed_camera()
         self.controller.update(
-            delta_time, inputs.forward, inputs.right, inputs.mouse_delta,
+            delta_time, inputs.forward, 0.0 if tank_controls else inputs.right,
+            (0, 0) if tank_controls else inputs.mouse_delta,
             sprint=inputs.sprint, jump=inputs.jump,
             crouch=inputs.crouch,
             zoom=inputs.zoom,
-            movement_yaw=movement_yaw,
+            turn_axis=inputs.right if tank_controls else 0.0,
         )
         displacement = self.body.position - previous_position
-        if math.hypot(displacement.x, displacement.z) > 1e-6:
+        if tank_controls:
+            self._movement_yaw = math.radians(self.controller.yaw_degrees)
+        elif math.hypot(displacement.x, displacement.z) > 1e-6:
             self._movement_yaw = math.atan2(displacement.z, displacement.x)
         self._sync_transform()
         self._sync_third_person_camera()
@@ -1060,6 +1055,7 @@ def create_player(level: Level, world: CollisionWorld3D, creator_mode: bool = Fa
         mouse_sensitivity=settings.MOUSE_SENSITIVITY,
         pitch_limit_degrees=settings.PITCH_LIMIT_DEGREES, max_delta_time=settings.MAX_DELTA_TIME,
         player_radius=settings.PLAYER_RADIUS, collision_max_step=settings.COLLISION_MAX_STEP,
+        turn_speed_degrees=settings.PLAYER_TURN_SPEED_DEGREES,
     )
     from game.entities.appearance import create_character_model
     model = create_character_model()

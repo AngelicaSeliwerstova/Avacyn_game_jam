@@ -228,6 +228,7 @@ PLAYER_CAMERA_DISTANCE = 3.5
 PLAYER_CAMERA_HEIGHT = 0.1
 PLAYER_CAMERA_WALL_MARGIN = 0.2
 PLAYER_CAMERA_SHOULDER_OFFSET = 0.4
+PLAYER_TURN_SPEED_DEGREES = 180.0  # Танковое управление: скорость поворота A/D, градусы/с.
 
 CAMERA_FOV_DEGREES = 60.0  # Вертикальный угол обзора.
 CAMERA_ZOOM_FOV_DEGREES = 35.0  # Меньше угол - сильнее приближение на ПКМ.

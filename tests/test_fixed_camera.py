@@ -123,7 +123,7 @@ class FixedCameraTests(unittest.TestCase):
         self.assertLess(glm.length(player.camera.position - player._camera_view_position(authored)), 1e-5)
         self.assertEqual(tuple(player.camera.target), authored.target)
 
-    def test_walking_forward_follows_fixed_camera_view(self):
+    def test_walking_forward_follows_character_instead_of_fixed_camera(self):
         zone = FixedCameraZone(
             minimum=(-2, -1, -2), maximum=(2, 3, 2),
             position=(-3, 2, 0), target=(1, 2, 0),
@@ -137,8 +137,8 @@ class FixedCameraTests(unittest.TestCase):
 
         player.update(0.1, InputState(forward=1))
 
-        self.assertGreater(player.body.position.x, 0)
-        self.assertAlmostEqual(player.body.position.z, 0, places=5)
+        self.assertAlmostEqual(player.body.position.x, 0, places=5)
+        self.assertLess(player.body.position.z, 0)
 
     def test_held_movement_does_not_reverse_when_crossing_camera_boundary(self):
         first = FixedCameraZone(
@@ -151,7 +151,7 @@ class FixedCameraTests(unittest.TestCase):
         )
         level = Level(
             (20, 20), 1, (), (-0.1, settings.PLAYER_EYE_HEIGHT, 0),
-            (-0.1, settings.PLAYER_EYE_HEIGHT, -1), ((80, 80, 80),) * 2,
+            (0.9, settings.PLAYER_EYE_HEIGHT, 0), ((80, 80, 80),) * 2,
             fixed_cameras=(first, second),
         )
         player = create_player(level, CollisionWorld3D((), level.floor_bounds))
@@ -176,7 +176,7 @@ class FixedCameraTests(unittest.TestCase):
         )
         level = Level(
             (20, 20), 1, (), (-0.1, settings.PLAYER_EYE_HEIGHT, 0),
-            (-0.1, settings.PLAYER_EYE_HEIGHT, -1), ((80, 80, 80),) * 2,
+            (0.9, settings.PLAYER_EYE_HEIGHT, 0), ((80, 80, 80),) * 2,
             fixed_cameras=(first, second),
         )
         player = create_player(level, CollisionWorld3D((), level.floor_bounds))
@@ -192,8 +192,12 @@ class FixedCameraTests(unittest.TestCase):
             self.assertIs(player._active_fixed_camera(), second)
             crossed_boundary_x = player.body.position.x
             player.update(0.1, InputState(forward=1))
-
-        self.assertGreater(player.body.position.x, crossed_boundary_x)
+            self.assertGreater(player.body.position.x, crossed_boundary_x)
+            # Releasing and pressing W again must retain the body's heading too.
+            player.update(0, InputState())
+            previous = player.body.position.x
+            player.update(0.1, InputState(forward=1))
+            self.assertGreater(player.body.position.x, previous)
 
     def test_overlapping_camera_zones_keep_current_camera_until_player_leaves_its_zone(self):
         first = FixedCameraZone(
@@ -395,6 +399,7 @@ class FixedCameraTests(unittest.TestCase):
             self.assertEqual(len(player.camera_marker_boxes), len(camera_model_boxes(camera, True)))
 
             player.update(0, InputState(toggle_camera_editor=True))
+            self.assertEqual(player.camera_marker_boxes, ())
             self.assertLess(
                 glm.length(player.camera.position - player._camera_view_position(camera)), 1e-5,
             )

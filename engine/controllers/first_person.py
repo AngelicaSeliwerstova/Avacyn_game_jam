@@ -27,6 +27,7 @@ class FirstPersonController:
         crouch_eye_height: float | None = None,
         zoom_fov_degrees: float | None = None,
         zoom_speed: float = 12.0,
+        turn_speed_degrees: float = 180.0,
     ):
         if move_speed < 0 or mouse_sensitivity < 0:
             raise ValueError("Movement speed and mouse sensitivity must be nonnegative")
@@ -43,6 +44,8 @@ class FirstPersonController:
             raise ValueError("Pitch limit must be between 0 and 90 degrees")
         if max_delta_time <= 0:
             raise ValueError("Maximum delta time must be positive")
+        if not math.isfinite(turn_speed_degrees) or turn_speed_degrees <= 0:
+            raise ValueError("Turn speed must be finite and positive")
         if player_radius <= 0 or collision_max_step <= 0:
             raise ValueError("Player radius and collision step must be positive")
         if body is not None and collision_world is not None:
@@ -73,6 +76,7 @@ class FirstPersonController:
         self._sensitivity = math.radians(mouse_sensitivity)
         self._pitch_limit = math.radians(pitch_limit_degrees)
         self._max_delta_time = max_delta_time
+        self._turn_speed = math.radians(turn_speed_degrees)
         self._player_radius = player_radius
         self._collision_max_step = collision_max_step
         self._collision_world = collision_world
@@ -102,7 +106,7 @@ class FirstPersonController:
         jump: bool = False,
         crouch: bool = False,
         zoom: bool = False,
-        movement_yaw: float | None = None,
+        turn_axis: float = 0.0,
     ):
         if delta_time < 0:
             raise ValueError("Delta time must be nonnegative")
@@ -117,15 +121,13 @@ class FirstPersonController:
 
         # Мышь передаёт пройденные пиксели; умножать их на delta_time не нужно.
         dx, dy = mouse_delta
-        self._yaw = (self._yaw + dx * sensitivity) % math.tau
+        self._yaw = (self._yaw + dx * sensitivity + turn_axis * self._turn_speed * delta_time) % math.tau
         self._pitch = max(
             -self._pitch_limit,
             min(self._pitch_limit, self._pitch - dy * sensitivity),
         )
 
-        # Fixed views can supply a camera-relative walking direction without changing look controls.
-        walk_yaw = self._yaw if movement_yaw is None else movement_yaw
-        forward = glm.vec3(math.cos(walk_yaw), 0.0, math.sin(walk_yaw))
+        forward = glm.vec3(math.cos(self._yaw), 0.0, math.sin(self._yaw))
         right = glm.cross(forward, self._camera.up)
         movement = forward * forward_axis + right * right_axis
         if glm.length(movement) > 0:
