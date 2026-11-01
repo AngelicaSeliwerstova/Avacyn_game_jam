@@ -4,9 +4,16 @@ from unittest.mock import patch
 
 from config import settings
 from game.effects import create_postprocess_settings
+from engine.rendering.postprocess import PostProcessor
 
 
 class PostProcessTests(unittest.TestCase):
+    def test_stress_strength_rejects_invalid_values_before_touching_gpu_resources(self):
+        processor = PostProcessor.__new__(PostProcessor)
+        for strength in (-0.1, 1.1, float("nan"), float("inf")):
+            with self.subTest(strength=strength), self.assertRaises(ValueError):
+                processor.apply(None, stress_strength=strength)
+
     def test_effect_can_be_disabled(self):
         with patch.object(settings, "POSTPROCESS_ENABLED", False):
             self.assertIsNone(create_postprocess_settings())

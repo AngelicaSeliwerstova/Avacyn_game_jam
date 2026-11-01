@@ -25,6 +25,9 @@ class Inventory:
         item = self._items.get(key_id)
         return item is not None and item.kind == "key"
 
+    def has_item(self, item_id: str) -> bool:
+        return item_id in self._items
+
     @property
     def key_names(self) -> tuple[str, ...]:
         return tuple(item.name for item in self._items.values() if item.kind == "key")

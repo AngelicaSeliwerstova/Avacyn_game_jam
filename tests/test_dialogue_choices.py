@@ -1,4 +1,6 @@
 import unittest
+from dataclasses import replace
+from unittest.mock import patch
 
 import pygame
 
@@ -6,11 +8,26 @@ from engine.rendering.dialog import DialogOverlay, conversation_rects, dialog_ac
 from engine.rendering.hud import HudStyle
 from game.campaign import Campaign
 from game.dialogue import validate_dialogue
+from game.levels import create_level
 
 
 class DialogueChoiceTests(unittest.TestCase):
     def start_conversation(self):
-        scene = Campaign().load_level("peaceful")
+        # Legacy graph conversations remain available outside Act 0.
+        level = replace(create_level("peaceful"), story=None)
+        ally = next(obj.entity for obj in level.objects if obj.name == "hospital_companion")
+        ally.next_level = "start"
+        ally.dialogue = validate_dialogue((
+            {"text": "Ты слышишь шум?", "choices": [
+                {"label": "Да", "next": 1, "flag": "asked_about_noise"},
+                {"label": "Нет", "next": 1}]},
+            {"text": "Держимся вместе?", "choices": [
+                {"label": "Хорошо", "next": 2}, {"label": "Позже", "end": "close"}]},
+            {"text": "Готов?", "choices": [
+                {"label": "Пойдём", "end": "recruit"}, {"label": "Позже", "end": "close"}]},
+        ))
+        with patch("game.campaign.create_level", return_value=level):
+            scene = Campaign().load_level("peaceful")
         ally = scene.session.companions[0]
         ally.talk_requested = True
         scene.session.update(0)

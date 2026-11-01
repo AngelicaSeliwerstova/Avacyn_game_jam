@@ -41,7 +41,7 @@ class Companion(Entity):
 
     def __init__(self, name: str, position, tuning: CompanionSettings | None = None, *,
                  following=True, display_name="Companion", dialogue=(), next_level=None,
-                 appearance="player"):
+                 appearance="player", story_actor=False):
         position = self._point(position)
         super().__init__(name=name, transform=Transform(position=position))
         self.tuning = tuning or CompanionSettings()
@@ -62,12 +62,13 @@ class Companion(Entity):
         if next_level is not None and (not isinstance(next_level, str) or not next_level.strip()):
             raise ValueError("Conversation destination must be a nonempty level name")
         self.talk_requested = False
+        self.story_actor = story_actor
         if appearance not in ("player", "doctor", "boxes"):
             raise ValueError("Companion appearance must be player, doctor or boxes")
         self.model = (create_doctor_model() if appearance == "doctor"
                       else create_character_model() if appearance == "player" else None)
         self._parts = self._make_parts()
-        action = Interaction(display_name, "...", "Говорить", "talk") if self.dialogue else None
+        action = Interaction(display_name, "...", "Говорить", "talk") if self.dialogue or story_actor else None
         self.scene_object = SceneObject(name, {"default": ObjectState(self._geometry(), interaction=action)},
                                         entity=self, static_shadows=False)
 
@@ -170,7 +171,7 @@ class Companion(Entity):
         self._sync_pose()
 
     def request_talk(self):
-        if self.dialogue:
+        if self.dialogue or self.story_actor:
             self.talk_requested = True
 
     def _sync_pose(self):

@@ -6,6 +6,7 @@ from game.campaign import Campaign
 from game.levels import create_level
 from test_hospital import make_body, walk
 from game.levels.spiral import SpiralStair
+from support_story import finish_conversation
 
 
 class WorldTransitionTests(unittest.TestCase):
@@ -65,6 +66,7 @@ class WorldTransitionTests(unittest.TestCase):
     def test_far_office_trigger_is_reachable_and_transfers_inventory_and_effects(self):
         campaign = Campaign()
         peaceful = campaign.load_level("peaceful")
+        peaceful.session.tick_presentation(4)
         self.assertIsNone(peaceful.fog)
         self.assertIsNone(peaceful.postprocess)
         peaceful.session.update(0)
@@ -82,8 +84,8 @@ class WorldTransitionTests(unittest.TestCase):
         peaceful.player._interactions._activate(speaker)
         peaceful.session.update(0)
         self.assertIsNotNone(peaceful.session.dialog)
-        for _ in range(3):
-            peaceful.session.handle_action(peaceful.session.dialog.buttons[0].action)
+        finish_conversation(peaceful.session)
+        peaceful.session.tick_presentation(4)
         self.assertEqual(peaceful.session.next_level, "start")
         peaceful.player.inventory.add_key("story", "Сюжетный ключ")
         hospital = campaign.load_level(peaceful.session.next_level)
@@ -92,12 +94,13 @@ class WorldTransitionTests(unittest.TestCase):
         self.assertIn("peaceful", campaign.progress.completed_levels)
         self.assertIsNotNone(hospital.fog)
         self.assertIsNotNone(hospital.postprocess)
-        self.assertLess(glm.distance(hospital.player.body.position, glm.vec3(-16.1, 0, -11)), 0.01)
+        self.assertLess(glm.distance(hospital.player.body.position, peaceful.player.body.position), 0.01)
         hospital.session.update(0)
         self.assertIsNone(hospital.session.next_level)
 
     def test_portal_does_not_fire_from_corridor_or_doorway(self):
         scene = Campaign().load_level("peaceful")
+        scene.session.tick_presentation(4)
         door = next(obj for obj in scene.level.objects if obj.name == "office_0")
         door.set_state("open")
         door.update(1)

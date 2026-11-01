@@ -20,6 +20,7 @@ from engine.scene.model import ModelComponent
 from engine.scene.transform import Transform
 from engine.scene.object import ObjectState
 from game.entities.player_state import MovementState
+from game.entities.stair_camera import StairCameraShake
 from game.levels.cameras import camera_model_boxes, camera_wall_normal, save_fixed_cameras
 from game.levels.creator import save_creator_objects, save_removed_objects
 from game.levels.creator_presets import CreatorPreset, creator_presets, place_preset, rotate_group, remove_group
@@ -116,6 +117,10 @@ class Player(Entity):
         self.inventory = inventory if inventory is not None else Inventory()
         self.enemy_status = ""
         self.objective_status = ""
+        self.story_status = ""
+        self.story_controls = ""
+        self.story_events: set[str] = set()
+        self._stair_shake = StairCameraShake(level.stair_surfaces if level is not None else ())
         self.enemy_debug_lines: tuple[str, ...] = ()
         self._interactions = InteractionController(
             level.boxes + level.decorations if level is not None else (),
@@ -123,6 +128,7 @@ class Player(Entity):
             pygame.key.name(controls.INPUT_BINDINGS.interact).upper()
             if controls.INPUT_BINDINGS.interact is not None else "-",
             objects=level.objects if level is not None else (), inventory=self.inventory,
+            events=self.story_events,
             aspect_ratio=settings.RENDER_SIZE[0] / settings.RENDER_SIZE[1],
         )
         self._sync_transform()
@@ -158,7 +164,7 @@ class Player(Entity):
                         and collider.top > position.y
                         and collider.footprint.intersects_circle(position.x, position.z, 1.1)):
                     return barrier.interaction.message
-        return self._interactions.text
+        return "\n".join(part for part in (self.story_status, self._interactions.text) if part)
 
     @property
     def creator_help_text(self) -> tuple[str, str] | None:
@@ -259,6 +265,10 @@ class Player(Entity):
         return self._camera_transition_remaining / self._CAMERA_TRANSITION_DURATION
 
     @property
+    def stair_stress_strength(self) -> float:
+        return 0.0 if self._creator_mode else self._stair_shake.stress
+
+    @property
     def dynamic_lights(self):
         return (self.flashlight.light,)
 
@@ -277,6 +287,8 @@ class Player(Entity):
             text += ("\n" if text else "") + self.enemy_status
         if self.objective_status:
             text += ("\n" if text else "") + self.objective_status
+        if self.story_controls:
+            text += "\n" + self.story_controls
         return text
 
     def _location_text(self) -> str:
@@ -311,6 +323,8 @@ class Player(Entity):
             if self._creator_mode:
                 self._enter_creator_mode()
         if self._creator_mode:
+            self._stair_shake.reset()
+            self.camera.view_rotation_degrees = (0.0, 0.0, 0.0)
             if self._selected_camera_index is None:
                 self._update_creator_camera(delta_time, inputs)
                 if inputs.interact:
@@ -388,6 +402,9 @@ class Player(Entity):
         self._sync_third_person_camera()
         self._sync_fixed_camera()
         self._sync_interaction_camera()
+        self.camera.view_rotation_degrees, finished_stairs = self._stair_shake.update(delta_time, self.body)
+        if finished_stairs:
+            self.story_events.add("stairs_walk_finished")
         self.flashlight.update(self._interaction_camera, toggle=inputs.toggle_flashlight)
         self._interactions.update(
             delta_time, self.camera, inputs.interact,

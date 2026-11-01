@@ -7,6 +7,21 @@ import pygame
 from engine.rendering.presentation import horizontal_side_bars, fit_viewport
 
 
+def wrap_line(text: str, width: int, font: pygame.font.Font) -> list[str]:
+    lines, current = [], ""
+    for word in text.split():
+        candidate = f"{current} {word}" if current else word
+        if current and font.size(candidate)[0] > width:
+            lines.append(current)
+            current = ""
+        for character in (" " if current else "") + word:
+            if current and font.size(current + character)[0] > width:
+                lines.append(current)
+                current = ""
+            current += character
+    return lines + [current]
+
+
 @dataclass(frozen=True)
 class HudStyle:
     font_size: int = 18
@@ -122,19 +137,7 @@ class TextOverlay:
             self._context.disable(moderngl.BLEND)
 
     def _wrap_line(self, text: str, width: int, font: pygame.font.Font) -> list[str]:
-        lines, current = [], ""
-        for word in text.split():
-            candidate = f"{current} {word}" if current else word
-            if current and font.size(candidate)[0] > width:
-                lines.append(current)
-                current = ""
-            # Длинное слово тоже не должно выходить за границы кадра.
-            for character in (" " if current else "") + word:
-                if current and font.size(current + character)[0] > width:
-                    lines.append(current)
-                    current = ""
-                current += character
-        return lines + [current]
+        return wrap_line(text, width, font)
 
     def release(self):
         for name in ("_texture", "_vertices", "_program"):

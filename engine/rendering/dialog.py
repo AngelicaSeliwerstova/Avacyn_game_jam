@@ -1,4 +1,5 @@
 import pygame
+import math
 
 from engine.rendering.hud import TextOverlay
 from engine.rendering.presentation import fit_viewport
@@ -14,16 +15,21 @@ def button_rects(render_size: tuple[int, int], count: int) -> tuple[pygame.Rect,
 
 def conversation_rects(render_size, count):
     margin = 16
-    panel = pygame.Rect(margin, render_size[1] - 112 - count * 48,
-                        render_size[0] - margin * 2, 96 + count * 48)
-    buttons = tuple(pygame.Rect(panel.left + 12, panel.top + 98 + i * 48,
-                               panel.width - 24, 42) for i in range(count))
+    panel = pygame.Rect(margin, render_size[1] - 112 - count * 60,
+                        render_size[0] - margin * 2, 96 + count * 60)
+    buttons = tuple(pygame.Rect(panel.left + 12, panel.top + 98 + i * 60,
+                               panel.width - 24, 54) for i in range(count))
     return panel, buttons
 
 
 def dialog_button_rects(dialog, render_size):
+    if dialog.presentation in ("document", "plan"):
+        count = len(dialog.buttons)
+        width = (render_size[0] - 96) // max(1, count)
+        return tuple(pygame.Rect(44 + i * width, render_size[1] - 62, width - 8, 34)
+                     for i in range(count))
     return (conversation_rects(render_size, len(dialog.buttons))[1]
-            if dialog.presentation == "conversation" else button_rects(render_size, len(dialog.buttons)))
+            if dialog.presentation in ("conversation", "memory") else button_rects(render_size, len(dialog.buttons)))
 
 
 def dialog_action_at(dialog: Dialog, position, window_size, render_size) -> str | None:
@@ -51,25 +57,101 @@ class DialogOverlay(TextOverlay):
         key = (dialog, render_size, hovered)
         if key != self._dialog_key:
             surface = pygame.Surface(render_size, pygame.SRCALPHA)
-            if dialog.presentation == "conversation":
+            if dialog.presentation in ("title", "interference", "blackout"):
+                self._draw_timed(surface, dialog, render_size)
+            elif dialog.presentation in ("document", "plan"):
+                self._draw_document(surface, dialog, render_size, hovered)
+            elif dialog.presentation in ("conversation", "memory"):
+                if dialog.presentation == "memory":
+                    surface.fill((25, 15, 8, 155))
                 self._draw_conversation(surface, dialog, render_size, hovered)
-                self._upload_surface(surface)
-                self._dialog_key = key
-                self._draw_texture(render_size, "center")
-                return
-            surface.fill((0, 0, 0, 235))
-            title = self._title_font.render(dialog.title, self._style.antialias, (218, 216, 208))
-            surface.blit(title, title.get_rect(center=(render_size[0] // 2, int(render_size[1] * 0.38))))
-            if dialog.message:
-                message = self._font.render(dialog.message, self._style.antialias, (153, 151, 145))
-                surface.blit(message, message.get_rect(center=(render_size[0] // 2, int(render_size[1] * 0.47))))
-            for button, rect in zip(dialog.buttons, button_rects(render_size, len(dialog.buttons))):
-                color = (238, 236, 228) if hovered == button.action else (158, 156, 149)
-                label = self._font.render(button.label, self._style.antialias, color)
-                surface.blit(label, label.get_rect(center=rect.center))
+            else:
+                self._draw_modal(surface, dialog, render_size, hovered)
             self._upload_surface(surface)
             self._dialog_key = key
         self._draw_texture(render_size, "center")
+
+    def _draw_modal(self, surface, dialog, render_size, hovered):
+        surface.fill((0, 0, 0, 255 if dialog.presentation == "ending" else 235))
+        title = self._title_font.render(dialog.title, self._style.antialias, (218, 216, 208))
+        surface.blit(title, title.get_rect(center=(render_size[0] // 2, int(render_size[1] * 0.38))))
+        if dialog.message:
+            message = self._font.render(dialog.message, self._style.antialias, (153, 151, 145))
+            surface.blit(message, message.get_rect(center=(render_size[0] // 2, int(render_size[1] * 0.47))))
+        for button, rect in zip(dialog.buttons, button_rects(render_size, len(dialog.buttons))):
+            color = (238, 236, 228) if hovered == button.action else (158, 156, 149)
+            label = self._font.render(button.label, self._style.antialias, color)
+            surface.blit(label, label.get_rect(center=rect.center))
+
+    def _draw_timed(self, surface, dialog, render_size):
+        surface.fill((0, 0, 0, round(255 * dialog.opacity)))
+        if dialog.presentation == "title":
+            for text, font, y in ((dialog.title, self._title_font, 0.43),
+                                  (dialog.message, self._font, 0.53)):
+                label = font.render(text, True, (224, 225, 214))
+                label.set_alpha(round(255 * dialog.opacity))
+                surface.blit(label, label.get_rect(center=(render_size[0] // 2, int(render_size[1] * y))))
+        elif dialog.presentation == "interference" and dialog.effect_time < 1.2:
+            # The first second breaks the CCTV image; then hold complete black.
+            surface.fill((0, 0, 0, round(80 + 175 * dialog.effect_time / 1.2)))
+            frame = int(dialog.effect_time * 30)
+            for y in range(0, render_size[1], 4):
+                intensity = (y * 73 + frame * 97) % 170
+                offset = int(math.sin(y + frame * 0.7) * 80)
+                pygame.draw.line(surface, (intensity, intensity, intensity, 180),
+                                 (max(0, offset), y), (render_size[0] + min(0, offset), y))
+
+    def _draw_document(self, surface, dialog, render_size, hovered):
+        surface.fill((0, 0, 0, 210))
+        panel = pygame.Rect(28, 16, render_size[0] - 56, render_size[1] - 32)
+        pygame.draw.rect(surface, (224, 218, 197), panel, border_radius=3)
+        title = self._title_font.render(dialog.title, True, (37, 52, 47))
+        surface.blit(title, (panel.left + 18, panel.top + 14))
+        pygame.draw.line(surface, (118, 130, 112), (panel.left + 18, 68), (panel.right - 18, 68))
+        if dialog.presentation == "plan":
+            self._draw_plan(surface, dialog, pygame.Rect(48, 96, render_size[0] - 96, render_size[1] - 178))
+            label = self._font.render(dialog.message, True, (61, 73, 61))
+            surface.blit(label, (48, 72))
+        else:
+            y = 94
+            for paragraph in dialog.message.split("\n"):
+                for line in self._wrap_line(paragraph, panel.width - 48, self._font):
+                    label = self._font.render(line, True, (42, 44, 38))
+                    surface.blit(label, (panel.left + 24, y))
+                    y += self._font.get_linesize()
+        for button, rect in zip(dialog.buttons, dialog_button_rects(dialog, render_size)):
+            pygame.draw.rect(surface, (65, 91, 77) if hovered == button.action else (49, 68, 59), rect,
+                             border_radius=3)
+            label = self._font.render(button.label, True, (242, 238, 218))
+            surface.blit(label, label.get_rect(center=rect.center))
+
+    def _draw_plan(self, surface, dialog, area):
+        if not dialog.plan_walls:
+            return
+        x1 = min(w[0] for w in dialog.plan_walls)
+        z1 = min(w[1] for w in dialog.plan_walls)
+        x2 = max(w[2] for w in dialog.plan_walls)
+        z2 = max(w[3] for w in dialog.plan_walls)
+        scale = min(area.width / (x2 - x1), area.height / (z2 - z1))
+        left = area.centerx - (x2 - x1) * scale / 2
+        top = area.centery - (z2 - z1) * scale / 2
+
+        def point(x, z):
+            return round(left + (x - x1) * scale), round(top + (z - z1) * scale)
+
+        for a, b, c, d in dialog.plan_walls:
+            start, end = point(a, b), point(c, d)
+            pygame.draw.rect(surface, (73, 90, 76), (*start, max(2, end[0] - start[0]), max(2, end[1] - start[1])))
+        if dialog.plan_stair is not None:
+            x, z, radius = dialog.plan_stair
+            pygame.draw.circle(surface, (100, 119, 96), point(x, z), max(3, round(radius * scale)), 1)
+        for x, z, text in dialog.plan_labels:
+            label = self._font.render(text, True, (151, 48, 37) if text in dialog.plan_highlights else (34, 52, 42))
+            rect = label.get_rect(center=point(x, z))
+            pygame.draw.rect(surface, (224, 218, 197), rect.inflate(3, 1))
+            surface.blit(label, rect)
+        if dialog.plan_player is not None:
+            pygame.draw.circle(surface, (169, 49, 35), point(*dialog.plan_player), 4)
 
     def _draw_conversation(self, surface, dialog, render_size, hovered):
         # Outside this bottom panel the alpha stays zero: the scene remains visible.
@@ -78,7 +160,9 @@ class DialogOverlay(TextOverlay):
         pygame.draw.line(surface, (143, 174, 155), panel.topleft, panel.topright, 2)
         title = self._font.render(dialog.title, self._style.antialias, (181, 207, 186))
         surface.blit(title, (panel.left + 14, panel.top + 8))
-        message_lines = self._wrap_line(dialog.message, panel.width - 28, self._font)
+        visible = dialog.message if dialog.visible_characters is None else dialog.message[:dialog.visible_characters]
+        message_lines = [line for paragraph in visible.split("\n")
+                         for line in self._wrap_line(paragraph, panel.width - 28, self._font)]
         line_height = self._font.get_linesize()
         for index, line in enumerate(message_lines[:3]):
             text = self._font.render(line, self._style.antialias, (245, 243, 230))

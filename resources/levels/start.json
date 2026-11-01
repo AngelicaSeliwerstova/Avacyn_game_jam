@@ -1,21 +1,83 @@
 {
   "layout": "hospital",
-  "floor_size": [43.0, 29.0],
+  "audio_profile": "abandoned",
+  "floor_size": [
+    43.0,
+    29.0
+  ],
   "floor_material": "hospital_floor",
   "room_height": 4.8,
-  "spawn_position": [-16.1, 1.6, -11.0],
-  "spawn_target": [-15.1, 1.6, -11.0],
+  "spawn_position": [
+    -16.1,
+    1.6,
+    -11.0
+  ],
+  "spawn_target": [
+    -15.1,
+    1.6,
+    -11.0
+  ],
   "snow_enabled": false,
-  "lighting": {"ambient": [0.23, 0.25, 0.23], "lights": []},
+  "lighting": {
+    "ambient": [
+      0.23,
+      0.25,
+      0.23
+    ],
+    "lights": []
+  },
   "boxes": [],
   "objects": [
     {
       "id": "hospital_companion",
-      "name": "Союзник",
+      "name": "Врач",
       "type": "companion",
       "appearance": "doctor",
-      "position": [-16.0, 0.0, -11.8],
-      "following": true
+      "position": [
+        -16.0,
+        0.0,
+        -11.8
+      ],
+      "following": true,
+      "story_actor": true
+    },
+    {
+      "id": "hospital_plan",
+      "type": "story_document",
+      "position": [
+        13.4,
+        2.45,
+        0.17
+      ],
+      "size": [
+        1.9,
+        1.15,
+        0.06
+      ],
+      "name": "План больницы",
+      "style": "board"
+    },
+    {
+      "id": "mother_letter",
+      "type": "story_document",
+      "position": [
+        11.6,
+        1.59,
+        6.18
+      ],
+      "size": [
+        0.48,
+        0.025,
+        0.34
+      ],
+      "selection_size": [
+        0.58,
+        0.18,
+        0.44
+      ],
+      "name": "Личное письмо",
+      "style": "paper"
     }
-  ]
+  ],
+  "story": "hospital"
 }

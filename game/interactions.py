@@ -16,7 +16,7 @@ class InteractionController:
 
     def __init__(self, boxes: tuple[Box, ...], reach: float, message_seconds: float, key_label: str,
                  objects: tuple[SceneObject, ...] = (), inventory: Inventory | None = None,
-                 aspect_ratio: float = 4 / 3):
+                 aspect_ratio: float = 4 / 3, events=None):
         if any(not math.isfinite(value) or value <= 0 for value in (reach, message_seconds)):
             raise ValueError("Interaction reach and message duration must be positive")
         if not math.isfinite(aspect_ratio) or aspect_ratio <= 0:
@@ -31,6 +31,7 @@ class InteractionController:
         self._objects = objects
         self._states = None
         self.inventory = inventory if inventory is not None else Inventory()
+        self.events = events if events is not None else set()
         self._refresh_objects()
         self._reach = reach
         self._aspect_ratio = aspect_ratio
@@ -223,15 +224,20 @@ class InteractionController:
             return action.message
         if not isinstance(target, SceneObject):
             raise ValueError("Stateful interactions require a SceneObject")
-        if action.command == "talk":
+        if action.command == "story":
+            target.entity.requested = True
+        elif action.command == "talk":
             target.entity.request_talk()
         elif action.command == "pickup_key":
             self.inventory.add_key(action.argument, action.name)
             target.set_state("collected")
+            self.events.add(f"collected:{target.name}")
         elif action.command == "unlock_door":
             if not self.inventory.has_key(action.argument):
-                return "Locked. Find the matching key."
+                self.events.add(f"locked:{target.name}")
+                return "Дверь заперта. Нужен ключ."
             target.set_state("open")
+            self.events.add(f"opened:{target.name}")
         elif action.command == "open_door":
             target.set_state("open")
         elif action.command == "close_door":
@@ -245,7 +251,9 @@ class InteractionController:
         lines = []
         if self.focused is not None:
             action = self.focused.interaction
-            lines.append(f"[{self._key_label}] {action.action} - {action.name}")
+            label = ("Использовать ключ" if action.command == "unlock_door"
+                     and self.inventory.has_key(action.argument) else action.action)
+            lines.append(f"[{self._key_label}] {label} - {action.name}")
         if self._remaining > 0:
             lines.append(self._message)
         return "\n".join(lines)

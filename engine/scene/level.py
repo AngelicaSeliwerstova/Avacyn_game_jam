@@ -44,6 +44,9 @@ class Level:
     creator_room_height: float | None = None
     visual_style: str = "default"
     invisible_barriers: tuple[Box, ...] = ()
+    story: str | None = None
+    stair_surfaces: tuple[Box, ...] = ()
+    audio_profile: str | None = None
 
     def __post_init__(self):
         if len({obj.name for obj in self.objects}) != len(self.objects):

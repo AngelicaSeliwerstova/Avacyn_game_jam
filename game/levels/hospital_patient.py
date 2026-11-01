@@ -98,8 +98,17 @@ def build_patient_floor(*, peaceful=False):
     partition("z", -4, -10, -4)
     partition("x", -4, -10, -4, ((-7, "patient_nurse_room", "Пост медсестры"),))
     partition("x", 8, 16, 30)
-    partition("z", 16, -4, 8, ((1, "patient_east_entry", "Палата"),))
+    # Two separate wards face the east corridor. The shared partition leaves
+    # the existing north/south bed groups inside their respective rooms.
+    partition("z", 16, -4, 8, (
+        (-1, "patient_east_entry", PATIENT_SIGNS["patient_east_entry"].capitalize()),
+        (5, "patient_ward_313", PATIENT_SIGNS["patient_ward_313"].capitalize()),
+    ))
     partition("x", -4, 16, 30)
+    partition("x", 2, 16, 30)
+    partition("x", -17, 21, 30, ((26, "patient_child_room", "Комната"),))
+    target = next(data for data in definitions if data["id"] == "patient_ward_313")
+    target.update(key_id="ward_313", open_seconds=1.5, open_angle=90)
 
     # Three southern wards face the cross-corridor; the center route to the stair
     # landing remains unobstructed.
@@ -112,6 +121,8 @@ def build_patient_floor(*, peaceful=False):
 
     # Bed, locker, and chair in each small room along the north wall.
     for center in (-24.5, -17.5, -10.5, -3.5, 3.5, 10.5, 17.5, 24.5):
+        if center == 24.5:
+            continue
         x = center - 2.67
         left_surface = -29.86 if center == -24.5 else center - 3.38
         with props.against_wall("x", left_surface, gap=0.1, extra_boxes=boxes):
@@ -135,7 +146,7 @@ def build_patient_floor(*, peaceful=False):
         props.cabinet(-6.4, -5.5, 0.9, 1.7, yaw=90)
     props.plant(-2.2, 5.8, small=True)
 
-    # A quiet ward on the east side and small utility equipment.
+    # Wards 309 and 313 each have two beds and their own corridor entrance.
     for x in (20, 24):
         for surface, inward, yaw in ((-3.88, 1, 0), (7.88, -1, 180)):
             with props.against_wall("z", surface, inward=inward, gap=0.08, extra_boxes=boxes):
@@ -165,7 +176,11 @@ def build_patient_floor(*, peaceful=False):
         props.linen_shelf(-26.5, 17.5, 2.4, yaw=-90)
         props.linen_shelf(-26.5, 20.1, 2.4, yaw=-90)
 
+    from game.levels.hospital_story import add_patient_story
+    add_patient_story(props, boxes, definitions)
     for data in definitions:
+        if data["type"] != "door":
+            continue
         x, _, z = data["position"]
         text = PATIENT_SIGNS[data["id"]]
         data["name"] = text.replace("\n", " ").capitalize()
@@ -184,7 +199,7 @@ def build_patient_floor(*, peaceful=False):
                                      material=f"sign_{data['id']}", local_texture=True, yaw_degrees=yaw,
                                      interaction=Interaction(data["name"], data["name"], "Прочитать")))
 
-    for x, z in ((-24, -16), (-10, -16), (4, -16), (18, -16), (26, -16),
+    for x, z in ((-24, -16), (-10, -16), (4, -16), (18, -16), (26, -16), (26, -21),
                  (-8, 1), (12, 1), (24, 3), (-5, 18), (10, 18), (24, 18)):
         lamp(x, z)
 

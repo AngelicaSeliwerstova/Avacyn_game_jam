@@ -72,6 +72,8 @@ def load_location(path: Path) -> Level:
         fixed_cameras_authored=cameras is not None,
         camera_save_path=cameras_path,
         visual_style=data.get("visual_style", "default"),
+        story=data.get("story"),
+        audio_profile=data.get("audio_profile"),
     )
     if data.get("layout") in ("hospital", "hospital_first_floor", "hospital_peaceful"):
         from game.levels.hospital import build_hospital

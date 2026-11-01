@@ -1,0 +1,515 @@
+{
+  "id": "act0",
+  "title": "Обычный рабочий день",
+  "complete_flag": "act0:complete",
+  "next_act": "act1",
+  "dialogues_file": "dialogue.json",
+  "documents_file": "documents.json",
+  "zones": {
+    "office": {
+      "min": [
+        -20.7,
+        -0.5,
+        -13.9
+      ],
+      "max": [
+        -14.3,
+        0.5,
+        -8.3
+      ]
+    },
+    "reception": {
+      "min": [
+        5,
+        -0.5,
+        0
+      ],
+      "max": [
+        19,
+        0.5,
+        8.8
+      ]
+    },
+    "near_reception": {
+      "min": [
+        3,
+        -0.5,
+        0
+      ],
+      "max": [
+        21,
+        0.5,
+        11
+      ]
+    },
+    "room_0": {
+      "min": [
+        -21,
+        -0.5,
+        -14
+      ],
+      "max": [
+        -14,
+        0.5,
+        -7
+      ]
+    },
+    "room_1": {
+      "min": [
+        -14,
+        -0.5,
+        -14
+      ],
+      "max": [
+        -7,
+        0.5,
+        -7
+      ]
+    },
+    "room_2": {
+      "min": [
+        -7,
+        -0.5,
+        -14
+      ],
+      "max": [
+        0,
+        0.5,
+        -7
+      ]
+    },
+    "room_3": {
+      "min": [
+        0,
+        -0.5,
+        -14
+      ],
+      "max": [
+        7,
+        0.5,
+        -7
+      ]
+    },
+    "room_4": {
+      "min": [
+        7,
+        -0.5,
+        -14
+      ],
+      "max": [
+        14,
+        0.5,
+        -7
+      ]
+    },
+    "room_5": {
+      "min": [
+        14,
+        -0.5,
+        -14
+      ],
+      "max": [
+        21,
+        0.5,
+        -7
+      ]
+    }
+  },
+  "objectives": [
+    {
+      "levels": [
+        "peaceful"
+      ],
+      "title": "Найти свой кабинет",
+      "description": "Осмотрите первый этаж больницы."
+    },
+    {
+      "requires": [
+        "act0:complete"
+      ],
+      "title": "Найти палату 313",
+      "description": "Поднимитесь с врачом на третий этаж."
+    },
+    {
+      "requires": [
+        "act0:map"
+      ],
+      "title": "Найти регистратуру",
+      "description": "Прочитайте письмо и поговорите с врачом."
+    },
+    {
+      "title": "Найти регистратуру",
+      "description": "Найдите план больницы вместе с врачом."
+    }
+  ],
+  "scenes": [
+    {
+      "id": "intro",
+      "trigger": {
+        "type": "load"
+      },
+      "levels": [
+        "peaceful"
+      ],
+      "unless": [
+        "act0:intro"
+      ],
+      "steps": [
+        {
+          "type": "title",
+          "title": "АКТ 0",
+          "text": "«Обычный рабочий день»",
+          "seconds": 4,
+          "fade_seconds": 1.2
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act0:intro"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "meeting",
+      "trigger": {
+        "any": [
+          {
+            "type": "talk",
+            "actor": "doctor"
+          },
+          {
+            "type": "zone",
+            "zone": "office"
+          }
+        ]
+      },
+      "levels": [
+        "peaceful"
+      ],
+      "unless": [
+        "act0:met_doctor"
+      ],
+      "steps": [
+        {
+          "type": "dialogue",
+          "id": "meeting"
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act0:met_doctor",
+            "recruited:hospital_companion"
+          ]
+        },
+        {
+          "type": "follow",
+          "actor": "doctor",
+          "enabled": true
+        },
+        {
+          "type": "effect",
+          "effect": "interference",
+          "seconds": 3.6
+        },
+        {
+          "type": "level",
+          "level": "start",
+          "preserve_scene": true
+        }
+      ]
+    },
+    {
+      "id": "arrival",
+      "trigger": {
+        "type": "load"
+      },
+      "levels": [
+        "start"
+      ],
+      "unless": [
+        "act0:transformed"
+      ],
+      "steps": [
+        {
+          "type": "flags",
+          "add": [
+            "act0:transformed"
+          ]
+        },
+        {
+          "type": "follow",
+          "actor": "doctor",
+          "enabled": true
+        },
+        {
+          "type": "dialogue",
+          "id": "after_transformation"
+        }
+      ]
+    },
+    {
+      "id": "reception",
+      "trigger": {
+        "type": "zone",
+        "zone": "reception"
+      },
+      "requires": [
+        "act0:transformed"
+      ],
+      "unless": [
+        "act0:reception"
+      ],
+      "steps": [
+        {
+          "type": "flags",
+          "add": [
+            "act0:reception"
+          ]
+        },
+        {
+          "type": "dialogue",
+          "id": "reception"
+        }
+      ]
+    },
+    {
+      "id": "plan",
+      "trigger": {
+        "type": "interact",
+        "object": "hospital_plan"
+      },
+      "requires": [
+        "act0:transformed"
+      ],
+      "once": false,
+      "steps": [
+        {
+          "type": "flags",
+          "add": [
+            "act0:reception"
+          ]
+        },
+        {
+          "type": "map",
+          "id": "hospital_plan"
+        }
+      ]
+    },
+    {
+      "id": "letter_locked",
+      "trigger": {
+        "type": "interact",
+        "object": "mother_letter"
+      },
+      "requires": [
+        "act0:transformed"
+      ],
+      "unless": [
+        "act0:map"
+      ],
+      "once": false,
+      "steps": [
+        {
+          "type": "say",
+          "speaker": "doctor",
+          "text": "Сначала посмотрим план больницы на стене.",
+          "seconds": 5.5
+        }
+      ]
+    },
+    {
+      "id": "letter",
+      "trigger": {
+        "type": "interact",
+        "object": "mother_letter"
+      },
+      "requires": [
+        "act0:map"
+      ],
+      "once": false,
+      "steps": [
+        {
+          "type": "document",
+          "id": "mother_letter"
+        }
+      ]
+    },
+    {
+      "id": "ending",
+      "trigger": {
+        "type": "event",
+        "name": "act_complete:act0"
+      },
+      "requires": [
+        "act0:complete"
+      ],
+      "unless": [
+        "act0:ending"
+      ],
+      "steps": [
+        {
+          "type": "flags",
+          "add": [
+            "act0:ending"
+          ]
+        },
+        {
+          "type": "sound",
+          "profile": "doctor",
+          "volume": [
+            0.13,
+            0.24
+          ]
+        },
+        {
+          "type": "dialogue",
+          "id": "ending"
+        },
+        {
+          "type": "next_act"
+        }
+      ]
+    },
+    {
+      "id": "stairs_fear",
+      "levels": [
+        "start"
+      ],
+      "requires": [
+        "act0:transformed"
+      ],
+      "trigger": {
+        "type": "event",
+        "name": "stairs_walk_finished"
+      },
+      "steps": [
+        {
+          "type": "flags",
+          "add": [
+            "hospital:stairs_fear"
+          ]
+        },
+        {
+          "type": "say",
+          "speaker": "hero",
+          "text": "Меня в дрожь бросает от лестниц… Это же такое опасное место.",
+          "seconds": 7
+        }
+      ],
+      "unless": [
+        "hospital:stairs_fear"
+      ]
+    },
+    {
+      "id": "talk_after_letter",
+      "trigger": {
+        "type": "talk",
+        "actor": "doctor"
+      },
+      "requires": [
+        "act0:complete"
+      ],
+      "once": false,
+      "steps": [
+        {
+          "type": "say",
+          "speaker": "doctor",
+          "text": "Пойдём. Нам нужно добраться до палаты.",
+          "seconds": 5.5
+        }
+      ]
+    },
+    {
+      "id": "talk_hint",
+      "trigger": {
+        "type": "talk",
+        "actor": "doctor"
+      },
+      "requires": [
+        "act0:transformed"
+      ],
+      "unless": [
+        "act0:complete"
+      ],
+      "once": false,
+      "steps": [
+        {
+          "type": "say",
+          "speaker": "doctor",
+          "text": "Думаю, в регистратуре должен быть план здания.",
+          "seconds": 5.5
+        }
+      ]
+    },
+    {
+      "id": "idle_hint",
+      "trigger": {
+        "type": "idle",
+        "seconds": 18
+      },
+      "requires": [
+        "act0:transformed"
+      ],
+      "once": false,
+      "cooldown": 18,
+      "steps": [
+        {
+          "type": "say",
+          "speaker": "doctor",
+          "text": "Мы можем не спешить. Посмотри указатели.",
+          "seconds": 5.5
+        }
+      ]
+    },
+    {
+      "id": "near_reception_hint",
+      "trigger": {
+        "type": "zone_enter",
+        "zone": "near_reception"
+      },
+      "requires": [
+        "act0:transformed"
+      ],
+      "unless": [
+        "act0:reception"
+      ],
+      "once": false,
+      "steps": [
+        {
+          "type": "say",
+          "speaker": "doctor",
+          "text": "Вот, похоже, это то, что нам нужно.",
+          "seconds": 5.5
+        }
+      ]
+    },
+    {
+      "id": "revisit_hint",
+      "trigger": {
+        "type": "revisit",
+        "zones": [
+          "room_0",
+          "room_1",
+          "room_2",
+          "room_3",
+          "room_4",
+          "room_5"
+        ]
+      },
+      "requires": [
+        "act0:transformed"
+      ],
+      "once": false,
+      "cooldown": 6,
+      "steps": [
+        {
+          "type": "say",
+          "speaker": "doctor",
+          "text": "Кажется, мы здесь уже были.",
+          "seconds": 5.5
+        }
+      ]
+    }
+  ]
+}

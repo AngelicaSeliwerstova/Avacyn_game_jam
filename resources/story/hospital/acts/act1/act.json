@@ -1,0 +1,488 @@
+{
+  "id": "act1",
+  "title": "Она всегда меня находила",
+  "complete_flag": "act1:complete",
+  "dialogues_file": "dialogue.json",
+  "documents_file": "documents.json",
+  "zones": {
+    "tv": {
+      "min": [
+        8.5,
+        9.1,
+        -22
+      ],
+      "max": [
+        13.5,
+        10.1,
+        -18.7
+      ]
+    },
+    "child_room": {
+      "min": [
+        21.3,
+        9.1,
+        -23.8
+      ],
+      "max": [
+        29.7,
+        10.1,
+        -17.8
+      ]
+    }
+  },
+  "objectives": [
+    {
+      "requires": [
+        "act1:complete"
+      ],
+      "title": "Акт 1 завершён",
+      "description": "Дверь палаты 313 открыта."
+    },
+    {
+      "requires": [
+        "act1:memory_done"
+      ],
+      "title": "Вернуться к палате 313",
+      "description": "Отправляйтесь с врачом к 313 и откройте дверь найденным ключом."
+    },
+    {
+      "requires": [
+        "act1:child_room_seen"
+      ],
+      "title": "Взять ключ",
+      "description": "Осмотрите табурет в центре детской комнаты."
+    },
+    {
+      "requires": [
+        "act1:music"
+      ],
+      "title": "Найти источник мелодии",
+      "description": "Прислушивайтесь к звуку и исследуйте палаты третьего этажа."
+    },
+    {
+      "title": "Найти палату 313",
+      "description": "Поднимитесь вместе с врачом на третий этаж."
+    }
+  ],
+  "scenes": [
+    {
+      "id": "intro",
+      "trigger": {
+        "type": "load"
+      },
+      "unless": [
+        "act1:started"
+      ],
+      "steps": [
+        {
+          "type": "title",
+          "title": "АКТ 1",
+          "text": "«Она всегда меня находила»",
+          "seconds": 4,
+          "fade_seconds": 1.2
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act1:started"
+          ],
+          "remove": []
+        },
+        {
+          "type": "follow",
+          "actor": "doctor",
+          "enabled": true
+        },
+        {
+          "type": "dialogue",
+          "id": "intro"
+        }
+      ]
+    },
+    {
+      "id": "resume_key",
+      "trigger": {
+        "type": "load"
+      },
+      "requires": [
+        "act1:child_room_seen"
+      ],
+      "unless": [
+        "act1:key_taken"
+      ],
+      "once": false,
+      "steps": [
+        {
+          "type": "object_state",
+          "object": "f3_ward_313_key",
+          "state": "default"
+        }
+      ]
+    },
+    {
+      "id": "locked_door",
+      "trigger": {
+        "type": "event",
+        "name": "locked:f3_patient_ward_313"
+      },
+      "unless": [
+        "act1:door_found"
+      ],
+      "steps": [
+        {
+          "type": "flags",
+          "add": [
+            "act1:door_found"
+          ],
+          "remove": []
+        },
+        {
+          "type": "dialogue",
+          "id": "locked"
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act1:music"
+          ],
+          "remove": []
+        },
+        {
+          "type": "dialogue",
+          "id": "melody"
+        }
+      ]
+    },
+    {
+      "id": "clock",
+      "trigger": {
+        "type": "interact",
+        "object": "f3_ward_305_clock"
+      },
+      "requires": [
+        "act1:music"
+      ],
+      "steps": [
+        {
+          "type": "dialogue",
+          "id": "clock"
+        }
+      ]
+    },
+    {
+      "id": "television",
+      "trigger": {
+        "any": [
+          {
+            "type": "zone",
+            "zone": "tv"
+          },
+          {
+            "type": "interact",
+            "object": "f3_ward_306_tv"
+          }
+        ]
+      },
+      "requires": [
+        "act1:music"
+      ],
+      "steps": [
+        {
+          "type": "object_state",
+          "object": "f3_ward_306_tv",
+          "state": "memory"
+        },
+        {
+          "type": "wait",
+          "seconds": 1
+        },
+        {
+          "type": "object_state",
+          "object": "f3_ward_306_tv",
+          "state": "default"
+        },
+        {
+          "type": "dialogue",
+          "id": "television"
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act1:tv_seen"
+          ],
+          "remove": []
+        }
+      ]
+    },
+    {
+      "id": "toy",
+      "trigger": {
+        "type": "interact",
+        "object": "f3_ward_307_toy"
+      },
+      "requires": [
+        "act1:music"
+      ],
+      "steps": [
+        {
+          "type": "dialogue",
+          "id": "toy"
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act1:toy_seen"
+          ],
+          "remove": []
+        }
+      ]
+    },
+    {
+      "id": "drawing",
+      "trigger": {
+        "type": "interact",
+        "object": "f3_ward_308_drawing"
+      },
+      "requires": [
+        "act1:music"
+      ],
+      "steps": [
+        {
+          "type": "dialogue",
+          "id": "drawing"
+        }
+      ]
+    },
+    {
+      "id": "child_room",
+      "trigger": {
+        "type": "zone",
+        "zone": "child_room"
+      },
+      "requires": [
+        "act1:music"
+      ],
+      "steps": [
+        {
+          "type": "dialogue",
+          "id": "child_room"
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act1:music_muted"
+          ],
+          "remove": []
+        },
+        {
+          "type": "wait",
+          "seconds": 1.5
+        },
+        {
+          "type": "dialogue",
+          "id": "first_memory"
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act1:child_room_seen"
+          ],
+          "remove": [
+            "act1:music_muted"
+          ]
+        },
+        {
+          "type": "object_state",
+          "object": "f3_ward_313_key",
+          "state": "default"
+        }
+      ]
+    },
+    {
+      "id": "take_key",
+      "trigger": {
+        "type": "event",
+        "name": "collected:f3_ward_313_key"
+      },
+      "requires": [
+        "act1:child_room_seen"
+      ],
+      "steps": [
+        {
+          "type": "flags",
+          "add": [
+            "act1:key_taken"
+          ],
+          "remove": []
+        },
+        {
+          "type": "dialogue",
+          "id": "memory",
+          "presentation": "memory"
+        },
+        {
+          "type": "dialogue",
+          "id": "after_memory"
+        },
+        {
+          "type": "flags",
+          "add": [
+            "act1:memory_done"
+          ],
+          "remove": []
+        }
+      ]
+    },
+    {
+      "id": "return",
+      "trigger": {
+        "type": "outside_zone",
+        "zone": "child_room"
+      },
+      "requires": [
+        "act1:memory_done"
+      ],
+      "steps": [
+        {
+          "type": "dialogue",
+          "id": "return"
+        }
+      ]
+    },
+    {
+      "id": "open_313",
+      "trigger": {
+        "type": "event",
+        "name": "opened:f3_patient_ward_313"
+      },
+      "requires": [
+        "act1:memory_done",
+        "act1:key_taken"
+      ],
+      "steps": [
+        {
+          "type": "wait_object",
+          "object": "f3_patient_ward_313",
+          "state": "open"
+        },
+        {
+          "type": "effect",
+          "effect": "fade_to_black",
+          "seconds": 1.5
+        },
+        {
+          "type": "complete_act"
+        },
+        {
+          "type": "end",
+          "title": "КОНЕЦ АКТА 1",
+          "text": "«Она всегда меня находила»"
+        }
+      ]
+    },
+    {
+      "id": "stairs_fear",
+      "requires": [
+        "act1:started"
+      ],
+      "trigger": {
+        "type": "event",
+        "name": "stairs_walk_finished"
+      },
+      "steps": [
+        {
+          "type": "flags",
+          "add": [
+            "hospital:stairs_fear"
+          ]
+        },
+        {
+          "type": "say",
+          "speaker": "hero",
+          "text": "Меня в дрожь бросает от лестниц… Это же такое опасное место.",
+          "seconds": 7
+        }
+      ],
+      "unless": [
+        "hospital:stairs_fear"
+      ]
+    }
+  ],
+  "audio_sources": [
+    {
+      "id": "music_box",
+      "file": "story/music_box.wav",
+      "position": [
+        24.1,
+        10.42,
+        -22.1
+      ],
+      "radius": 34,
+      "volume": 0.7,
+      "loop": true,
+      "requires": [
+        "act1:music"
+      ],
+      "unless": [
+        "act1:key_taken",
+        "act1:music_muted"
+      ]
+    },
+    {
+      "id": "clock",
+      "file": "story/clock_tick.wav",
+      "position": [
+        5,
+        11.8,
+        -23.7
+      ],
+      "radius": 8,
+      "volume": 0.22,
+      "loop": false,
+      "interval": [
+        1,
+        1
+      ],
+      "requires": [
+        "act1:started"
+      ],
+      "unless": [
+        "act1:complete"
+      ]
+    },
+    {
+      "id": "tv",
+      "file": "story/tv_static.wav",
+      "position": [
+        11,
+        11.05,
+        -22.5
+      ],
+      "radius": 7,
+      "volume": 0.1,
+      "loop": true,
+      "requires": [
+        "act1:started"
+      ],
+      "unless": [
+        "act1:complete"
+      ]
+    },
+    {
+      "id": "lock",
+      "file": "story/lock_click.wav",
+      "position": [
+        16,
+        10.9,
+        5
+      ],
+      "radius": 9,
+      "volume": 0.55,
+      "loop": false,
+      "event": "opened:f3_patient_ward_313",
+      "requires": [
+        "act1:started"
+      ]
+    }
+  ]
+}

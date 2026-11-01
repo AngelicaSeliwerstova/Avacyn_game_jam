@@ -176,8 +176,10 @@ class CompanionTests(unittest.TestCase):
         self.assertLess(glm.distance(ally.body.position, player.body.position), 1.5)
 
     def test_conversation_is_required_before_world_transition(self):
+        from support_story import finish_conversation
         campaign = Campaign()
         scene = campaign.load_level("peaceful")
+        scene.session.tick_presentation(4)
         ally = scene.session.companions[0]
         self.assertFalse(ally.following)
         self.assertNotEqual(ally.model, scene.player.model)
@@ -188,10 +190,10 @@ class CompanionTests(unittest.TestCase):
         self.assertIsNone(scene.session.next_level)
         scene.player._interactions._activate(ally.scene_object)
         scene.session.update(0)
-        for index in range(3):
-            self.assertIsNotNone(scene.session.dialog)
-            self.assertIsNone(scene.session.next_level)
-            scene.session.handle_action(scene.session.dialog.buttons[0].action)
+        self.assertIsNone(scene.session.next_level)
+        finish_conversation(scene.session)
+        self.assertIsNone(scene.session.next_level)
+        scene.session.tick_presentation(4)
         self.assertEqual(scene.session.next_level, "start")
         self.assertIn("recruited:hospital_companion", campaign.progress.flags)
         horror = campaign.load_level(scene.session.next_level)

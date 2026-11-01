@@ -45,6 +45,7 @@ class Camera:
         self.position = glm.vec3(position)
         self.target = glm.vec3(target)
         self.up = glm.vec3(0.0, 1.0, 0.0)
+        self.view_rotation_degrees = (0.0, 0.0, 0.0)
         self.fov_degrees = fov_degrees
         self.near = near
         self.far = far
@@ -54,7 +55,13 @@ class Camera:
         direction = self.target - self.position
         if glm.length(glm.cross(direction, self.up)) < 1e-6:
             raise ValueError("Camera direction must be nonzero and not parallel to up")
-        return glm.lookAt(self.position, self.target, self.up)
+        view = glm.lookAt(self.position, self.target, self.up)
+        if not any(self.view_rotation_degrees):
+            return view
+        rotation = glm.mat4(1)
+        for angle, axis in zip(self.view_rotation_degrees, ((1, 0, 0), (0, 1, 0), (0, 0, 1))):
+            rotation = glm.rotate(rotation, math.radians(angle), glm.vec3(axis))
+        return rotation * view
 
     def projection_matrix(self, aspect_ratio: float) -> glm.mat4:
         if aspect_ratio <= 0:

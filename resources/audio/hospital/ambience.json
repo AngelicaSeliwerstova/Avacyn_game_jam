@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "sounds": {
+    "room_tone": "hospital/room_tone.wav",
+    "activity": "hospital/hospital_activity.wav",
+    "lights": "hospital/fluorescent_buzz.wav",
+    "creak": "hospital/door_creak.wav",
+    "monitor": "hospital/monitor_beep.wav",
+    "breathing": "hospital/breathing.wav",
+    "distant_step": "footsteps/doctor_step_01.wav"
+  },
+  "profiles": {
+    "peaceful": {
+      "breathing_volume": 0.44,
+      "loops": [
+        {"sound": "room_tone", "volume": 0.24},
+        {"sound": "activity", "volume": 0.18},
+        {"sound": "lights", "volume": 0.035}
+      ],
+      "door_volume": 0.22,
+      "random_interval": [24, 45],
+      "random_sounds": ["creak"],
+      "random_volume": 0.10,
+      "emitters": [
+        {"sound": "monitor", "position": [-10, 1, -10], "radius": 9, "volume": 0.17, "interval": [1.1, 1.5]},
+        {"sound": "monitor", "position": [12, 5.8, 4], "radius": 10, "volume": 0.16, "interval": [1.1, 1.5]},
+        {"sound": "monitor", "position": [24, 10.6, 6.8], "radius": 8, "volume": 0.15, "interval": [1.1, 1.5]}
+      ]
+    },
+    "abandoned": {
+      "breathing_volume": 0.44,
+      "loops": [
+        {"sound": "room_tone", "volume": 0.36},
+        {"sound": "lights", "volume": 0.12}
+      ],
+      "door_volume": 0.38,
+      "random_interval": [18, 35],
+      "random_sounds": ["creak", "distant_step"],
+      "random_volume": 0.15,
+      "emitters": [
+        {"sound": "monitor", "position": [12, 5.8, 4], "radius": 8, "volume": 0.10, "interval": [2.6, 4.4]}
+      ]
+    }
+  }
+}

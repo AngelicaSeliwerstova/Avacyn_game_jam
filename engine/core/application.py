@@ -10,6 +10,7 @@ from engine.debug.panel import DebugSettings, DeveloperPanel
 from engine.debug.geometry import DebugPath
 from engine.debug.frame_log import SlowFrameLog
 from engine.input.bindings import InputBindings
+from engine.input.state import InputState
 from engine.input.keyboard_mouse import KeyboardMouse
 from engine.particles.snow import Snowfall
 from engine.rendering.renderer import Renderer
@@ -132,6 +133,14 @@ class Application:
                     continue
 
                 inputs = input_device.read()
+                had_dialog = self._session.dialog is not None
+                if not getattr(self._controlled_entity, "creator_mode", False):
+                    self._session.tick_presentation(delta_time)
+                if had_dialog and self._session.dialog is None:
+                    input_device.reset_after_loading()
+                    inputs = input_device.read()
+                if self._session.controls_locked and not getattr(self._controlled_entity, "creator_mode", False):
+                    inputs = InputState()
                 profiling = self._debug_mode
                 started = perf_counter() if profiling else 0.0
                 system_timings = {}
@@ -210,6 +219,7 @@ class Application:
                                 camera_transition_strength=getattr(
                                     self._controlled_entity, "camera_transition_strength", 0.0,
                                 ),
+                                stress_strength=getattr(self._controlled_entity, "stair_stress_strength", 0.0),
                                 player_transform=self._controlled_entity.transform,
                                 debug_paths=self._debug_paths() if self._debug.enabled and self._debug_paths else ())
                 rendered = perf_counter() if profiling else 0.0
@@ -352,8 +362,14 @@ class Application:
                 window.toggle_fullscreen()
             window.handle_event(event)
             if self._session.dialog is None:
+                if (not self._inventory_open and event.type == pygame.KEYDOWN
+                        and not getattr(event, "repeat", False)
+                        and not getattr(self._controlled_entity, "creator_mode", False)
+                        and self._session.handle_gameplay_key(pygame.key.name(event.key))):
+                    input_device.begin_modal()
+                    continue
                 if (event.type == pygame.KEYDOWN and event.key == self._input_bindings.toggle_inventory
-                        and not getattr(event, "repeat", False)):
+                        and not getattr(event, "repeat", False) and not self._session.controls_locked):
                     if self._inventory_open:
                         self._close_inventory(input_device)
                     elif getattr(self._controlled_entity, "inventory", None) is not None:

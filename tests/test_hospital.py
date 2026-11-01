@@ -123,7 +123,7 @@ class HospitalTests(unittest.TestCase):
         self.assertEqual(sum(box.size == (1.18, 0.2, 2.15) and 4.8 < box.position[1] < 9.6
                              for box in level.boxes), 6)
         self.assertEqual(sum(box.size == (1.18, 0.2, 2.15) and box.position[1] > 9.6
-                             for box in level.boxes), 18)
+                             for box in level.boxes), 17)
         self.assertTrue(all(obj.interaction.command == "open_door" for obj in operating_rooms.values()))
         world = CollisionWorld3D((box.collider for box in level.boxes), level.floor_bounds)
         self.assertAlmostEqual(world.support_height(glm.vec3(27, 4.8, 20), 0.1, 4.8), 4.8)

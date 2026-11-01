@@ -37,8 +37,14 @@ def build_objects(definitions) -> tuple[SceneObject, ...]:
             ally = Companion(data["id"], position, CompanionSettings(**data.get("settings", {})),
                              following=data.get("following", True), display_name=data.get("name", "Союзник"),
                              dialogue=data.get("dialogue", ()), next_level=data.get("next_level"),
-                             appearance=data.get("appearance", "player"))
+                             appearance=data.get("appearance", "player"), story_actor=data.get("story_actor", False))
             objects.append(ally.scene_object)
+        elif data["type"] == "story_document":
+            from game.levels.story_props import build_story_document
+            objects.append(build_story_document(data, position))
+        elif data["type"] == "story_prop":
+            from game.levels.story_props import build_story_prop
+            objects.append(build_story_prop(data, position))
         elif data["type"] == "exit":
             goal = EscapeGoal(data["id"], transform=Transform(position=position),
                               radius=data.get("radius", 1.0), required_keys=tuple(data.get("required_keys", ())),
@@ -56,6 +62,11 @@ def _key(data, position):
     if not isinstance(key_id, str) or not key_id.strip():
         raise ValueError("Key ID must not be empty")
     pedestal = Box((x, y + 0.4, z), (0.65, 0.8, 0.65), material="wood")
+    pedestal_boxes = (pedestal,)
+    if data.get("pedestal") == "stool":
+        pedestal_boxes = (Box((x, y + 0.82, z), (0.7, 0.12, 0.65), material="wood"),) + tuple(
+            Box((x + dx, y + 0.39, z + dz), (0.09, 0.78, 0.09), material="wood")
+            for dx in (-0.25, 0.25) for dz in (-0.23, 0.23))
     # Кольцо, стержень и два зубца - временная модель без внешнего файла.
     parts = (
         ((-0.16, 1.02, 0), (0.16, 0.04, 0.05)),
@@ -70,14 +81,15 @@ def _key(data, position):
                   for (dx, dy, dz), size in parts)
     # Единственный объём выбора вместо необходимости попасть в маленький зубец ключа.
     # Геометрия остаётся настоящей: доступ перекрывают стол и стены.
-    action = Interaction(name, f"Picked up: {name}.", "Take", "pickup_key", key_id)
+    action = Interaction(name, f"Получено: {name}.", "Взять ключ", "pickup_key", key_id)
     return (
-        SceneObject(data["id"] + "_pedestal", {"default": ObjectState((pedestal,))}),
+        SceneObject(data["id"] + "_pedestal", {"default": ObjectState(pedestal_boxes)}),
         SceneObject(data["id"], {
             "default": ObjectState(boxes, collidable=False, interaction=action,
                                    selection_box=Box((x, y + 0.95, z), (0.56, 0.22, 0.16))),
             "collected": ObjectState(),
-        }),
+            "unavailable": ObjectState(boxes, collidable=False),
+        }, initial=data.get("initial", "default")),
     )
 
 
@@ -140,6 +152,14 @@ def _door(data, position):
     # Ручки с обеих сторон видны независимо от стороны подхода.
     panel += tuple(box(width * 0.3, 1.05, sign * (thickness / 2 + 0.04),
                        0.22, 0.055, 0.08, data.get("handle_material", "wood")) for sign in (-1, 1))
+    if key_id:
+        # A small padlock hangs below the corridor-side handle and moves with the door.
+        normal = -(thickness / 2 + 0.11)
+        lock_material = data.get("handle_material", "rust")
+        panel += (box(width * 0.3, 0.88, normal, 0.15, 0.18, 0.09, lock_material),
+                  box(width * 0.3, 0.995, normal, 0.13, 0.035, 0.05, lock_material))
+        panel += tuple(box(width * 0.3 + side * 0.05, 0.96, normal,
+                           0.03, 0.07, 0.05, lock_material) for side in (-1, 1))
     panel = tuple(replace(b, local_texture=True,
                           color=tuple(data["panel_color"]) if i == 0 and "panel_color" in data else b.color)
                   for i, b in enumerate(panel))

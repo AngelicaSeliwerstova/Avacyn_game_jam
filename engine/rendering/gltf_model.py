@@ -58,6 +58,9 @@ class GLTFModel:
             self._load_scene()
             self._load_animation()
             self._update_skin_textures()
+            # A scene may open directly on a paused conversation. Sample its
+            # initial pose now so characters never appear in the bind pose.
+            self.update(0.0, speed=0.0)
         except Exception:
             self.release()
             raise

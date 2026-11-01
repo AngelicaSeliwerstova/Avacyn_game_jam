@@ -326,7 +326,8 @@ class Renderer:
                creator_light_boxes: tuple[Box, ...] = (),
                creator_help_text: tuple[str, str] | None = None,
                camera_effect_strength: float = 0.0,
-               camera_transition_strength: float = 0.0):
+               camera_transition_strength: float = 0.0,
+               stress_strength: float = 0.0):
         if self.profile_enabled:
             self.frame_timings = {}
             self._profile_started = perf_counter()
@@ -431,6 +432,7 @@ class Renderer:
                 self._render_target.color,
                 camera_effect_strength=camera_effect_strength,
                 transition_strength=camera_transition_strength,
+                stress_strength=stress_strength,
             )
         self._profile_mark("effects_particles")
         target = self.output_target

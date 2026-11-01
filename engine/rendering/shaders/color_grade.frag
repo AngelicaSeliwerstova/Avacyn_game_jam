@@ -12,6 +12,7 @@ uniform float contrast;
 uniform float vignette;
 uniform float camera_effect_strength;
 uniform float transition_strength;
+uniform float stress_strength;
 uniform float effect_time;
 in vec2 uv;
 out vec4 fragment_color;
@@ -39,5 +40,12 @@ void main() {
         + vec2(floor(effect_time * 24.0));
     float noise = fract(sin(dot(noise_position, vec2(12.9898, 78.233))) * 43758.5453);
     color += (noise - 0.5) * transition_strength * 0.055;
+    // A warm veil and stronger red edges, with a slow breathing-like pulse.
+    // The centre remains readable and zero stress reproduces the normal image.
+    float stress_edge = smoothstep(0.20, 0.66, length(uv - vec2(0.5)));
+    float stress_pulse = 0.88 + 0.12 * sin(effect_time * 5.4);
+    float stress_mix = stress_strength * stress_pulse * (0.10 + 0.52 * stress_edge);
+    vec3 stress_color = vec3(max(color.r, 0.38), color.g * 0.33, color.b * 0.35);
+    color = mix(color, stress_color, stress_mix);
     fragment_color = vec4(clamp(color, 0.0, 1.0), source.a);
 }

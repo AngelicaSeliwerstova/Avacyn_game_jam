@@ -13,6 +13,38 @@ from test_hospital import make_body, walk
 
 
 class HospitalLayoutTests(unittest.TestCase):
+    def test_ward_313_has_its_own_door_sign_and_route_from_the_stair_landing(self):
+        from game.story_loader import load_story
+        from engine.raycasting.aabb import cast_ray
+        labels = load_story("hospital").document("hospital_plan")[1]["floors"][2]
+        marker = next(label for label in labels if label[2] == "313")
+        for name in ("peaceful", "start"):
+            with self.subTest(level=name):
+                level = create_level(name)
+                door = next(obj for obj in level.objects if obj.name == "f3_patient_ward_313")
+                self.assertEqual(door.interaction.name, "3 этаж — Палата 313")
+                self.assertEqual(door.interaction.command, "unlock_door")
+                self.assertEqual(door.interaction.argument, "ward_313")
+                old_ward = next(obj for obj in level.objects if obj.name == "f3_patient_east_entry")
+                self.assertEqual(old_ward.interaction.name, "3 этаж — Палата 309")
+                sign = next(box for box in level.decorations if box.material == "sign_patient_ward_313")
+                self.assertEqual(sign.interaction.name, "Палата 313")
+                self.assertAlmostEqual(sign.position[1], 9.6 + 1.75)
+                origin = (14, 11.25, 6.9)
+                ray = tuple(a - b for a, b in zip(sign.position, origin))
+                self.assertIsNone(cast_ray(origin, ray, tuple(b.collider for b in level.collision_boxes),
+                                          math.dist(origin, sign.position)))
+                world = CollisionWorld3D((box.collider for box in level.collision_boxes), level.floor_bounds,
+                    objects=tuple(obj for obj in level.objects if obj.entity is None))
+                self.assertTrue(world.is_blocked(glm.vec3(23, 9.6, 2), 0.25, 1.8))
+                self.assertTrue(world.is_blocked(glm.vec3(16, 9.6, 5), 0.25, 1.8))
+                door.set_state("open")
+                door.update(2)
+                body = make_body(world, (-7, 9.6, 6.9))
+                walk(self, body, ((12, 9.6, 6.9), (14.8, 9.6, 5), (17.2, 9.6, 5),
+                                 (22, 9.6, 3.5), (marker[0], 9.6, marker[1])), fps=30)
+                walk(self, body, ((22, 9.6, 3.5), (17.2, 9.6, 5), (14.8, 9.6, 5)), fps=30)
+
     def test_reception_front_and_sides_reach_floor_in_both_worlds_and_creator(self):
         from game.levels.creator_presets import creator_presets
         for peaceful in (False, True):
@@ -32,7 +64,7 @@ class HospitalLayoutTests(unittest.TestCase):
         cls.doors = tuple(obj for obj in cls.level.objects if "open" in obj.states)
         for door in cls.doors:
             door.set_state("open")
-            door.update(1)
+            door.update(2)
         cls.world = CollisionWorld3D(
             (box.collider for box in cls.level.collision_boxes), cls.level.floor_bounds,
             objects=tuple(obj for obj in cls.level.objects if obj.entity is None),
@@ -122,7 +154,7 @@ class HospitalLayoutTests(unittest.TestCase):
     def test_patient_beds_have_small_wall_gaps_and_grounded_legs(self):
         beds = [b for b in self.level.boxes
                 if b.size == (1.18, 0.2, 2.15) and b.position[1] > 9.6 and b.position[2] < -10]
-        self.assertEqual(len(beds), 8)
+        self.assertEqual(len(beds), 7)
         for bed in beds:
             self.assertAlmostEqual(bed.footprint.min_z - (-23.86), 0.08, places=5)
             left_wall = min((-29.86, -20.88, -13.88, -6.88, 0.12, 7.12, 14.12, 21.12),
@@ -161,7 +193,7 @@ class HospitalLayoutTests(unittest.TestCase):
         for obj in scene.level.objects:
             if "open" in obj.states:
                 obj.set_state("open")
-                obj.update(1)
+                obj.update(2)
         goals = [(x, 4.8, -18) for x in (-24, -16, -8, 0, 8, 16, 24)]
         goals += [(x - 1.6, 9.6, -19) for x in (-24.5, -17.5, -10.5, -3.5, 3.5, 10.5, 17.5, 24.5)]
         goals += [(22, 9.6, 1), (-5.5, 9.6, 18), (10, 9.6, 18), (23, 9.6, 18)]

@@ -46,7 +46,8 @@ class DoorTests(unittest.TestCase):
 
     def test_locked_door_still_needs_key_and_can_be_closed_then_reopened(self):
         _, door, controller = self.make_door(key_id="office")
-        self.assertIn("Locked", controller._activate(door))
+        self.assertIn("Дверь заперта", controller._activate(door))
+        self.assertIn("locked:door", controller.events)
         self.assertEqual(door.current_state, door.states["default"])
         controller.inventory.add_key("office", "Office key")
         controller._activate(door)

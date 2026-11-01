@@ -99,8 +99,8 @@ class PostProcessor:
         self._vertices[name].render(mode=moderngl.TRIANGLES, vertices=3)
 
     def apply(self, source: moderngl.Texture, *, camera_effect_strength: float = 0.0,
-              transition_strength: float = 0.0) -> RenderTarget:
-        for value in (camera_effect_strength, transition_strength):
+              transition_strength: float = 0.0, stress_strength: float = 0.0) -> RenderTarget:
+        for value in (camera_effect_strength, transition_strength, stress_strength):
             if not math.isfinite(value) or not 0 <= value <= 1:
                 raise ValueError("Camera effect strengths must be finite and from 0 to 1")
         self._context.scissor = None
@@ -120,6 +120,7 @@ class PostProcessor:
         grade = self._programs["color_grade"]
         grade["camera_effect_strength"].value = camera_effect_strength
         grade["transition_strength"].value = transition_strength
+        grade["stress_strength"].value = stress_strength
         grade["effect_time"].value = self._elapsed
         self._draw("color_grade", self.output)
         return self.output

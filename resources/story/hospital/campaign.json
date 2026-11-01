@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "id": "hospital",
+  "start_act": "act0",
+  "characters": {
+    "hero": {
+      "name": "Героиня",
+      "voice": {
+        "pitch_hz": 820,
+        "pitch_variation": 0.08,
+        "volume": 0.7,
+        "chars_per_second": 38
+      }
+    },
+    "doctor": {
+      "name": "Врач",
+      "entity": "hospital_companion",
+      "voice": {
+        "pitch_hz": 560,
+        "pitch_variation": 0.06,
+        "volume": 0.7,
+        "chars_per_second": 34
+      }
+    },
+    "child": {
+      "name": "Голос девочки",
+      "voice": {
+        "pitch_hz": 1040,
+        "pitch_variation": 0.09,
+        "volume": 0.65,
+        "chars_per_second": 32
+      }
+    },
+    "mother": {
+      "name": "Голос матери",
+      "voice": {
+        "pitch_hz": 480,
+        "pitch_variation": 0.05,
+        "volume": 0.7,
+        "chars_per_second": 30
+      }
+    }
+  },
+  "entries": {
+    "peaceful": {
+      "act": "act0"
+    },
+    "start": {
+      "act": "act0",
+      "set_flags": [
+        "act0:intro",
+        "act0:met_doctor"
+      ]
+    },
+    "act1": {
+      "act": "act1",
+      "set_flags": [
+        "act0:complete",
+        "act0:map",
+        "act0:letter_read",
+        "act0:transformed",
+        "act0:met_doctor"
+      ]
+    }
+  },
+  "acts": [
+    {
+      "id": "act0",
+      "file": "acts/act0/act.json",
+      "enabled": true
+    },
+    {
+      "id": "act1",
+      "file": "acts/act1/act.json",
+      "enabled": true
+    }
+  ]
+}

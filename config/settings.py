@@ -12,6 +12,10 @@ RENDER_SIZE = (640, 480)
 FPS_LIMIT = 60
 
 AUDIO_ENABLED = True
+AMBIENCE_VOLUME = 0.65
+AMBIENCE_DIALOGUE_GAIN = 0.30
+DIALOGUE_BEEPS_ENABLED = True
+DIALOGUE_BEEP_VOLUME = 0.35
 FOOTSTEP_PLAYER_VOLUME = 0.28
 FOOTSTEP_DOCTOR_VOLUME = 0.72
 FOOTSTEP_HEARING_RANGE = 18.0
@@ -199,6 +203,17 @@ GRAVITY = 18.0
 JUMP_HEIGHT = 0.9              # Высота прыжка над текущей опорой.
 PHYSICS_STEP = 1 / 120          # Фиксированный шаг физики в секундах.
 STAIR_CAMERA_SMOOTHING = 8.0    # Больше значение - быстрее камера догоняет тело.
+
+# Тревожная тряска при ходьбе по ступеням; углы: тангаж, поворот, крен.
+STAIR_SHAKE_ENABLED = True
+STAIR_SHAKE_ROTATION_DEGREES = (0.35, 0.25, 0.28)
+STAIR_SHAKE_FREQUENCY = 4.2
+STAIR_SHAKE_FADE_IN = 0.45
+STAIR_SHAKE_FADE_OUT = 0.60
+STAIR_STRESS_FADE_IN = 1.4
+STAIR_STRESS_FADE_OUT = 2.4
+STAIR_COMMENT_MIN_WALK_SECONDS = 1.0
+STAIR_COMMENT_REST_SECONDS = 0.65
 
 # Модель игрока в GLB 2.0; путь относительно resources/models.
 PLAYER_MODEL = "player/girl_chestnut_black_stockings.glb"

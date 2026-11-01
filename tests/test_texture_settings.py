@@ -61,7 +61,7 @@ class TextureSettingsTests(unittest.TestCase):
         for world, finish in (("peaceful", "linen_ivory"), ("start", "linen_worn")):
             level = create_level(world)
             mattresses = [b for b in level.boxes if b.size in ((1.08, 0.15, 1.96), (1.14, 0.2, 2.05))]
-            self.assertEqual(len(mattresses), 30)
+            self.assertEqual(len(mattresses), 29)
             self.assertTrue(all(b.material == finish and b.color is None for b in mattresses))
 
     def test_department_floors_have_distinct_finishes_in_each_world(self):
@@ -86,17 +86,20 @@ class TextureSettingsTests(unittest.TestCase):
                 expected = 128 if material.name in fixed_small else size
                 image = pygame.image.load(str(material.path))
                 shape = (expected * 4, expected) if material.name.startswith("sign_patient_") else (expected, expected)
+                if material.name.startswith("story_"):
+                    shape = ((192, 192) if material.name == "story_clock" else
+                             (256, 192) if material.name == "story_drawing" else (256, 144))
                 self.assertEqual(image.get_size(), shape, material.path)
 
     def test_third_floor_signs_cover_every_room_and_resolve_to_readable_materials(self):
         from game.levels.room_signs import PATIENT_SIGNS
         level = create_level("start")
         signs = [b for b in level.decorations if b.material and b.material.startswith("sign_patient_")]
-        self.assertEqual(len(signs), 13)
+        self.assertEqual(len(signs), 15)
         self.assertEqual({b.material for b in signs}, {f"sign_{name}" for name in PATIENT_SIGNS})
         self.assertTrue(all(b.position[1] > 9.6 and b.local_texture and b.color is None for b in signs))
         names = {b.interaction.name for b in signs}
-        self.assertTrue({f"Палата {number}" for number in range(301, 313)} <= names)
+        self.assertTrue({f"Палата {number}" for number in range(301, 314)} <= names)
         self.assertIn("Пост медсестры", names)
 
     def test_unsupported_resolution_is_rejected(self):

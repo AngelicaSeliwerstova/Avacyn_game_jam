@@ -152,7 +152,8 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
     else:
         plate(-30, 30, -24, 24, count * height, material="roof_concrete")
     ceiling_under(all_boxes[slab_start:], "ceiling_room")
-    all_boxes.extend(move(box, 0) for box in stair.build())
+    stair_boxes = stair.build()
+    all_boxes.extend(move(box, 0) for box in stair_boxes)
     all_lights.append(PointLight((-13, count * height - 0.6, 4), (1, 0.83, 0.61), 3.5, 9))
     return replace(level, boxes=tuple(all_boxes) + level.boxes,
                    floor_material=material_map.get("lobby_floor", level.floor_material),
@@ -162,4 +163,6 @@ def assemble_storeys(level, boxes, decorations, definitions, lights, stair, coun
                                      base_lights + tuple(all_lights)),
                    floor_heights=tuple(i * height for i in range(count)),
                    floor_labels=tuple(str(i + 1) for i in range(count)),
-                   floor_hints=("",) * count, creator_room_height=height - slab)
+                   floor_hints=("",) * count, creator_room_height=height - slab,
+                   stair_surfaces=tuple(move(box, 0) for box in stair_boxes
+                                        if box.material == "concrete" and box.size[1] <= 0.24))

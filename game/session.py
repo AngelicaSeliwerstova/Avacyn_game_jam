@@ -1,6 +1,10 @@
+from dataclasses import replace
+
+from config import settings
 from engine.scene.session import Dialog, DialogButton, Session
 from game.entities.escape import EscapeGoal
 from game.entities.companion import Companion
+from game.dialogue_voice import DialogueTyper, DialogueVoice, DialogueVoiceProfile
 
 
 class GameSession(Session):
@@ -11,6 +15,9 @@ class GameSession(Session):
         self.companions = tuple(obj.entity for obj in level.objects if isinstance(obj.entity, Companion)) if level else ()
         self._speaker = None
         self._dialogue_index = 0
+        self._typing = None
+        self._voice = DialogueVoice()
+        self._spoken_buttons = ()
         self.goals = tuple(obj.entity for obj in level.objects if isinstance(obj.entity, EscapeGoal)) if level else ()
         self._key_names = {obj.interaction.argument: obj.interaction.name for obj in level.objects
                            if obj.interaction is not None and obj.interaction.command == "pickup_key"} if level else {}
@@ -32,7 +39,7 @@ class GameSession(Session):
         if self.dialog is not None or self.next_level is not None or self.player is None:
             return
         for ally in self.companions:
-            if ally.talk_requested:
+            if ally.talk_requested and ally.dialogue:
                 ally.talk_requested = False
                 self._speaker = ally
                 self._dialogue_index = 0
@@ -61,6 +68,7 @@ class GameSession(Session):
         self.player.objective_status = self.goals[0].hint or "Reach the exit."
 
     def _show_conversation(self):
+        self.stop_dialogue_voice()
         node = self._speaker.dialogue[self._dialogue_index]
         if isinstance(node, dict):
             self.dialog = Dialog(self._speaker.display_name, node["text"], tuple(
@@ -70,10 +78,47 @@ class GameSession(Session):
             ), presentation="conversation")
             return
         last = self._dialogue_index == len(self._speaker.dialogue) - 1
-        self.dialog = Dialog(self._speaker.display_name, self._speaker.dialogue[self._dialogue_index],
+        self.show_spoken_line(self._speaker.display_name, self._speaker.dialogue[self._dialogue_index],
                              (DialogButton("Пойдём   E / Enter" if last else "Далее   E / Enter",
                                            "dialogue_next", ("e", "return", "keypad enter")),),
-                             presentation="conversation")
+                             DialogueVoiceProfile())
+
+    def show_spoken_line(self, speaker, text, buttons, voice, presentation="conversation"):
+        self.stop_dialogue_voice()
+        self._typing = DialogueTyper(text, voice)
+        self._spoken_buttons = buttons
+        typing_buttons = tuple(replace(button, label="Показать целиком   E / Enter") for button in buttons)
+        self.dialog = Dialog(speaker, text, typing_buttons, presentation=presentation, visible_characters=0)
+
+    def stop_dialogue_voice(self):
+        self._typing = None
+        self._voice.stop()
+
+    def reveal_dialogue(self):
+        """First continue press reveals the line; the next advances the story."""
+        if self._typing is None or self.dialog is None:
+            return False
+        self._typing.reveal()
+        self.dialog = replace(self.dialog, visible_characters=len(self.dialog.message), buttons=self._spoken_buttons)
+        self.stop_dialogue_voice()
+        return True
+
+    def tick_presentation(self, delta_time):
+        if not settings.AUDIO_ENABLED or not settings.DIALOGUE_BEEPS_ENABLED:
+            self._voice.stop()
+        if self._typing is None or self.dialog is None:
+            return
+        cue = self._typing.update(delta_time)
+        if (cue and settings.AUDIO_ENABLED and settings.DIALOGUE_BEEPS_ENABLED
+                and self._typing.profile.enabled):
+            self._voice.play(self._typing.profile, *cue)
+        self.dialog = replace(self.dialog, visible_characters=self._typing.visible,
+                              buttons=self._spoken_buttons if self._typing.finished else self.dialog.buttons)
+        if self._typing.finished:
+            self._typing = None
+
+    def release(self):
+        self._voice.release()
 
     def handle_action(self, action):
         if self._speaker is None or self.dialog is None:
@@ -93,6 +138,8 @@ class GameSession(Session):
             return True
         if action != "dialogue_next":
             return False
+        if self.reveal_dialogue():
+            return True
         self._dialogue_index += 1
         if self._dialogue_index < len(self._speaker.dialogue):
             self._show_conversation()
@@ -101,6 +148,7 @@ class GameSession(Session):
         return True
 
     def _finish_conversation(self, recruit):
+        self.stop_dialogue_voice()
         if recruit:
             self._speaker.following = True
             self._flags.add(f"recruited:{self._speaker.name}")

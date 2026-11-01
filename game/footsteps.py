@@ -7,6 +7,7 @@ import random
 import pygame
 
 from config import settings
+from game.audio_channels import FIRST_FOOTSTEP_CHANNEL, MIXER_CHANNELS
 from game.entities.companion import Companion
 from game.entities.enemy import Enemy
 
@@ -26,6 +27,8 @@ class FootstepSounds:
         try:
             if not pygame.mixer.get_init():
                 pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+            if pygame.mixer.get_num_channels() < MIXER_CHANNELS:
+                pygame.mixer.set_num_channels(MIXER_CHANNELS)
             if profile not in self._sounds:
                 root = Path(__file__).resolve().parents[1] / "resources/audio/footsteps"
                 self._sounds[profile] = tuple(pygame.mixer.Sound(str(root / f"{profile}_step_{i:02}.wav"))
@@ -38,7 +41,9 @@ class FootstepSounds:
             previous = self._voices.get(voice)
             if voice is not None and previous is not None and previous.get_busy():
                 previous.fadeout(20)
-            channel = pygame.mixer.find_channel(False)
+            # Leave ambience, breathing and dialogue channels untouched.
+            channel = next((pygame.mixer.Channel(i) for i in range(FIRST_FOOTSTEP_CHANNEL, pygame.mixer.get_num_channels())
+                            if not pygame.mixer.Channel(i).get_busy()), None)
             if channel is None:
                 return
             variation = self._rng.uniform(0.88, 1.0)

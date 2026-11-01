@@ -2,6 +2,8 @@ import json
 import math
 from pathlib import Path
 
+import glm
+
 from engine.scene.box import Box
 from engine.scene.camera import FixedCameraZone
 from engine.collision.obb import OBB
@@ -45,21 +47,26 @@ def save_fixed_cameras(path: Path, cameras: tuple[FixedCameraZone, ...]) -> None
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
-def camera_model_boxes(camera: FixedCameraZone, led_on: bool) -> tuple[Box, ...]:
+def camera_model_boxes(camera: FixedCameraZone, led_on: bool, *, aim_pitch=False) -> tuple[Box, ...]:
     direction_x = camera.target[0] - camera.position[0]
     direction_z = camera.target[2] - camera.position[2]
     yaw = math.degrees(math.atan2(-direction_x, -direction_z))
     angle = math.radians(yaw)
     cosine, sine = math.cos(angle), math.sin(angle)
     origin_x, origin_y, origin_z = camera.position
+    pitch = math.atan2(camera.target[1] - origin_y, math.hypot(direction_x, direction_z))
+    rotation = glm.angleAxis(angle, glm.vec3(0, 1, 0)) * glm.angleAxis(pitch, glm.vec3(1, 0, 0))
 
     def at(local_position):
         x, y, z = local_position
+        if aim_pitch:
+            return tuple(glm.vec3(camera.position) + rotation * glm.vec3(local_position))
         return origin_x + cosine * x + sine * z, origin_y + y, origin_z - sine * x + cosine * z
 
     def part(local_position, size, color, emission=(0.0, 0.0, 0.0)):
         return Box(
-            at(local_position), size, yaw_degrees=yaw, color=color, emission=emission,
+            at(local_position), size, yaw_degrees=0 if aim_pitch else yaw, color=color, emission=emission,
+            orientation=(rotation.w, rotation.x, rotation.y, rotation.z) if aim_pitch else (1, 0, 0, 0),
         )
 
     return (

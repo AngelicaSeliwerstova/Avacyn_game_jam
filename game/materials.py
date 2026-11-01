@@ -3,6 +3,7 @@ from pathlib import Path
 from config import settings
 from engine.rendering.texture import TextureMaterial, TextureSettings
 from game.levels.room_signs import PATIENT_SIGNS, PATIENT_SIGN_WIDTH, PATIENT_SIGN_HEIGHT
+from game.levels.hospital_story import STORY_SURFACE_SIZES
 
 
 def create_texture_settings() -> TextureSettings | None:
@@ -25,5 +26,8 @@ def create_texture_settings() -> TextureSettings | None:
                         for name, (path, world_size) in settings.MATERIAL_TEXTURES.items()) + tuple(
             TextureMaterial(f"sign_{name}", root / f"signs/{name}_{settings.TEXTURE_RESOLUTION}.png", 1.0,
                             (1 / PATIENT_SIGN_WIDTH, 1 / PATIENT_SIGN_HEIGHT), (0.5, 0.5))
-            for name in PATIENT_SIGNS),
+            for name in PATIENT_SIGNS) + tuple(
+            TextureMaterial(name, root / f"story/{name.removeprefix('story_')}.png", 1.0,
+                            (1 / size[0], 1 / size[1]), (0.5, 0.5))
+            for name, size in STORY_SURFACE_SIZES.items()),
     )

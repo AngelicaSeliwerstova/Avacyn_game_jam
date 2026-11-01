@@ -66,6 +66,12 @@ class SceneObject:
             raise ValueError("Cannot replace geometry during a state transition")
         self._current_state = replace(self._current_state, boxes=boxes)
 
+    def set_interaction(self, interaction: Interaction | None):
+        """Update a stationary object's prompt without replacing its geometry."""
+        if self._transition is not None:
+            raise ValueError("Cannot replace interaction during a state transition")
+        self._current_state = replace(self._current_state, interaction=interaction)
+
     def update(self, delta_time: float):
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("Object delta time must be finite and nonnegative")
@@ -104,6 +110,10 @@ class SceneObject:
     @property
     def state_name(self) -> str:
         return self._state_name
+
+    @property
+    def transitioning(self) -> bool:
+        return self._transition is not None
 
     @property
     def current_state(self) -> ObjectState:
