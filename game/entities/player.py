@@ -513,15 +513,28 @@ class Player(Entity):
         authored = self._authored_camera_zones
         automatic = self._automatic_camera_zones
         candidates = authored + automatic
-        visible_zones = tuple(
-            (camera, score)
-            for camera in candidates
-            if (score := self._fixed_camera_framing_score(camera, position)) is not None
-        )
-        active_score = next(
-            (score for camera, score in visible_zones if camera is active),
-            None,
-        )
+        # Most frames retain one shot. Avoid raycasting every authored view in
+        # the hospital (including cameras on other storeys) to rediscover it.
+        scores = {}
+
+        def score(camera):
+            if camera not in scores:
+                scores[camera] = self._fixed_camera_framing_score(camera, position)
+            return scores[camera]
+
+        def nearest_visible(zones):
+            ordered = sorted(zones, key=lambda camera: self._camera_zone_distance(camera, position))
+            best, best_distance, best_score = None, None, None
+            for camera in ordered:
+                distance = self._camera_zone_distance(camera, position)
+                if best is not None and distance > best_distance:
+                    break
+                framing = score(camera)
+                if framing is not None and (best is None or framing < best_score):
+                    best, best_distance, best_score = camera, distance, framing
+            return best
+
+        active_score = score(active) if active is not None and active in candidates else None
         if active_score is not None and self._movement_camera_lock:
             return active
         if (active_score is not None
@@ -529,24 +542,14 @@ class Player(Entity):
             self._camera_selection_initialized = True
             return active
 
-        contained_zones = tuple(
-            (camera, score) for camera, score in visible_zones if camera.contains(position)
-        )
-
-        if not contained_zones and active_score is not None:
+        zone = nearest_visible(camera for camera in candidates if camera.contains(position))
+        if zone is None and active_score is not None:
             self._camera_selection_initialized = True
             return active
 
-        choices = contained_zones or visible_zones
-        if choices:
-            zone = min(
-                choices,
-                key=lambda item: (
-                    self._camera_zone_distance(item[0], position),
-                    item[1],
-                ),
-            )[0]
-        else:
+        if zone is None:
+            zone = nearest_visible(candidates)
+        if zone is None:
             zone = min(candidates, key=lambda camera: self._camera_zone_distance(camera, position)) if candidates else None
         if self._camera_selection_initialized and zone is not active:
             self._camera_transition_remaining = self._CAMERA_TRANSITION_DURATION
